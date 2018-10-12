@@ -22,6 +22,7 @@
 
 #include "illusions/illusions.h"
 #include "illusions/bbdou/illusions_bbdou.h"
+#include "illusions/blazingdragons/illusions_dragons.h"
 #include "illusions/duckman/illusions_duckman.h"
 
 #include "common/config-manager.h"
@@ -35,6 +36,7 @@ static const PlainGameDescriptor illusionsGames[] = {
 	{ "illusions", "Illusions engine game" },
 	{ "bbdou", "Beavis and Butt-head Do U" },
 	{ "duckman", "Duckman" },
+	{ "dragons", "Blazing Dragons"},
 	{ 0, 0 }
 };
 
@@ -78,6 +80,19 @@ static const IllusionsGameDescription gameDescriptions[] = {
 			GUIO0()
 		},
 		kGameIdDuckman
+	},
+
+	{
+		{
+			"dragons",
+			0,
+			AD_ENTRY1s("bigfile.dat", "02c26712bee57266f28235fdc0207725", 44990464),
+			Common::EN_USA,
+			Common::kPlatformPSX,
+			ADGF_DROPPLATFORM,
+			GUIO0()
+		},
+		kGameIdBlazingDragons
 	},
 
 	{AD_TABLE_END_MARKER, 0}
@@ -190,6 +205,9 @@ bool IllusionsMetaEngine::createInstance(OSystem *syst, Engine **engine, const A
 			break;
 		case Illusions::kGameIdDuckman:
 			*engine = new Illusions::IllusionsEngine_Duckman(syst, gd);
+			break;
+		case Illusions::kGameIdBlazingDragons:
+			*engine = new Illusions::IllusionsEngine_Dragons(syst, gd);
 			break;
 		default:
 			error("Unknown game id");

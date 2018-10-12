@@ -16,6 +16,8 @@ MODULE_OBJS := \
 	bbdou/illusions_bbdou.o \
 	bbdou/menusystem_bbdou.o \
 	bbdou/scriptopcodes_bbdou.o \
+	bigfilearchive.o \
+	blazingdragons/illusions_dragons.o \
 	camera.o \
 	cursor.o \
 	detection.o \

@@ -81,7 +81,8 @@ class ScreenPaletteBase;
 
 enum {
 	kGameIdBBDOU   = 1,
-	kGameIdDuckman = 2
+	kGameIdDuckman = 2,
+	kGameIdBlazingDragons = 3
 };
 
 struct IllusionsGameDescription {
@@ -155,6 +156,10 @@ public:
 
 	int getGameId() const {
 		return _gameDescription->gameId;
+	}
+
+	Common::Language getLanguage() const {
+		return _gameDescription->desc.language;
 	}
 
 	void runUpdateFunctions();
