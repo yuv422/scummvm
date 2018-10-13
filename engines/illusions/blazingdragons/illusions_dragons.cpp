@@ -35,11 +35,11 @@ IllusionsEngine_Dragons::IllusionsEngine_Dragons(OSystem *syst, const IllusionsG
 
 Common::Error IllusionsEngine_Dragons::run() {
 
-	_resReader = new BigfileArchive("duckman.gam", this->getLanguage());
+	_resReader = new BigfileArchive("bigfile.dat", this->getLanguage());
 
 	_resSys = new ResourceSystem(this);
 
-	_resSys->addResourceLoader(ILLUSIONS_DRAGONS_ACT, new ActorResourceLoader);
+//	_resSys->addResourceLoader(ILLUSIONS_DRAGONS_ACT, new ActorResourceLoader);
 	_input = new Input();
 
 	while (!shouldQuit()) {
