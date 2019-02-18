@@ -260,8 +260,9 @@ bool Actor::pathfinding_maybe(int16 target_x, int16 target_y, int16 unkTypeMaybe
 				priority = getEngine()->_scene->getPriorityAtPosition(Common::Point(target_x + x_offset, target_y + y_offset));
 
 				if ((unkTypeMaybe == 0 && priority - 1 < 8) || (unkTypeMaybe == 1 && priority -1 < 0x10)) {
-					target_x += x_offset;
-					target_y += y_offset;
+					//TODO FIXME
+//					target_x += x_offset;
+//					target_y += y_offset;
 					x_related_idx = -1;
 					break;
 				}
@@ -378,26 +379,26 @@ uint16 Actor::pathfindingUnk(int16 actor_x, int16 actor_y, int16 target_x, int16
 	int16 diffY = target_y - actor_y;
 
 	if (target_y != actor_y && target_x == actor_x) {
-		y_increment = diffY > 0 ? 1 : -1;
+		y_increment = diffY > 0 ? 0x10000 : -0x10000;
 	} else {
 		if (target_y == actor_y) {
 			if (target_x == actor_x) {
 				x_increment = 0;
-				y_increment = diffY > 0 ? 1 : -1;
+				y_increment = diffY > 0 ? 0x10000 : -0x10000;
 			} else {
-				x_increment = diffX > 0 ? 1 : -1;
+				x_increment = diffX > 0 ? 0x10000 : -0x10000;
 				y_increment = 0;
 			}
 		} else {
 			if (ABS(diffY) < ABS(diffX)) {
-				x_increment = diffX > 0 ? 1 : -1;
-				y_increment = ((diffY) /*<< 0x10*/) / (diffX);
+				x_increment = diffX > 0 ? 0x10000 : -0x10000;
+				y_increment = ((diffY) << 0x10) / (diffX);
 				if ((diffY > 0 && y_increment < 0) || (diffY < 0 && y_increment > 0)) {
 					y_increment = -y_increment;
 				}
 			} else {
-				y_increment = diffY > 0 ? 1 : -1;
-				x_increment = ((diffX) /*<< 0x10*/) / (diffY);
+				y_increment = diffY > 0 ? 0x10000 : -0x10000;
+				x_increment = ((diffX) << 0x10) / (diffY);
 				if ((diffX > 0 && x_increment < 0) || (diffX < 0 && x_increment > 0)) {
 					x_increment = -x_increment;
 				}
@@ -406,13 +407,13 @@ uint16 Actor::pathfindingUnk(int16 actor_x, int16 actor_y, int16 target_x, int16
 	}
 
 	// 0x80034d28
-	int16 x = actor_x;
-	int16 y = actor_y;
+	int32 x = actor_x << 0x10;
+	int32 y = actor_y << 0x10;
 	for(;;) {
-		if (x+1 == target_x && y+1 == target_y) {
+		if ((x+0x8000) >> 0x10 == target_x && (y+0x8000) >> 0x10 == target_y) {
 			return 1;
 		}
-		int16 priority = getEngine()->_scene->getPriorityAtPosition(Common::Point(x, y));
+		int16 priority = getEngine()->_scene->getPriorityAtPosition(Common::Point(x>>0x10, y>>0x10));
 		if ( priority < 0) {
 			priority = 1;
 		}
