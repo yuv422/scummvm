@@ -64,7 +64,15 @@ void Talk::printWideText(byte *text) {
 	char buf[2000];
 	int i = 0;
 	for (; READ_LE_INT16(text) != 0 && i < 1999; i++) {
-		buf[i] = *text;
+	    auto c = *text;
+	    if (c < 0x20) {
+	        buf[i++] = '0';
+	        buf[i++] = 'x';
+	        buf[i++] = (c & 0xF0 >> 4) + '0';
+	        buf[i] = (c & 0x0F) + '0';
+	    } else {
+            buf[i] = *text;
+        }
 		text += 2;
 	}
 	buf[i] = 0;

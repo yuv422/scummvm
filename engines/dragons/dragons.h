@@ -121,6 +121,7 @@ class SequenceOpcodes;
 class ScriptOpcodes;
 class Talk;
 class Sound;
+class SoundManager;
 struct DragonINI;
 
 
@@ -139,12 +140,15 @@ public:
 	Cursor *_cursor;
 	Talk *_talk;
 	Sound *_sound;
+	SoundManager *_soundManager;
 	CutScene *_cutScene;
 
 	uint16 unkArray_uint16[42];
 	opCode1AStruct opCode1A_tbl[8];
 
 	uint16 data_800633fc;
+
+	void loadCurrentSceneMsf();
 
 private:
 	Screen *_screen;
@@ -201,13 +205,13 @@ public:
 	DragonINI *getINI(uint32 index);
 	uint16 getVar(uint16 offset);
 	void setVar(uint16 offset, uint16 value);
-	uint16 getCurrentSceneId();
+	uint16 getCurrentSceneId() const;
 
 	void waitForFrames(uint16 numFrames);
 	void waitForFramesAllowSkip(uint16 numFrames);
 
 
-	void playSound(uint16 soundId);
+	void playOrStopSound(uint16 soundId);
 
 	//TODO what are these functions really doing?
 	void call_fade_related_1f();
@@ -249,6 +253,10 @@ private:
 	void FUN_80038994();
 
 	void FUN_8002931c();
+
+	void initializeSound();
+
+	void SomeInitSound_FUN_8003f64c();
 };
 
 DragonsEngine *getEngine();

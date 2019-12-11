@@ -85,9 +85,9 @@ void CutScene::scene1() {
 						FUN_8003d97c(0xd8,0,0xfd,0x60);
 						//playSoundFromTxtIndex(0x51fc);
 						if (_vm->_talk->somethingTextAndSpeechAndAnimRelated(DAT_80072de8,3,0,0x51fc,0x701) != 2) {
-							_vm->playSound(0x8004);
+							_vm->playOrStopSound(0x8004);
 							_vm->waitForFrames(0x28);
-							_vm->playSound(0x8003);
+							_vm->playOrStopSound(0x8003);
 							FUN_8003c108(DAT_80072de8);
 							DAT_80063514 = DAT_80063514 | 0x40;
 							FUN_8003d8e8(0xd6,0,0x37a,0x280);
@@ -145,7 +145,7 @@ void CutScene::scene1() {
 																	FUN_8003c108(DAT_80072dec);
 																	DAT_80063514 = DAT_80063514 & 0xffbf;
 																	FUN_8003d7fc();
-																	_vm->playSound(0x8003);
+																	_vm->playOrStopSound(0x8003);
 																	//playSoundFromTxtIndex(0x5b96);
 																	if (_vm->_talk->somethingTextAndSpeechAndAnimRelated(DAT_80072dec,8,4,0x5b96,0xc01) != 2) {
 																		//playSoundFromTxtIndex(0x5c4a);
@@ -186,7 +186,7 @@ void CutScene::scene1() {
 																								//playSoundFromTxtIndex(0x5de8);
 																								if (_vm->_talk->somethingTextAndSpeechAndAnimRelated(DAT_80072df8,0xb,2,0x5de8,0xc01) != 2) {
 																									FUN_8003d7d4();
-																									_vm->playSound(1);
+																									_vm->playOrStopSound(1);
 																									DAT_80072df0->updateSequence(8);
 																									DAT_80072df4->updateSequence(0xd);
 																									DAT_80072df8->updateSequence(0x11);
