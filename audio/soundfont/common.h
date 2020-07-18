@@ -19,33 +19,27 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  */
-#ifndef DRAGONS_MIDIMUSICPLAYER_H
-#define DRAGONS_MIDIMUSICPLAYER_H
 
-#include "audio/midiplayer.h"
-#include "vabsound.h"
+#ifndef SCUMMVM_COMMON_H
+#define SCUMMVM_COMMON_H
 
-namespace Dragons {
+#include "common/scummsys.h"
+#include "common/array.h"
 
-class MidiMusicPlayer : public Audio::MidiPlayer {
-private:
-	VabSound *_musicVab;
-	uint32 _midiDataSize;
-public:
-	MidiMusicPlayer(VabSound *musicVab, Common::SeekableReadStream *soundFont);
-	~MidiMusicPlayer();
+struct SizeOffsetPair {
+    uint32 size;
+    uint32 offset;
 
-	void setVolume(int volume) override;
+    SizeOffsetPair() : size(0), offset(0) {}
 
-	void playSong(Common::SeekableReadStream *seqData);
-
-	// The original sets the "sequence timing" to 109 Hz, whatever that
-	// means. The default is 120.
-	uint32 getBaseTempo()	{ return _driver ? (109 * _driver->getBaseTempo()) / 120 : 0; }
-private:
-	byte *resizeMidiBuffer(uint32 desiredSize);
+    SizeOffsetPair(uint32 offset_, uint32 size_) : size(size_), offset(offset_) {}
 };
 
-} // End of namespace Dragons
-
-#endif //DRAGONS_MIDIMUSICPLAYER_H
+template <class T>
+void DeleteVect(Common::Array<T *> &array) {
+	for(auto p : array) {
+		delete p;
+	}
+	array.clear();
+}
+#endif //SCUMMVM_COMMON_H

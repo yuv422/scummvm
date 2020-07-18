@@ -19,6 +19,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  */
+#include <audio/soundfont/RawFile.h>
+#include <audio/soundfont/vab/Vab.h>
+#include <audio/soundfont/VGMColl.h>
 #include "audio/mixer.h"
 #include "audio/audiostream.h"
 #include "audio/decoders/raw.h"
@@ -291,7 +294,7 @@ SoundManager::SoundManager(DragonsEngine *vm, BigfileArchive *bigFileArchive, Dr
 
 	SomeInitSound_FUN_8003f64c();
 	initVabData();
-	_midiPlayer = new MidiMusicPlayer(_vabMusx);
+	_midiPlayer = new MidiMusicPlayer(_vabMusx, loadSoundFont());
 	_midiPlayer->setVolume(_musicVolume);
 }
 
@@ -523,6 +526,38 @@ void SoundManager::playMusic(int16 song) {
 	Common::MemoryReadStream *seq = new Common::MemoryReadStream(seqData, dataSize, DisposeAfterUse::YES);
 	_midiPlayer->playSong(seq);
 	delete seq;
+}
+
+Common::SeekableReadStream *SoundManager::loadSoundFont() {
+	uint32 headSize, bodySize;
+	byte *headData = _bigFileArchive->load("musx.vh", headSize);
+	byte *bodyData = _bigFileArchive->load("musx.vb", bodySize);
+
+	byte *cat = (byte *)malloc(headSize + bodySize);
+
+	memcpy(cat, headData, headSize);
+	memcpy(cat + headSize, bodyData, bodySize);
+
+	free(headData);
+	free(bodyData);
+
+	MemFile *memFile = new MemFile(cat, headSize + bodySize);
+	debug("Loaded vab file size: %d", memFile->size());
+	Vab *vab = new Vab(memFile, 0);
+	vab->LoadVGMFile();
+	VGMColl *coll = new VGMColl("");
+//	coll->AddSampColl(vab->sampColl);
+	coll->AddInstrSet(vab);
+	SF2File *file = coll->CreateSF2File();
+	const byte *bytes = (const byte *)file->SaveToMem();
+	Common::DumpFile *dumpFile = new Common::DumpFile();
+	uint32 size = file->GetSize();
+	dumpFile->open("testing.sf2");
+	dumpFile->write(bytes, size);
+	dumpFile->close();
+	delete dumpFile;
+
+	return new Common::MemoryReadStream(bytes, size, DisposeAfterUse::YES);
 }
 
 } // End of namespace Dragons
