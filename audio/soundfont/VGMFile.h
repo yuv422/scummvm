@@ -12,34 +12,18 @@ enum FmtID : unsigned int;
 class VGMColl;
 class Format;
 
-enum FileType {
-    FILETYPE_UNDEFINED,
-    FILETYPE_SEQ,
-    FILETYPE_INSTRSET,
-    FILETYPE_SAMPCOLL,
-    FILETYPE_MISC
-};
-
 class VGMFile : public VGMContainerItem {
    public:
 
    public:
-    VGMFile(FileType fileType, /*FmtID fmtID,*/
-            const Common::String &format, RawFile *theRawFile, uint32_t offset, uint32_t length = 0,
+    VGMFile(const Common::String &format, RawFile *theRawFile, uint32_t offset, uint32_t length = 0,
             Common::String theName = "VGM File");
     virtual ~VGMFile();
-
-    virtual ItemType GetType() const { return ITEMTYPE_VGMFILE; }
-    FileType GetFileType() { return file_type; }
-
-    virtual void AddToUI(VGMItem *parent, void *UI_specific);
 
     const Common::String *GetName(void) const;
 
     bool LoadVGMFile();
     virtual bool Load() = 0;
-
-    virtual uint32_t GetID() { return id; }
 
     RawFile *GetRawFile();
 
@@ -53,7 +37,6 @@ class VGMFile : public VGMContainerItem {
     inline uint32_t GetWord(uint32_t offset) const { return rawfile->GetWord(offset); }
     inline uint16_t GetShortBE(uint32_t offset) const { return rawfile->GetShortBE(offset); }
     inline uint32_t GetWordBE(uint32_t offset) const { return rawfile->GetWordBE(offset); }
-    inline bool IsValidOffset(uint32_t offset) const { return rawfile->IsValidOffset(offset); }
 
     size_t GetStartOffset() { return dwOffset; }
     /*
@@ -68,7 +51,6 @@ class VGMFile : public VGMContainerItem {
     RawFile *rawfile;
 
    protected:
-    FileType file_type;
     Common::String format;
     uint32_t id;
     Common::String m_name;
@@ -83,32 +65,4 @@ class VGMHeader : public VGMContainerItem {
     VGMHeader(VGMItem *parItem, uint32_t offset = 0, uint32_t length = 0,
               const Common::String &name = "Header");
     virtual ~VGMHeader();
-
-    void AddPointer(uint32_t offset, uint32_t length, uint32_t destAddress, bool notNull,
-                    const Common::String &name = "Pointer");
-    void AddTempo(uint32_t offset, uint32_t length, const Common::String &name = "Tempo");
-    void AddSig(uint32_t offset, uint32_t length, const Common::String &name = "Signature");
-
-    // vector<VGMItem*> items;
-};
-
-// *************
-// VGMHeaderItem
-// *************
-
-class VGMHeaderItem : public VGMItem {
-   public:
-    enum HdrItemType {
-        HIT_POINTER,
-        HIT_TEMPO,
-        HIT_SIG,
-        HIT_GENERIC,
-        HIT_UNKNOWN
-    };  // HIT = Header Item Type
-
-    VGMHeaderItem(VGMHeader *hdr, HdrItemType theType, uint32_t offset, uint32_t length,
-                  const Common::String &name);
-
-   public:
-    HdrItemType type;
 };

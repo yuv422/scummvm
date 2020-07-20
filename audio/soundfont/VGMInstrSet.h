@@ -33,9 +33,6 @@ class VGMInstrSet : public VGMFile {
     virtual bool GetInstrPointers();
     virtual bool LoadInstrs();
 
-    VGMInstr *AddInstr(uint32_t offset, uint32_t length, unsigned long bank, unsigned long instrNum,
-                       const Common::String &instrName = "");
-
    public:
     Common::Array<VGMInstr *> aInstrs;
     VGMSampColl *sampColl;
@@ -50,13 +47,6 @@ class VGMInstr : public VGMContainerItem {
     VGMInstr(VGMInstrSet *parInstrSet, uint32_t offset, uint32_t length, uint32_t bank,
              uint32_t instrNum, const Common::String &name = "Instrument");
     virtual ~VGMInstr(void);
-
-    inline void SetBank(uint32_t bankNum);
-    inline void SetInstrNum(uint32_t theInstrNum);
-
-    VGMRgn *AddRgn(VGMRgn *rgn);
-    VGMRgn *AddRgn(uint32_t offset, uint32_t length, int sampNum, uint8_t keyLow = 0,
-                   uint8_t keyHigh = 0x7F, uint8_t velLow = 0, uint8_t velHigh = 0x7F);
 
     virtual bool LoadInstr();
 

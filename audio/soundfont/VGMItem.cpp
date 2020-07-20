@@ -42,14 +42,6 @@ RawFile *VGMItem::GetRawFile() {
     return vgmfile->rawfile;
 }
 
-bool VGMItem::IsItemAtOffset(uint32_t offset, bool includeContainer, bool matchStartOffset) {
-    if (GetItemFromOffset(offset, includeContainer, matchStartOffset) != NULL) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
 VGMItem *VGMItem::GetItemFromOffset(uint32_t offset, bool includeContainer, bool matchStartOffset) {
     if ((matchStartOffset ? offset == dwOffset : offset >= dwOffset) &&
         (offset < dwOffset + unLength)) {
@@ -65,10 +57,6 @@ uint32_t VGMItem::GuessLength(void) {
 
 void VGMItem::SetGuessedLength(void) {
     return;
-}
-
-void VGMItem::AddToUI(VGMItem *parent, void *UI_specific) {
-//    pRoot->UI_AddItem(this, parent, name, UI_specific);
 }
 
 uint32_t VGMItem::GetBytes(uint32_t nIndex, uint32_t nCount, void *pBuffer) {
@@ -95,10 +83,6 @@ uint16_t VGMItem::GetShortBE(uint32_t offset) {
 // GetWord Big Endian
 uint32_t VGMItem::GetWordBE(uint32_t offset) {
     return GetRawFile()->GetWordBE(offset);
-}
-
-bool VGMItem::IsValidOffset(uint32_t offset) {
-    return vgmfile->IsValidOffset(offset);
 }
 
 //  ****************
@@ -184,14 +168,6 @@ void VGMContainerItem::SetGuessedLength(void) {
     }
 }
 
-void VGMContainerItem::AddToUI(VGMItem *parent, void *UI_specific) {
-    VGMItem::AddToUI(parent, UI_specific);
-    for (uint32_t i = 0; i < containers.size(); i++) {
-        for (uint32_t j = 0; j < containers[i]->size(); j++)
-            (*containers[i])[j]->AddToUI(this, UI_specific);
-    }
-}
-
 VGMHeader *VGMContainerItem::AddHeader(uint32_t offset, uint32_t length, const Common::String &name) {
     VGMHeader *header = new VGMHeader(this, offset, length, name);
     headers.push_back(header);
@@ -204,8 +180,4 @@ void VGMContainerItem::AddItem(VGMItem *item) {
 
 void VGMContainerItem::AddSimpleItem(uint32_t offset, uint32_t length, const Common::String &name) {
     localitems.push_back(new VGMItem(this->vgmfile, offset, length, name, CLR_HEADER));
-}
-
-void VGMContainerItem::AddUnknownItem(uint32_t offset, uint32_t length) {
-    localitems.push_back(new VGMItem(this->vgmfile, offset, length, "Unknown"));
 }

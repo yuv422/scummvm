@@ -16,21 +16,15 @@ class VGMSampColl : public VGMFile {
     VGMSampColl(const Common::String &format, RawFile *rawfile, VGMInstrSet *instrset, uint32_t offset,
                 uint32_t length = 0, Common::String theName = "VGMSampColl");
     virtual ~VGMSampColl(void);
-    void UseInstrSet(VGMInstrSet *instrset) { parInstrSet = instrset; }
 
     virtual bool Load();
-    virtual bool GetHeaderInfo();  // retrieve any header data
-    virtual bool
-    GetSampleInfo();  // retrieve sample info, including pointers to data, # channels, rate, etc.
+    virtual bool GetHeaderInfo() { return true; }  // retrieve any header data
+    virtual bool GetSampleInfo() { return true; }  // retrieve sample info, including pointers to data, # channels, rate, etc.
 
-    VGMSamp *AddSamp(uint32_t offset, uint32_t length, uint32_t dataOffset, uint32_t dataLength,
-                     uint8_t nChannels = 1, uint16_t bps = 16, uint32_t theRate = 0,
-                     Common::String name = "Sample");
    protected:
-    void LoadOnInstrMatch() { bLoadOnInstrSetMatch = true; }
 
    public:
-    bool bLoadOnInstrSetMatch, bLoaded;
+    bool bLoaded;
 
     uint32_t sampDataOffset;  // offset of the beginning of the sample data.  Used for
                               // rgn->sampOffset matching

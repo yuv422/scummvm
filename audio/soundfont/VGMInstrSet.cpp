@@ -18,7 +18,7 @@ using namespace std;
 VGMInstrSet::VGMInstrSet(const Common::String &format, /*FmtID fmtID,*/
                          RawFile *file, uint32_t offset, uint32_t length, Common::String name,
                          VGMSampColl *theSampColl)
-    : VGMFile(FILETYPE_INSTRSET, /*fmtID,*/ format, file, offset, length, name),
+    : VGMFile(format, file, offset, length, name),
       sampColl(theSampColl) {
     AddContainer<VGMInstr>(aInstrs);
 }
@@ -26,15 +26,6 @@ VGMInstrSet::VGMInstrSet(const Common::String &format, /*FmtID fmtID,*/
 VGMInstrSet::~VGMInstrSet() {
     DeleteVect<VGMInstr>(aInstrs);
     delete sampColl;
-}
-
-VGMInstr *VGMInstrSet::AddInstr(uint32_t offset, uint32_t length, unsigned long bank,
-                                unsigned long instrNum, const Common::String &instrName) {
-    VGMInstr *instr =
-        new VGMInstr(this, offset, length, bank, instrNum,
-                     instrName.empty() ? Common::String::format("Instrument {}", aInstrs.size()) : instrName);
-    aInstrs.push_back(instr);
-    return instr;
 }
 
 bool VGMInstrSet::Load() {
@@ -54,7 +45,7 @@ bool VGMInstrSet::Load() {
 
     if (sampColl != NULL) {
         if (!sampColl->Load()) {
-          //TODO  L_WARN("Failed to load VGMSampColl");
+          error("Failed to load VGMSampColl");
         }
     }
 
@@ -93,26 +84,6 @@ VGMInstr::VGMInstr(VGMInstrSet *instrSet, uint32_t offset, uint32_t length, uint
 
 VGMInstr::~VGMInstr() {
     DeleteVect<VGMRgn>(aRgns);
-}
-
-void VGMInstr::SetBank(uint32_t bankNum) {
-    bank = bankNum;
-}
-
-void VGMInstr::SetInstrNum(uint32_t theInstrNum) {
-    instrNum = theInstrNum;
-}
-
-VGMRgn *VGMInstr::AddRgn(VGMRgn *rgn) {
-    aRgns.push_back(rgn);
-    return rgn;
-}
-
-VGMRgn *VGMInstr::AddRgn(uint32_t offset, uint32_t length, int sampNum, uint8_t keyLow,
-                         uint8_t keyHigh, uint8_t velLow, uint8_t velHigh) {
-    VGMRgn *newRgn = new VGMRgn(this, offset, length, keyLow, keyHigh, velLow, velHigh, sampNum);
-    aRgns.push_back(newRgn);
-    return newRgn;
 }
 
 bool VGMInstr::LoadInstr() {
