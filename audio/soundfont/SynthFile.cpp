@@ -5,8 +5,6 @@
  */
 
 #include "SynthFile.h"
-
-//TODO do we need this? #include <fmt/format.h>
 #include "VGMSamp.h"
 
 using namespace std;
@@ -20,9 +18,8 @@ using namespace std;
 SynthFile::SynthFile(Common::String synth_name) : name(synth_name) {}
 
 SynthFile::~SynthFile() {
-//TODO
-//	DeleteVect(vInstrs);
-//	DeleteVect(vWaves);
+	DeleteVect(vInstrs);
+	DeleteVect(vWaves);
 }
 
 SynthInstr *SynthFile::AddInstr(uint32_t bank, uint32_t instrNum) {
@@ -70,8 +67,7 @@ SynthInstr::SynthInstr(uint32_t bank, uint32_t instrument, Common::String instrN
 }
 
 SynthInstr::~SynthInstr() {
-	vRgns.clear(); //TODO need to delete all items in array.
-//    DeleteVect(vRgns);
+    DeleteVect(vRgns);
 }
 
 SynthRgn *SynthInstr::AddRgn(void) {

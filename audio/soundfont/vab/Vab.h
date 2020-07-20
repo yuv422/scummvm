@@ -7,7 +7,7 @@
 #include "audio/soundfont/common.h"
 #include "common/str.h"
 #include "audio/soundfont/VGMInstrSet.h"
-#include "audio/soundfont/VGMSampColl.h"
+#include "audio/soundfont/VGMSamp.h"
 #include "audio/soundfont/VGMRgn.h"
 
 // VAB Header

@@ -106,8 +106,6 @@ class SynthRgn {
 class SynthArt {
    public:
     SynthArt(void) {}
-    SynthArt(Common::Array<SynthConnectionBlock> &connectionBlocks);
-    // SynthArt(uint16 source, uint16 control, uint16 destination, uint16 transform);
     ~SynthArt(void);
 
     void AddADSR(double attack, Transform atk_transform, double decay, double sustain_lev,
@@ -128,7 +126,6 @@ class SynthArt {
     Transform release_transform;
 
    private:
-    // vector<SynthConnectionBlock*> vConnBlocks;
 };
 
 class SynthSampInfo {

@@ -7,7 +7,6 @@
 #include "common/debug.h"
 #include "VGMColl.h"
 #include "VGMInstrSet.h"
-#include "VGMSampColl.h"
 #include "VGMSamp.h"
 #include "VGMRgn.h"
 

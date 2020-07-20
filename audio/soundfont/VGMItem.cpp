@@ -5,7 +5,6 @@
  */
 
 #include "common.h"
-#include "VGMFile.h"
 #include "VGMItem.h"
 
 using namespace std;
@@ -40,23 +39,6 @@ bool operator>=(VGMItem &item1, VGMItem &item2) {
 
 RawFile *VGMItem::GetRawFile() {
     return vgmfile->rawfile;
-}
-
-VGMItem *VGMItem::GetItemFromOffset(uint32_t offset, bool includeContainer, bool matchStartOffset) {
-    if ((matchStartOffset ? offset == dwOffset : offset >= dwOffset) &&
-        (offset < dwOffset + unLength)) {
-        return this;
-    } else {
-        return NULL;
-    }
-}
-
-uint32_t VGMItem::GuessLength(void) {
-    return unLength;
-}
-
-void VGMItem::SetGuessedLength(void) {
-    return;
 }
 
 uint32_t VGMItem::GetBytes(uint32_t nIndex, uint32_t nCount, void *pBuffer) {
@@ -106,78 +88,66 @@ VGMContainerItem::~VGMContainerItem() {
     DeleteVect(localitems);
 }
 
-VGMItem *VGMContainerItem::GetItemFromOffset(uint32_t offset, bool includeContainer,
-                                             bool matchStartOffset) {
-    for (uint32_t i = 0; i < containers.size(); i++) {
-        for (uint32_t j = 0; j < containers[i]->size(); j++) {
-            VGMItem *theItem = (*containers[i])[j];
-            if (theItem->unLength == 0 ||
-                (offset >= theItem->dwOffset && offset < theItem->dwOffset + theItem->unLength)) {
-                VGMItem *foundItem =
-                    theItem->GetItemFromOffset(offset, includeContainer, matchStartOffset);
-                if (foundItem)
-                    return foundItem;
-            }
-        }
-    }
-
-    if (includeContainer && (matchStartOffset ? offset == dwOffset : offset >= dwOffset) &&
-        (offset < dwOffset + unLength)) {
-        return this;
-    } else {
-        return NULL;
-    }
-}
-
-// Guess length of a container from its descendants
-uint32_t VGMContainerItem::GuessLength(void) {
-    uint32_t guessedLength = 0;
-
-    // Note: children items can sometimes overwrap each other
-    for (uint32_t i = 0; i < containers.size(); i++) {
-        for (uint32_t j = 0; j < containers[i]->size(); j++) {
-            VGMItem *item = (*containers[i])[j];
-
-            assert(dwOffset <= item->dwOffset);
-
-            uint32_t itemLength = item->unLength;
-            if (unLength == 0) {
-                itemLength = item->GuessLength();
-            }
-
-            uint32_t expectedLength = item->dwOffset + itemLength - dwOffset;
-            if (guessedLength < expectedLength) {
-                guessedLength = expectedLength;
-            }
-        }
-    }
-
-    return guessedLength;
-}
-
-void VGMContainerItem::SetGuessedLength(void) {
-    for (uint32_t i = 0; i < containers.size(); i++) {
-        for (uint32_t j = 0; j < containers[i]->size(); j++) {
-            VGMItem *item = (*containers[i])[j];
-            item->SetGuessedLength();
-        }
-    }
-
-    if (unLength == 0) {
-        unLength = GuessLength();
-    }
-}
-
 VGMHeader *VGMContainerItem::AddHeader(uint32_t offset, uint32_t length, const Common::String &name) {
     VGMHeader *header = new VGMHeader(this, offset, length, name);
     headers.push_back(header);
     return header;
 }
 
-void VGMContainerItem::AddItem(VGMItem *item) {
-    localitems.push_back(item);
-}
-
 void VGMContainerItem::AddSimpleItem(uint32_t offset, uint32_t length, const Common::String &name) {
     localitems.push_back(new VGMItem(this->vgmfile, offset, length, name, CLR_HEADER));
 }
+
+// *********
+// VGMFile
+// *********
+
+VGMFile::VGMFile(const Common::String &fmt, RawFile *theRawFile, uint32_t offset,
+				 uint32_t length, Common::String theName)
+		: VGMContainerItem(this, offset, length),
+		  rawfile(theRawFile),
+		  format(fmt),
+		  m_name(theName),
+		  id(-1) {}
+
+VGMFile::~VGMFile(void) {}
+
+bool VGMFile::LoadVGMFile() {
+	bool val = Load();
+	if (!val)
+		return false;
+
+	return val;
+}
+
+const Common::String *VGMFile::GetName(void) const {
+	return &m_name;
+}
+
+// These functions are common to all VGMItems, but no reason to refer to vgmfile
+// or call GetRawFile() if the item itself is a VGMFile
+RawFile *VGMFile::GetRawFile() {
+	return rawfile;
+}
+
+uint32_t VGMFile::GetBytes(uint32_t nIndex, uint32_t nCount, void *pBuffer) {
+	// if unLength != 0, verify that we're within the bounds of the file, and truncate num read
+	// bytes to end of file
+	if (unLength != 0) {
+		uint32_t endOff = dwOffset + unLength;
+		assert(nIndex >= dwOffset && nIndex < endOff);
+		if (nIndex + nCount > endOff)
+			nCount = endOff - nIndex;
+	}
+
+	return rawfile->GetBytes(nIndex, nCount, pBuffer);
+}
+
+// *********
+// VGMHeader
+// *********
+
+VGMHeader::VGMHeader(VGMItem *parItem, uint32_t offset, uint32_t length, const Common::String &name)
+		: VGMContainerItem(parItem->vgmfile, offset, length, name) {}
+
+VGMHeader::~VGMHeader() {}

@@ -7,7 +7,7 @@
 #include "common/scummsys.h"
 #include "common/str.h"
 #include "common/array.h"
-#include "VGMFile.h"
+#include "VGMItem.h"
 #include "SF2File.h"
 
 class VGMSampColl;
@@ -15,7 +15,6 @@ class VGMInstr;
 class VGMRgn;
 class VGMSamp;
 class VGMRgnItem;
-// class VGMArt;
 
 // ***********
 // VGMInstrSet

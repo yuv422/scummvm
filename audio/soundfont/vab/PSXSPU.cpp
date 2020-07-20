@@ -6,7 +6,6 @@
 
 #include "common/debug.h"
 #include "PSXSPU.h"
-//#include "PS1Format.h"
 
 // A lot of games use a simple linear amplitude decay/release for their envelope.
 // In other words, the envelope level drops at a constant rate (say from

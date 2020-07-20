@@ -6,7 +6,7 @@
 
 #include "common.h"
 #include "VGMInstrSet.h"
-#include "VGMSampColl.h"
+#include "VGMSamp.h"
 #include "VGMRgn.h"
 
 using namespace std;
@@ -38,10 +38,6 @@ bool VGMInstrSet::Load() {
 
     if (aInstrs.size() == 0)
         return false;
-
-    if (unLength == 0) {
-        SetGuessedLength();
-    }
 
     if (sampColl != NULL) {
         if (!sampColl->Load()) {

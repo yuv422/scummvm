@@ -12,7 +12,6 @@
 #include "common/str.h"
 
 class VGMFile;
-class VGMItem;
 
 class RawFile {
    public:
