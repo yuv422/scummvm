@@ -401,8 +401,8 @@ void PSXSamp::DecompVAGBlk(int16 *pSmp, VAGBlk *pVBlk, f32 *prev1, f32 *prev2) {
     shift = pVBlk->range + 16;
 
     for (i = 0; i < 14; i++) {
-        pSmp[i * 2] = ((uint32)pVBlk->brr[i] << 28) >> shift;
-        pSmp[i * 2 + 1] = ((uint32)(pVBlk->brr[i] & 0xF0) << 24) >> shift;
+        pSmp[i * 2] = ((int32)pVBlk->brr[i] << 28) >> shift;
+        pSmp[i * 2 + 1] = ((int32)(pVBlk->brr[i] & 0xF0) << 24) >> shift;
     }
 
     // Apply ADPCM decompression ----------------

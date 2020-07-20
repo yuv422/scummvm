@@ -10,7 +10,6 @@
 #include "common/str.h"
 #include "SynthFile.h"
 #include "VGMItem.h"
-#include "Loop.h"
 
 class VGMInstr;
 class VGMRgnItem;
@@ -102,7 +101,6 @@ class VGMRgnItem : public VGMItem {
 
     VGMRgnItem(VGMRgn *rgn, RgnItemType theType, uint32_t offset, uint32_t length,
                const Common::String &name);
-    virtual Icon GetIcon();
 
    public:
     RgnItemType type;

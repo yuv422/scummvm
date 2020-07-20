@@ -8,7 +8,6 @@
 #include "common/str.h"
 #include "common/array.h"
 #include "VGMFile.h"
-//#include "DLSFile.h"
 #include "SF2File.h"
 
 class VGMSampColl;
@@ -37,13 +36,6 @@ class VGMInstrSet : public VGMFile {
     VGMInstr *AddInstr(uint32_t offset, uint32_t length, unsigned long bank, unsigned long instrNum,
                        const Common::String &instrName = "");
 
-//TODO do we need this?    virtual FileType GetFileType() { return FILETYPE_INSTRSET; }
-
-    bool OnSaveAsDLS(void);
-    bool OnSaveAsSF2(void);
-    virtual bool SaveAsDLS(const Common::String &filepath);
-    virtual bool SaveAsSF2(const Common::String &filepath);
-
    public:
     Common::Array<VGMInstr *> aInstrs;
     VGMSampColl *sampColl;
@@ -58,8 +50,6 @@ class VGMInstr : public VGMContainerItem {
     VGMInstr(VGMInstrSet *parInstrSet, uint32_t offset, uint32_t length, uint32_t bank,
              uint32_t instrNum, const Common::String &name = "Instrument");
     virtual ~VGMInstr(void);
-
-//TODO    virtual Icon GetIcon() { return ICON_INSTR; };
 
     inline void SetBank(uint32_t bankNum);
     inline void SetInstrNum(uint32_t theInstrNum);

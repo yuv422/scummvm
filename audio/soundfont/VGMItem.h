@@ -5,7 +5,6 @@
  */
 #pragma once
 
-//#include <algorithm>
 #include "common/scummsys.h"
 #include "common/str.h"
 #include "common/array.h"
@@ -61,29 +60,6 @@ enum ItemType { ITEMTYPE_UNDEFINED, ITEMTYPE_VGMFILE, ITEMTYPE_SEQEVENT };
 
 class VGMItem {
    public:
-    enum Icon {
-        ICON_SEQ,
-        ICON_INSTRSET,
-        ICON_SAMPCOLL,
-        ICON_UNKNOWN,
-        ICON_NOTE,
-        ICON_TRACK,
-        ICON_REST,
-        ICON_CONTROL,
-        ICON_STARTREP,
-        ICON_ENDREP,
-        ICON_TIMESIG,
-        ICON_TEMPO,
-        ICON_PROGCHANGE,
-        ICON_TRACKEND,
-        ICON_COLL,
-        ICON_INSTR,
-        ICON_SAMP,
-        ICON_BINARY,
-        ICON_MAX
-    };
-
-   public:
     VGMItem();
     VGMItem(VGMFile *thevgmfile, uint32_t theOffset, uint32_t theLength = 0,
             const Common::String theName = "", uint8_t color = 0);
@@ -108,7 +84,6 @@ class VGMItem {
     virtual bool CallMenuItem(VGMItem *, int ) { return false; }
     virtual Common::String GetDescription() { return name; }
     virtual ItemType GetType() const { return ITEMTYPE_UNDEFINED; }
-    virtual Icon GetIcon() { return ICON_BINARY; /*ICON_UNKNOWN*/ }
     virtual void AddToUI(VGMItem *parent, void *UI_specific);
     virtual bool IsContainerItem() { return false; }
 

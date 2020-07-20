@@ -7,15 +7,12 @@
 #include "common.h"
 #include "VGMSampColl.h"
 #include "VGMSamp.h"
-//#include "Root.h"
 
 using namespace std;
 
 // ***********
 // VGMSampColl
 // ***********
-
-//DECLARE_MENU(VGMSampColl)
 
 VGMSampColl::VGMSampColl(const Common::String &format, RawFile *rawfile, uint32_t offset, uint32_t length,
                          Common::String theName)
@@ -94,16 +91,4 @@ VGMSamp *VGMSampColl::AddSamp(uint32_t offset, uint32_t length, uint32_t dataOff
         new VGMSamp(this, offset, length, dataOffset, dataLength, nChannels, bps, theRate, name);
     samples.push_back(newSamp);
     return newSamp;
-}
-
-bool VGMSampColl::OnSaveAllAsWav() {
-//    Common::String dirpath = pRoot->UI_GetSaveDirPath();
-//    if (dirpath.length() != 0) {
-//        for (uint32_t i = 0; i < samples.size(); i++) {
-//            Common::String filepath = dirpath + "/" + ConvertToSafeFileName(samples[i]->sampName) + ".wav";
-//            samples[i]->SaveAsWav(filepath);
-//        }
-//        return true;
-//    }
-    return false;
 }

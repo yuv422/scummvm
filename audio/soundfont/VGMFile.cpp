@@ -5,10 +5,7 @@
  */
 
 #include "common.h"
-//#include "Root.h"
 #include "VGMFile.h"
-//#include "Format.h"
-
 
 using namespace std;
 
@@ -32,29 +29,6 @@ void VGMFile::AddToUI(VGMItem *parent, void *UI_specific) {
     }
 }
 
-bool VGMFile::OnClose() {
-//    pRoot->RemoveVGMFile(this);
-    return true;
-}
-
-bool VGMFile::OnSaveAsRaw() {
-//    Common::String filepath = pRoot->UI_GetSaveFilePath(ConvertToSafeFileName(m_name));
-//    if (filepath.length() != 0) {
-//        bool result;
-//        uint8_t *buf = new uint8_t[unLength];  // create a buffer the size of the file
-//        GetBytes(dwOffset, unLength, buf);
-//        result = pRoot->UI_WriteBufferToFile(filepath, buf, unLength);
-//        delete[] buf;
-//        return result;
-//    }
-    return false;
-}
-
-bool VGMFile::OnSaveAllAsRaw() {
-//    return pRoot->SaveAllAsRaw();
-return true;
-}
-
 bool VGMFile::LoadVGMFile() {
     bool val = Load();
     if (!val)
@@ -66,26 +40,8 @@ bool VGMFile::LoadVGMFile() {
     return val;
 }
 
-Format *VGMFile::GetFormat() {
-    return NULL; //TODO Format::GetFormatFromName(format);
-}
-
-const Common::String &VGMFile::GetFormatName() {
-    return format;
-}
-
 const Common::String *VGMFile::GetName(void) const {
     return &m_name;
-}
-
-void VGMFile::AddCollAssoc(VGMColl *coll) {
-    assocColls.push_back(coll);
-}
-
-void VGMFile::RemoveCollAssoc(VGMColl *coll) {
-    Common::List<VGMColl *>::iterator iter = Common::find(assocColls.begin(), assocColls.end(), coll);
-    if (iter != assocColls.end())
-        assocColls.erase(iter);
 }
 
 // These functions are common to all VGMItems, but no reason to refer to vgmfile
@@ -136,18 +92,3 @@ void VGMHeader::AddSig(uint32_t offset, uint32_t length, const Common::String &n
 VGMHeaderItem::VGMHeaderItem(VGMHeader *hdr, HdrItemType theType, uint32_t offset, uint32_t length,
                              const Common::String &name)
     : VGMItem(hdr->vgmfile, offset, length, name, CLR_HEADER), type(theType) {}
-
-VGMItem::Icon VGMHeaderItem::GetIcon() {
-    switch (type) {
-        case HIT_UNKNOWN:
-            return ICON_UNKNOWN;
-        case HIT_POINTER:
-            return ICON_BINARY;
-        case HIT_TEMPO:
-            return ICON_TEMPO;
-        case HIT_SIG:
-            return ICON_BINARY;
-        default:
-            return ICON_BINARY;
-    }
-}

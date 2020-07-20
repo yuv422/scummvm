@@ -8,11 +8,6 @@
 #include "VGMInstrSet.h"
 #include "VGMSampColl.h"
 #include "VGMRgn.h"
-//#include "VGMColl.h"
-//#include "Root.h"
-
-//#include <fmt/format.h>
-
 
 using namespace std;
 
@@ -63,7 +58,6 @@ bool VGMInstrSet::Load() {
         }
     }
 
-//    pRoot->AddVGMFile(this);
     return true;
 }
 
@@ -82,52 +76,6 @@ bool VGMInstrSet::LoadInstrs() {
             return false;
     }
     return true;
-}
-
-bool VGMInstrSet::OnSaveAsDLS(void) {
-//    Common::String filepath = pRoot->UI_GetSaveFilePath(ConvertToSafeFileName(m_name), "dls");
-//    if (filepath.length() != 0) {
-//        return SaveAsDLS(filepath.c_str());
-//    }
-    return false;
-}
-
-bool VGMInstrSet::OnSaveAsSF2(void) {
-//    Common::String filepath = pRoot->UI_GetSaveFilePath(ConvertToSafeFileName(m_name), "sf2");
-//    if (filepath.length() != 0) {
-//        return SaveAsSF2(filepath);
-//    }
-    return false;
-}
-
-bool VGMInstrSet::SaveAsDLS(const Common::String &filepath) {
-//    DLSFile dlsfile;
-//    bool dlsCreationSucceeded = false;
-//
-//    if (assocColls.size())
-//        dlsCreationSucceeded = assocColls.front()->CreateDLSFile(dlsfile);
-//    else
-//        return false;
-//
-//    if (dlsCreationSucceeded) {
-//        return dlsfile.SaveDLSFile(filepath);
-//    }
-    return false;
-}
-
-bool VGMInstrSet::SaveAsSF2(const Common::String &filepath) {
-//    SF2File *sf2file = NULL;
-//
-//    if (assocColls.size())
-//        sf2file = assocColls.front()->CreateSF2File();
-//    else
-//        return false;
-//    if (sf2file != NULL) {
-//        bool bResult = sf2file->SaveSF2File(filepath);
-//        delete sf2file;
-//        return bResult;
-//    }
-    return false;
 }
 
 // ********

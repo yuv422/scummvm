@@ -7,7 +7,6 @@
 #include "common.h"
 #include "VGMFile.h"
 #include "VGMItem.h"
-//#include "Root.h"
 
 using namespace std;
 

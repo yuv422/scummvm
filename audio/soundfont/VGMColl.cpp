@@ -4,19 +4,14 @@
  * refer to the included LICENSE.txt file
  */
 
-#include <common/debug.h>
+#include "common/debug.h"
 #include "VGMColl.h"
-//#include "VGMSeq.h"
 #include "VGMInstrSet.h"
 #include "VGMSampColl.h"
 #include "VGMSamp.h"
 #include "VGMRgn.h"
-//#include "ScaleConversion.h"
-//#include "Root.h"
 
 using namespace std;
-
-//DECLARE_MENU(VGMColl)
 
 double ConvertLogScaleValToAtten(double percent) {
 	if (percent == 0)
@@ -34,54 +29,12 @@ double ConvertPercentAmplitudeToAttenDB_SF2(double percent) {
 	return MIN(-atten, 100.0);
 }
 
-VGMColl::VGMColl(Common::String theName) : VGMItem(), name(std::move(theName)), seq(nullptr) {}
-
-void VGMColl::RemoveFileAssocs() {
-    for (auto set : instrsets) {
-        set->RemoveCollAssoc(this);
-    }
-    for (auto samp : sampcolls) {
-        samp->RemoveCollAssoc(this);
-    }
-    for (auto file : miscfiles) {
-        file->RemoveCollAssoc(this);
-    }
-}
-
-const Common::String &VGMColl::GetName() const {
-    return name;
-}
-
-void VGMColl::SetName(const Common::String *newName) {
-    name = *newName;
-}
+VGMColl::VGMColl(Common::String theName) : VGMItem(), name(std::move(theName)) {}
 
 void VGMColl::AddInstrSet(VGMInstrSet *theInstrSet) {
     if (theInstrSet != nullptr) {
-        theInstrSet->AddCollAssoc(this);
         instrsets.push_back(theInstrSet);
     }
-}
-
-void VGMColl::AddSampColl(VGMSampColl *theSampColl) {
-    if (theSampColl != nullptr) {
-        theSampColl->AddCollAssoc(this);
-        sampcolls.push_back(theSampColl);
-    }
-}
-
-void VGMColl::AddMiscFile(VGMFile *theMiscFile) {
-    if (theMiscFile != nullptr) {
-        theMiscFile->AddCollAssoc(this);
-        miscfiles.push_back(theMiscFile);
-    }
-}
-
-bool VGMColl::Load() {
-    if (!LoadMain())
-        return false;
-//    pRoot->AddVGMColl(this);
-    return true;
 }
 
 void VGMColl::UnpackSampColl(SynthFile &synthfile, VGMSampColl *sampColl,

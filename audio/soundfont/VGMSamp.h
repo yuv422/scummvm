@@ -4,10 +4,10 @@
  * refer to the included LICENSE.txt file
  */
 #pragma once
+#include "common.h"
 #include "common/scummsys.h"
 #include "common/str.h"
 #include "VGMItem.h"
-#include "Loop.h"
 
 class VGMSampColl;
 

@@ -36,19 +36,11 @@ class VGMFile : public VGMContainerItem {
 
     const Common::String *GetName(void) const;
 
-    bool OnClose();
-    bool OnSaveAsRaw();
-    bool OnSaveAllAsRaw();
-
     bool LoadVGMFile();
     virtual bool Load() = 0;
-    Format *GetFormat();
-    const Common::String &GetFormatName();
 
     virtual uint32_t GetID() { return id; }
 
-    void AddCollAssoc(VGMColl *coll);
-    void RemoveCollAssoc(VGMColl *coll);
     RawFile *GetRawFile();
 
     size_t size() const noexcept { return unLength; }
@@ -74,7 +66,6 @@ class VGMFile : public VGMContainerItem {
     const char *data() const { return rawfile->data() + dwOffset; }
 
     RawFile *rawfile;
-    Common::List<VGMColl *> assocColls;
 
    protected:
     FileType file_type;
@@ -92,8 +83,6 @@ class VGMHeader : public VGMContainerItem {
     VGMHeader(VGMItem *parItem, uint32_t offset = 0, uint32_t length = 0,
               const Common::String &name = "Header");
     virtual ~VGMHeader();
-
-    virtual Icon GetIcon() { return ICON_BINARY; };
 
     void AddPointer(uint32_t offset, uint32_t length, uint32_t destAddress, bool notNull,
                     const Common::String &name = "Pointer");
@@ -119,7 +108,6 @@ class VGMHeaderItem : public VGMItem {
 
     VGMHeaderItem(VGMHeader *hdr, HdrItemType theType, uint32_t offset, uint32_t length,
                   const Common::String &name);
-    virtual Icon GetIcon();
 
    public:
     HdrItemType type;

@@ -146,7 +146,3 @@ void VGMRgn::AddSampNum(int sn, uint32_t offset, uint32_t length) {
 VGMRgnItem::VGMRgnItem(VGMRgn *rgn, RgnItemType theType, uint32_t offset, uint32_t length,
                        const Common::String &name)
     : VGMItem(rgn->vgmfile, offset, length, name), type(theType) {}
-
-VGMItem::Icon VGMRgnItem::GetIcon() {
-    return ICON_BINARY;
-}
