@@ -58,7 +58,17 @@ MODULE_OBJS := \
 	softsynth/eas.o \
 	softsynth/pcspk.o \
 	softsynth/sid.o \
-	softsynth/wave6581.o
+	softsynth/wave6581.o \
+	soundfont/rawfile.o \
+	soundfont/rifffile.o \
+	soundfont/sf2file.o \
+	soundfont/synthfile.o \
+	soundfont/vgmcoll.o \
+	soundfont/vgminstrset.o \
+	soundfont/vgmitem.o \
+	soundfont/vgmsamp.o \
+	soundfont/vab/psxpsu.o \
+	soundfont/vab/vab.o
 
 ifndef DISABLE_NUKED_OPL
 MODULE_OBJS += \

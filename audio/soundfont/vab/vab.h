@@ -7,9 +7,8 @@
 #define AUDIO_SOUNDFONT_VAB_H
 #include "audio/soundfont/common.h"
 #include "common/str.h"
-#include "audio/soundfont/VGMInstrSet.h"
-#include "audio/soundfont/VGMSamp.h"
-#include "audio/soundfont/VGMRgn.h"
+#include "audio/soundfont/vgminstrset.h"
+#include "audio/soundfont/vgmsamp.h"
 
 // VAB Header
 struct VabHdr {
@@ -149,12 +148,6 @@ class VabRgn : public VGMRgn {
    public:
     uint16_t ADSR1;  // raw ps2 ADSR1 value (articulation data)
     uint16_t ADSR2;  // raw ps2 ADSR2 value (articulation data)
-    uint8_t bStereoRegion;
-    uint8_t StereoPairOrder;
-    uint8_t bFirstRegion;
-    uint8_t bLastRegion;
-    uint8_t bUnknownFlag2;
-    uint32_t sample_offset;
 
     VagAtr attr;
 };

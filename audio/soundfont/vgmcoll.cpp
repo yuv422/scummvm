@@ -5,10 +5,9 @@
  */
 
 #include "common/debug.h"
-#include "VGMColl.h"
-#include "VGMInstrSet.h"
-#include "VGMSamp.h"
-#include "VGMRgn.h"
+#include "vgmcoll.h"
+#include "vgminstrset.h"
+#include "vgmsamp.h"
 
 using namespace std;
 

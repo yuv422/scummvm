@@ -4,7 +4,7 @@
  * refer to the included LICENSE.txt file
  */
 
-#include "RiffFile.h"
+#include "rifffile.h"
 
 using namespace std;
 

@@ -3,11 +3,12 @@
  * Licensed under the zlib license,
  * refer to the included LICENSE.txt file
  */
-#pragma once
+#ifndef AUDIO_SOUNDFONT_VGMSAMP_H
+#define AUDIO_SOUNDFONT_VGMSAMP_H
 #include "common.h"
 #include "common/scummsys.h"
 #include "common/str.h"
-#include "VGMItem.h"
+#include "vgmitem.h"
 
 class VGMSampColl;
 class VGMInstrSet;
@@ -75,3 +76,4 @@ public:
 	VGMInstrSet *parInstrSet;
 	Common::Array<VGMSamp *> samples;
 };
+#endif // AUDIO_SOUNDFONT_VGMSAMP_H

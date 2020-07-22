@@ -7,8 +7,8 @@
 #include <math.h>
 #include "common/scummsys.h"
 #include "common/str.h"
-#include "SF2File.h"
-#include "SynthFile.h"
+#include "sf2file.h"
+#include "synthfile.h"
 
 using namespace std;
 

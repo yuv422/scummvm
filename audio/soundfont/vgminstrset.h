@@ -9,8 +9,8 @@
 #include "common/scummsys.h"
 #include "common/str.h"
 #include "common/array.h"
-#include "VGMItem.h"
-#include "SF2File.h"
+#include "vgmitem.h"
+#include "sf2file.h"
 
 class VGMSampColl;
 class VGMInstr;

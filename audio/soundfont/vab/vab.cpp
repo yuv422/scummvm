@@ -5,8 +5,8 @@
  */
 
 #include "common/scummsys.h"
-#include "Vab.h"
-#include "PSXSPU.h"
+#include "vab.h"
+#include "psxspu.h"
 
 using namespace std;
 

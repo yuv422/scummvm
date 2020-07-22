@@ -4,8 +4,8 @@
  * refer to the included LICENSE.txt file
  */
 
-#include "SynthFile.h"
-#include "VGMSamp.h"
+#include "synthfile.h"
+#include "vgmsamp.h"
 
 using namespace std;
 

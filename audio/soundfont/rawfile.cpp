@@ -5,7 +5,7 @@
  */
 
 #include "common/memstream.h"
-#include "RawFile.h"
+#include "rawfile.h"
 
 uint32_t RawFile::GetBytes(size_t offset, uint32_t nCount, void *pBuffer) const {
     memcpy(pBuffer, data() + offset, nCount);

@@ -9,7 +9,7 @@
 #include "common.h"
 #include "common/str.h"
 #include "common/array.h"
-#include "VGMItem.h"
+#include "vgmitem.h"
 
 class VGMInstrSet;
 class VGMSampColl;

@@ -8,9 +8,9 @@
 #pragma once
 #include "audio/soundfont/common.h"
 #include "common/str.h"
-#include "audio/soundfont/VGMInstrSet.h"
-#include "audio/soundfont/VGMSamp.h"
-#include "audio/soundfont/VGMItem.h"
+#include "audio/soundfont/vgminstrset.h"
+#include "audio/soundfont/vgmsamp.h"
+#include "audio/soundfont/vgmitem.h"
 
 // All of the ADSR calculations herein (except where inaccurate) are derived from Neill Corlett's
 // work in reverse-engineering the Playstation 1/2 SPU unit.

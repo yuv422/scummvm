@@ -9,7 +9,7 @@
 #include "common/scummsys.h"
 #include "common/array.h"
 #include "common/str.h"
-#include "RiffFile.h"
+#include "rifffile.h"
 
 typedef enum : uint16_t {
     // Oscillator

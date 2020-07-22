@@ -10,7 +10,7 @@
 #include "common/list.h"
 #include "common/str.h"
 #include "common/array.h"
-#include "RiffFile.h"
+#include "rifffile.h"
 
 struct Loop;
 class VGMSamp;

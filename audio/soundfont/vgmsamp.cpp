@@ -4,7 +4,7 @@
  * refer to the included LICENSE.txt file
  */
 
-#include "VGMSamp.h"
+#include "vgmsamp.h"
 
 // *******
 // VGMSamp

@@ -5,9 +5,8 @@
  */
 
 #include "common.h"
-#include "VGMInstrSet.h"
-#include "VGMSamp.h"
-#include "VGMRgn.h"
+#include "vgminstrset.h"
+#include "vgmsamp.h"
 
 using namespace std;
 
