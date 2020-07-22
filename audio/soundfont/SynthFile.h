@@ -3,7 +3,8 @@
  * Licensed under the zlib license,
  * refer to the included LICENSE.txt file
  */
-#pragma once
+#ifndef AUDIO_SOUNDFONT_SYNTHFILE_H
+#define AUDIO_SOUNDFONT_SYNTHFILE_H
 
 #include "common/scummsys.h"
 #include "common/list.h"
@@ -198,3 +199,4 @@ class SynthWave {
 
     Common::String name;
 };
+#endif // AUDIO_SOUNDFONT_SYNTHFILE_H

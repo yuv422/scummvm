@@ -19,9 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  */
-
-#ifndef SCUMMVM_COMMON_H
-#define SCUMMVM_COMMON_H
+#ifndef AUDIO_SOUNDFONT_COMMON_H
+#define AUDIO_SOUNDFONT_COMMON_H
 
 #include "common/scummsys.h"
 #include "common/array.h"
@@ -61,4 +60,4 @@ void DeleteVect(Common::Array<T *> &array) {
 	}
 	array.clear();
 }
-#endif //SCUMMVM_COMMON_H
+#endif // AUDIO_SOUNDFONT_COMMON_H

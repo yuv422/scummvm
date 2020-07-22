@@ -3,6 +3,8 @@
  * Licensed under the zlib license,
  * refer to the included LICENSE.txt file
  */
+#ifndef AUDIO_SOUNDFONT_PSXSPU_H
+#define AUDIO_SOUNDFONT_PSXSPU_H
 #pragma once
 #include "audio/soundfont/common.h"
 #include "common/str.h"
@@ -29,26 +31,12 @@ typedef char b8;
 #endif
 
 typedef float f32;
-typedef double f64;
-typedef long double f80;
 //***********************************************************************************************
-
-class DLSArt;
 
 static unsigned long RateTable[160];
 static bool bRateTableInitialized = 0;
 
 // VAG format -----------------------------------
-// File Header
-typedef struct _VAGHdr {
-    uint32 id;   // ID - "VAGp"
-    uint32 ver;  // Version - 0x20
-    uint32 __r1;
-    uint32 len;   // Length of data
-    uint32 rate;  // Sample rate
-    uint32 __r2[3];
-    int8 title[32];
-} VAGHdr;
 
 // Sample Block
 typedef struct _VAGBlk {
@@ -393,17 +381,11 @@ void PSXConvADSR(T *realADSR, uint8_t Am, uint8_t Ar, uint8_t Dr, uint8_t Sl, ui
 
 class PSXSampColl : public VGMSampColl {
    public:
-    PSXSampColl(const Common::String &format, RawFile *rawfile, uint32_t offset, uint32_t length = 0);
-    PSXSampColl(const Common::String &format, VGMInstrSet *instrset, uint32_t offset,
-                uint32_t length = 0);
     PSXSampColl(const Common::String &format, VGMInstrSet *instrset, uint32_t offset, uint32_t length,
                 const Common::Array<SizeOffsetPair> &vagLocations);
 
     virtual bool
     GetSampleInfo();  // retrieve sample info, including pointers to data, # channels, rate, etc.
-    static PSXSampColl *SearchForPSXADPCM(RawFile *file, const Common::String &format);
-    static const Common::Array<PSXSampColl *> SearchForPSXADPCMs(RawFile *file,
-                                                               const Common::String &format);
 
    protected:
     Common::Array<SizeOffsetPair> vagLocations;
@@ -420,18 +402,13 @@ class PSXSamp : public VGMSamp {
     // used to calculate both uncompressed sample size and loopOff after conversion
     virtual double GetCompressionRatio();
     virtual void ConvertToStdWave(uint8_t *buf);
-    void SetLoopOnConversion(bool bDoIt) { bSetLoopOnConversion = bDoIt; }
-
-    static uint32_t GetSampleLength(RawFile *file, uint32_t offset, uint32_t endOffset, bool &loop);
 
    private:
     void DecompVAGBlk(int16 *pSmp, VAGBlk *pVBlk, f32 *prev1, f32 *prev2);
 
    public:
-    VGMInstrSet *parentInstrSet;
 
     bool bSetLoopOnConversion;
-    uint32_t dwCompSize;
-    uint32_t dwUncompSize;
-    bool bLoops;
 };
+
+#endif // AUDIO_SOUNDFONT_PSXSPU_H

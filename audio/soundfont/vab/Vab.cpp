@@ -7,7 +7,6 @@
 #include "common/scummsys.h"
 #include "Vab.h"
 #include "PSXSPU.h"
-//#include "PS1Format.h"
 
 using namespace std;
 

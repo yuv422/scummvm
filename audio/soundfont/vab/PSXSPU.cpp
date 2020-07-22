@@ -64,14 +64,6 @@ double LinAmpDecayTimeToLinDBDecayTime(double secondsToFullAtten, int linearVolu
  * Thanks to Antires for his ADPCM decompression routine.
  */
 
-PSXSampColl::PSXSampColl(const Common::String &format, RawFile *rawfile, uint32_t offset,
-                         uint32_t length)
-    : VGMSampColl(format, rawfile, offset, length) {}
-
-PSXSampColl::PSXSampColl(const Common::String &format, VGMInstrSet *instrset, uint32_t offset,
-                         uint32_t length)
-    : VGMSampColl(format, instrset->GetRawFile(), instrset, offset, length) {}
-
 PSXSampColl::PSXSampColl(const Common::String &format, VGMInstrSet *instrset, uint32_t offset,
                          uint32_t length, const Common::Array<SizeOffsetPair> &vagLocations)
     : VGMSampColl(format, instrset->GetRawFile(), instrset, offset, length),
@@ -206,101 +198,6 @@ bool PSXSampColl::GetSampleInfo() {
     return true;
 }
 
-#define NUM_CHUNKS_READAHEAD 10
-#define MAX_ALLOWED_RANGE_DIFF 10
-#define MAX_ALLOWED_FILTER_DIFF 5
-#define MIN_ALLOWED_RANGE_DIFF 0
-#define MIN_ALLOWED_FILTER_DIFF 0
-
-// GENERIC FUNCTION USED FOR SCANNERS
-PSXSampColl *PSXSampColl::SearchForPSXADPCM(RawFile *file, const Common::String &format) {
-    const Common::Array<PSXSampColl *> &sampColls = SearchForPSXADPCMs(file, format);
-    if (sampColls.size() != 0) {
-        // pick up one of the SampColls
-        size_t bestSampleCount = 0;
-        PSXSampColl *bestSampColl = sampColls[0];
-        for (size_t i = 0; i < sampColls.size(); i++) {
-            if (sampColls[i]->samples.size() > bestSampleCount) {
-                bestSampleCount = sampColls[i]->samples.size();
-                bestSampColl = sampColls[i];
-            }
-        }
-        return bestSampColl;
-    } else {
-        return NULL;
-    }
-}
-
-const Common::Array<PSXSampColl *> PSXSampColl::SearchForPSXADPCMs(RawFile *file,
-                                                                 const Common::String &format) {
-    Common::Array<PSXSampColl *> sampColls;
-    uint32_t nFileLength = file->size();
-    for (uint32_t i = 0; i + 16 + NUM_CHUNKS_READAHEAD * 16 < nFileLength; i++) {
-        // if we have 16 0s in a row.
-        if (file->GetWord(i) == 0 && file->GetWord(i + 4) == 0 && file->GetWord(i + 8) == 0 &&
-            file->GetWord(i + 12) == 0) {
-            bool bBad = false;
-            uint32_t firstChunk = i + 16;
-            uint8_t filterRangeByte = file->GetByte(firstChunk);
-            uint8_t keyFlagByte = file->GetByte(firstChunk + 1);
-
-            if (filterRangeByte == 0 && keyFlagByte == 0)
-                continue;
-            // if ((keyFlagByte & 0x04) == 0)
-            //	continue;
-            if ((keyFlagByte & 0xF8) != 0)
-                continue;
-
-            uint8_t maxRangeChange = 0;
-            uint8_t maxFilterChange = 0;
-            int prevRange = file->GetByte(firstChunk + 16) &
-                            0xF;  //+16 because we're skipping the first chunk for uncertain reasons
-            int prevFilter = (file->GetByte(firstChunk + 16) & 0xF0) >> 4;
-            for (uint32_t j = 0; j < NUM_CHUNKS_READAHEAD; j++) {
-                uint32_t curChunk = firstChunk + 16 + j * 16;
-                uint8_t keyFlagByte = file->GetByte(curChunk + 1);
-                if ((keyFlagByte & 0xFC) != 0) {
-                    bBad = true;
-                    break;
-                }
-                if ((file->GetWord(curChunk) == 0 &&
-                     ((file->GetWord(curChunk + 4) == 0) || file->GetWord(curChunk + 8) == 0))) {
-                    bBad = true;
-                    break;
-                }
-
-                // do range and filter value comparison
-                int range = ((int)file->GetByte(firstChunk + 16 + j * 16)) & 0xF;
-                int diff = abs(range - prevRange);
-                if (diff > maxRangeChange)
-                    maxRangeChange = diff;
-                prevRange = range;
-                int filter = (((int)file->GetByte(firstChunk + 16 + j * 16)) & 0xF0) >> 4;
-                diff = abs(filter - prevFilter);
-                if (diff > maxFilterChange)
-                    maxFilterChange = diff;
-                prevFilter = filter;
-            }
-            if ((maxRangeChange > MAX_ALLOWED_RANGE_DIFF ||
-                 maxFilterChange > MAX_ALLOWED_FILTER_DIFF) ||
-                (maxRangeChange < MIN_ALLOWED_RANGE_DIFF ||
-                 maxFilterChange < MIN_ALLOWED_FILTER_DIFF))
-                continue;
-            else if (bBad)
-                continue;
-
-            PSXSampColl *newSampColl = new PSXSampColl("PS1", file, i);
-            if (!newSampColl->LoadVGMFile()) {
-                delete newSampColl;
-                continue;
-            }
-            sampColls.push_back(newSampColl);
-            i += newSampColl->unLength - 1;
-        }
-    }
-    return sampColls;
-}
-
 //  *******
 //  PSXSamp
 //  *******
@@ -320,7 +217,7 @@ double PSXSamp::GetCompressionRatio() {
 }
 
 void PSXSamp::ConvertToStdWave(uint8_t *buf) {
-    int16_t *uncompBuf = (int16_t *)buf;
+    int16 *uncompBuf = (int16 *)buf;
     VAGBlk theBlock;
     f32 prev1 = 0;
     f32 prev2 = 0;
@@ -360,27 +257,6 @@ void PSXSamp::ConvertToStdWave(uint8_t *buf) {
 
         // each decompressed pcm block is 52 bytes   EDIT: (wait, isn't it 56 bytes? or is it 28?)
         DecompVAGBlk(uncompBuf + ((k * 28) / 16), &theBlock, &prev1, &prev2);
-    }
-}
-
-uint32_t PSXSamp::GetSampleLength(RawFile *file, uint32_t offset, uint32_t endOffset, bool &loop) {
-    uint32_t curOffset = offset;
-    while (curOffset < endOffset) {
-        uint8_t keyFlagByte = file->GetByte(curOffset + 1);
-
-        curOffset += 16;
-
-        if ((keyFlagByte & 1) != 0) {
-            loop = (keyFlagByte & 2) != 0;
-            break;
-        }
-    }
-
-    if (curOffset <= endOffset) {
-        return curOffset - offset;
-    } else {
-        // address out of range
-        return 0;
     }
 }
 

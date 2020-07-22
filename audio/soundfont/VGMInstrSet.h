@@ -3,7 +3,9 @@
  * Licensed under the zlib license,
  * refer to the included LICENSE.txt file
  */
-#pragma once
+#ifndef AUDIO_SOUNDFONT_VGMINSTRSET_H
+#define AUDIO_SOUNDFONT_VGMINSTRSET_H
+
 #include "common/scummsys.h"
 #include "common/str.h"
 #include "common/array.h"
@@ -56,3 +58,4 @@ class VGMInstr : public VGMContainerItem {
     VGMInstrSet *parInstrSet;
     Common::Array<VGMRgn *> aRgns;
 };
+#endif // AUDIO_SOUNDFONT_VGMINSTRSET_H

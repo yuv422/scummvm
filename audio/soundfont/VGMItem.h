@@ -3,7 +3,8 @@
  * Licensed under the zlib license,
  * refer to the included LICENSE.txt file
  */
-#pragma once
+#ifndef AUDIO_SOUNDFONT_VGMITEM_H
+#define AUDIO_SOUNDFONT_VGMITEM_H
 
 #include "common/scummsys.h"
 #include "common/str.h"
@@ -28,11 +29,6 @@ class VGMItem {
             const Common::String theName = "", uint8_t color = 0);
     virtual ~VGMItem(void);
 
-    friend bool operator>(VGMItem &item1, VGMItem &item2);
-    friend bool operator<=(VGMItem &item1, VGMItem &item2);
-    friend bool operator<(VGMItem &item1, VGMItem &item2);
-    friend bool operator>=(VGMItem &item1, VGMItem &item2);
-
    public:
     RawFile *GetRawFile();
 
@@ -41,9 +37,6 @@ class VGMItem {
     uint32_t GetBytes(uint32_t nIndex, uint32_t nCount, void *pBuffer);
     uint8_t GetByte(uint32_t offset);
     uint16_t GetShort(uint32_t offset);
-    uint32_t GetWord(uint32_t offset);
-    uint16_t GetShortBE(uint32_t offset);
-    uint32_t GetWordBE(uint32_t offset);
 
    public:
     uint8_t color;
@@ -85,8 +78,6 @@ public:
 			Common::String theName = "VGM File");
 	virtual ~VGMFile();
 
-	const Common::String *GetName(void) const;
-
 	bool LoadVGMFile();
 	virtual bool Load() = 0;
 
@@ -100,10 +91,6 @@ public:
 	inline uint8_t GetByte(uint32_t offset) const { return rawfile->GetByte(offset); }
 	inline uint16_t GetShort(uint32_t offset) const { return rawfile->GetShort(offset); }
 	inline uint32_t GetWord(uint32_t offset) const { return rawfile->GetWord(offset); }
-	inline uint16_t GetShortBE(uint32_t offset) const { return rawfile->GetShortBE(offset); }
-	inline uint32_t GetWordBE(uint32_t offset) const { return rawfile->GetWordBE(offset); }
-
-	size_t GetStartOffset() { return dwOffset; }
 	/*
 	 * For whatever reason, you can create null-length VGMItems.
 	 * The only safe way for now is to
@@ -131,3 +118,4 @@ public:
 			  const Common::String &name = "Header");
 	virtual ~VGMHeader();
 };
+#endif // AUDIO_SOUNDFONT_VGMITEM_H

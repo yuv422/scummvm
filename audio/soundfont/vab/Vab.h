@@ -3,7 +3,8 @@
  * Licensed under the zlib license,
  * refer to the included LICENSE.txt file
  */
-#pragma once
+#ifndef AUDIO_SOUNDFONT_VAB_H
+#define AUDIO_SOUNDFONT_VAB_H
 #include "audio/soundfont/common.h"
 #include "common/str.h"
 #include "audio/soundfont/VGMInstrSet.h"
@@ -157,3 +158,4 @@ class VabRgn : public VGMRgn {
 
     VagAtr attr;
 };
+#endif // AUDIO_SOUNDFONT_VAB_H

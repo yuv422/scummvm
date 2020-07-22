@@ -3,7 +3,8 @@
  * Licensed under the zlib license,
  * refer to the included LICENSE.txt file
  */
-#pragma once
+#ifndef AUDIO_SOUNDFONT_VGMCOLL_H
+#define AUDIO_SOUNDFONT_VGMCOLL_H
 
 #include "common.h"
 #include "common/str.h"
@@ -35,3 +36,4 @@ class VGMColl : public VGMItem {
    protected:
     Common::String name;
 };
+#endif // AUDIO_SOUNDFONT_VGMCOLL_H

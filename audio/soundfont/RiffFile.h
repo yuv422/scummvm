@@ -3,7 +3,8 @@
  * Licensed under the zlib license,
  * refer to the included LICENSE.txt file
  */
-#pragma once
+#ifndef AUDIO_SOUNDFONT_RIFFFILE_H
+#define AUDIO_SOUNDFONT_RIFFFILE_H
 
 #include <cstring>
 #include <cassert>
@@ -102,3 +103,4 @@ class RiffFile : public RIFFChunk {
    protected:
     Common::String name;
 };
+#endif // AUDIO_SOUNDFONT_RIFFFILE_H

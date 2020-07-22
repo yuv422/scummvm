@@ -21,22 +21,6 @@ VGMItem::VGMItem(VGMFile *thevgmfile, uint32_t theOffset, uint32_t theLength, co
 
 VGMItem::~VGMItem(void) {}
 
-bool operator>(VGMItem &item1, VGMItem &item2) {
-    return item1.dwOffset > item2.dwOffset;
-}
-
-bool operator<=(VGMItem &item1, VGMItem &item2) {
-    return item1.dwOffset <= item2.dwOffset;
-}
-
-bool operator<(VGMItem &item1, VGMItem &item2) {
-    return item1.dwOffset < item2.dwOffset;
-}
-
-bool operator>=(VGMItem &item1, VGMItem &item2) {
-    return item1.dwOffset >= item2.dwOffset;
-}
-
 RawFile *VGMItem::GetRawFile() {
     return vgmfile->rawfile;
 }
@@ -51,20 +35,6 @@ uint8_t VGMItem::GetByte(uint32_t offset) {
 
 uint16_t VGMItem::GetShort(uint32_t offset) {
     return vgmfile->GetShort(offset);
-}
-
-uint32_t VGMItem::GetWord(uint32_t offset) {
-    return GetRawFile()->GetWord(offset);
-}
-
-// GetShort Big Endian
-uint16_t VGMItem::GetShortBE(uint32_t offset) {
-    return GetRawFile()->GetShortBE(offset);
-}
-
-// GetWord Big Endian
-uint32_t VGMItem::GetWordBE(uint32_t offset) {
-    return GetRawFile()->GetWordBE(offset);
 }
 
 //  ****************
@@ -118,10 +88,6 @@ bool VGMFile::LoadVGMFile() {
 		return false;
 
 	return val;
-}
-
-const Common::String *VGMFile::GetName(void) const {
-	return &m_name;
 }
 
 // These functions are common to all VGMItems, but no reason to refer to vgmfile

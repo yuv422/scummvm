@@ -3,7 +3,8 @@
  * Licensed under the zlib license,
  * refer to the included LICENSE.txt file
  */
-#pragma once
+#ifndef AUDIO_SOUNDFONT_SF2FILE_H
+#define AUDIO_SOUNDFONT_SF2FILE_H
 
 #include "common/scummsys.h"
 #include "common/array.h"
@@ -283,5 +284,5 @@ class SF2File : public RiffFile {
     ~SF2File(void);
 
     const void *SaveToMem();
-    bool SaveSF2File(const Common::String &filepath);
 };
+#endif // AUDIO_SOUNDFONT_SF2FILE_H

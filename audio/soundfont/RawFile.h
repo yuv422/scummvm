@@ -4,7 +4,8 @@
  * refer to the included LICENSE.txt file
  */
 
-#pragma once
+#ifndef AUDIO_SOUNDFONT_RAWFILE_H
+#define AUDIO_SOUNDFONT_RAWFILE_H
 
 #include <climits>
 #include <cassert>
@@ -63,3 +64,4 @@ public:
 	size_t size() const override;
 
 };
+#endif // AUDIO_SOUNDFONT_RAWFILE_H

@@ -8,9 +8,7 @@
 #include "common/scummsys.h"
 #include "common/str.h"
 #include "SF2File.h"
-//#include "VGMInstrSet.h"
 #include "SynthFile.h"
-//#include "Root.h"
 
 using namespace std;
 
@@ -25,6 +23,7 @@ double SecondsToTimecents(double secs) {
 }
 
 SF2InfoListChunk::SF2InfoListChunk(Common::String name) : LISTChunk("INFO") {
+	//TODO clean up optional headers
     // Create a date string
 //    time_t current_time = time(NULL);
 //    char *c_time_string = ctime(&current_time);
@@ -456,11 +455,3 @@ const void *SF2File::SaveToMem() {
     this->Write(buf);
     return buf;
 }
-
-//TODO do we need this? bool SF2File::SaveSF2File(const Common::String &filepath) {
-//    uint32_t size = this->GetSize();
-//    const void *buf = this->SaveToMem();
-//    bool result = pRoot->UI_WriteBufferToFile(filepath, (uint8_t *)buf, size);
-//    delete[] buf;
-//    return result;
-//}
