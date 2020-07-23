@@ -23,11 +23,6 @@ double SecondsToTimecents(double secs) {
 }
 
 SF2InfoListChunk::SF2InfoListChunk(Common::String name) : LISTChunk("INFO") {
-	//TODO clean up optional headers
-    // Create a date string
-//    time_t current_time = time(NULL);
-//    char *c_time_string = ctime(&current_time);
-
     // Add the child info chunks
     Chunk *ifilCk = new Chunk("ifil");
     sfVersionTag versionTag;  // soundfont version 2.01
@@ -37,8 +32,7 @@ SF2InfoListChunk::SF2InfoListChunk(Common::String name) : LISTChunk("INFO") {
     AddChildChunk(ifilCk);
     AddChildChunk(new SF2StringChunk("isng", "EMU8000"));
     AddChildChunk(new SF2StringChunk("INAM", name));
-    AddChildChunk(new SF2StringChunk("ICRD", "Sun May 10 05:53:31 2020\n")); //c_time_string)));
-    AddChildChunk(new SF2StringChunk("ISFT", Common::String("vgmtrans 1.0.3")));
+    AddChildChunk(new SF2StringChunk("ISFT", Common::String("ScummVM")));
 }
 
 //  *******

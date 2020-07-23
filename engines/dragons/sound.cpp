@@ -533,29 +533,33 @@ Common::SeekableReadStream *SoundManager::loadSoundFont() {
 	byte *headData = _bigFileArchive->load("musx.vh", headSize);
 	byte *bodyData = _bigFileArchive->load("musx.vb", bodySize);
 
-	byte *cat = (byte *)malloc(headSize + bodySize);
+	byte *vabData = (byte *)malloc(headSize + bodySize);
 
-	memcpy(cat, headData, headSize);
-	memcpy(cat + headSize, bodyData, bodySize);
+	memcpy(vabData, headData, headSize);
+	memcpy(vabData + headSize, bodyData, bodySize);
 
 	free(headData);
 	free(bodyData);
 
-	MemFile *memFile = new MemFile(cat, headSize + bodySize);
+	MemFile *memFile = new MemFile(vabData, headSize + bodySize);
 	debug("Loaded vab file size: %d", memFile->size());
 	Vab *vab = new Vab(memFile, 0);
 	vab->LoadVGMFile();
-	VGMColl *coll = new VGMColl("");
-//	coll->AddSampColl(vab->sampColl);
-	coll->AddInstrSet(vab);
-	SF2File *file = coll->CreateSF2File();
+	VGMColl *vabCollection = new VGMColl("");
+	vabCollection->AddInstrSet(vab);
+	SF2File *file = vabCollection->CreateSF2File();
 	const byte *bytes = (const byte *)file->SaveToMem();
-	Common::DumpFile *dumpFile = new Common::DumpFile();
 	uint32 size = file->GetSize();
-	dumpFile->open("testing.sf2");
-	dumpFile->write(bytes, size);
-	dumpFile->close();
-	delete dumpFile;
+
+	delete file;
+	delete vabCollection;
+	delete vab;
+	delete memFile;
+//	Common::DumpFile *dumpFile = new Common::DumpFile();
+//	dumpFile->open("testing.sf2");
+//	dumpFile->write(bytes, size);
+//	dumpFile->close();
+//	delete dumpFile;
 
 	return new Common::MemoryReadStream(bytes, size, DisposeAfterUse::YES);
 }

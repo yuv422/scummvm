@@ -5,7 +5,6 @@
  */
 #ifndef AUDIO_SOUNDFONT_PSXSPU_H
 #define AUDIO_SOUNDFONT_PSXSPU_H
-#pragma once
 #include "audio/soundfont/common.h"
 #include "common/str.h"
 #include "audio/soundfont/vgminstrset.h"
