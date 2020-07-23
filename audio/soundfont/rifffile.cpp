@@ -47,7 +47,7 @@ Chunk *ListTypeChunk::AddChildChunk(Chunk *ck) {
 
 uint32_t ListTypeChunk::GetSize() {
     uint32_t size = 12;  // id + size + "LIST"
-    for (auto iter = this->childChunks.begin(); iter != childChunks.end(); iter++)
+    for (Common::List<Chunk *>::iterator iter = this->childChunks.begin(); iter != childChunks.end(); iter++)
         size += (*iter)->GetSize();
     return GetPaddedSize(size);
 }
@@ -57,7 +57,7 @@ void ListTypeChunk::Write(uint8_t *buffer) {
     memcpy(buffer + 8, this->type, 4);
 
     uint32_t bufOffset = 12;
-    for (auto iter = this->childChunks.begin(); iter != childChunks.end(); iter++) {
+    for (Common::List<Chunk *>::iterator iter = this->childChunks.begin(); iter != childChunks.end(); iter++) {
         (*iter)->Write(buffer + bufOffset);
         bufOffset += (*iter)->GetSize();
     }

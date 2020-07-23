@@ -55,8 +55,8 @@ struct SizeOffsetPair {
 
 template <class T>
 void DeleteVect(Common::Array<T *> &array) {
-	for(auto p : array) {
-		delete p;
+	for (typename Common::Array<T *>::iterator iter = array.begin(); iter != array.end(); iter++) {
+		delete (*iter);
 	}
 	array.clear();
 }

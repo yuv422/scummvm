@@ -113,7 +113,7 @@ SynthFile *VGMColl::CreateSynthFile() {
         }
     } else {
         for (int i = 0; i < instrsets.size(); i++) {
-            auto instrset_sampcoll = instrsets[i]->sampColl;
+            VGMSampColl *instrset_sampcoll = instrsets[i]->sampColl;
             if (instrset_sampcoll) {
                 finalSampColls.push_back(instrset_sampcoll);
                 UnpackSampColl(*synthfile, instrset_sampcoll, finalSamps);
@@ -187,7 +187,7 @@ SynthFile *VGMColl::CreateSynthFile() {
                     realSampNum = rgn->sampNum;
 
                 // Determine the sampCollNum (index into our finalSampColls vector)
-                auto sampCollNum = finalSampColls.size();
+                size_t sampCollNum = finalSampColls.size();
                 for (size_t i = 0; i < finalSampColls.size(); i++) {
                     if (finalSampColls[i] == sampColl)
                         sampCollNum = i;
