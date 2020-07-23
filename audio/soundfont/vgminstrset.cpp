@@ -15,7 +15,7 @@ using namespace std;
 // ***********
 
 VGMInstrSet::VGMInstrSet(const Common::String &format, /*FmtID fmtID,*/
-                         RawFile *file, uint32_t offset, uint32_t length, Common::String name,
+                         RawFile *file, uint32 offset, uint32 length, Common::String name,
                          VGMSampColl *theSampColl)
     : VGMFile(format, file, offset, length, name),
       sampColl(theSampColl) {
@@ -68,8 +68,8 @@ bool VGMInstrSet::LoadInstrs() {
 // VGMInstr
 // ********
 
-VGMInstr::VGMInstr(VGMInstrSet *instrSet, uint32_t offset, uint32_t length, uint32_t theBank,
-                   uint32_t theInstrNum, const Common::String &name)
+VGMInstr::VGMInstr(VGMInstrSet *instrSet, uint32 offset, uint32 length, uint32 theBank,
+                   uint32 theInstrNum, const Common::String &name)
     : VGMContainerItem(instrSet, offset, length, name),
       parInstrSet(instrSet),
       bank(theBank),

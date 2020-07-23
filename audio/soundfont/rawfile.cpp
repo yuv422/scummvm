@@ -7,7 +7,7 @@
 #include "common/memstream.h"
 #include "rawfile.h"
 
-uint32_t RawFile::GetBytes(size_t offset, uint32_t nCount, void *pBuffer) const {
+uint32 RawFile::GetBytes(size_t offset, uint32 nCount, void *pBuffer) const {
     memcpy(pBuffer, data() + offset, nCount);
     return nCount;
 }
@@ -16,27 +16,27 @@ const char *MemFile::data() const {
 	return (const char *)_data;
 }
 
-uint8_t MemFile::GetByte(size_t offset) const {
+uint8 MemFile::GetByte(size_t offset) const {
 	_seekableReadStream->seek(offset);
 	return _seekableReadStream->readByte();
 }
 
-uint16_t MemFile::GetShort(size_t offset) const {
+uint16 MemFile::GetShort(size_t offset) const {
 	_seekableReadStream->seek(offset);
 	return _seekableReadStream->readUint16LE();
 }
 
-uint32_t MemFile::GetWord(size_t offset) const {
+uint32 MemFile::GetWord(size_t offset) const {
 	_seekableReadStream->seek(offset);
 	return _seekableReadStream->readUint32LE();
 }
 
-uint16_t MemFile::GetShortBE(size_t offset) const {
+uint16 MemFile::GetShortBE(size_t offset) const {
 	_seekableReadStream->seek(offset);
 	return _seekableReadStream->readUint16BE();
 }
 
-uint32_t MemFile::GetWordBE(size_t offset) const {
+uint32 MemFile::GetWordBE(size_t offset) const {
 	_seekableReadStream->seek(offset);
 	return _seekableReadStream->readUint32BE();
 }

@@ -64,8 +64,8 @@ double LinAmpDecayTimeToLinDBDecayTime(double secondsToFullAtten, int linearVolu
  * Thanks to Antires for his ADPCM decompression routine.
  */
 
-PSXSampColl::PSXSampColl(const Common::String &format, VGMInstrSet *instrset, uint32_t offset,
-                         uint32_t length, const Common::Array<SizeOffsetPair> &vagLocations)
+PSXSampColl::PSXSampColl(const Common::String &format, VGMInstrSet *instrset, uint32 offset,
+                         uint32 length, const Common::Array<SizeOffsetPair> &vagLocations)
     : VGMSampColl(format, instrset->GetRawFile(), instrset, offset, length),
       vagLocations(vagLocations) {}
 
@@ -77,12 +77,12 @@ bool PSXSampColl::GetSampleInfo() {
          * of a sample, and they will never be found at any other point within the adpcm sample
          * data.
          */
-        uint32_t nEndOffset = dwOffset + unLength;
+        uint32 nEndOffset = dwOffset + unLength;
         if (unLength == 0) {
             nEndOffset = GetEndOffset();
         }
 
-        uint32_t i = dwOffset;
+        uint32 i = dwOffset;
         while (i + 32 <= nEndOffset) {
             bool isSample = false;
 
@@ -96,10 +96,10 @@ bool PSXSampColl::GetSampleInfo() {
                 // so here is a dirty hack for it.
                 // (Dragon Quest VII, for example)
                 int countOfContinue = 0;
-                uint8_t continueByte = 0xff;
+                uint8 continueByte = 0xff;
                 bool badBlock = false;
                 while (i + (countOfContinue * 16) + 16 <= nEndOffset) {
-                    uint8_t keyFlagByte = GetByte(i + (countOfContinue * 16) + 1);
+                    uint8 keyFlagByte = GetByte(i + (countOfContinue * 16) + 1);
 
                     if ((keyFlagByte & 0xF8) != 0) {
                         badBlock = true;
@@ -127,9 +127,9 @@ bool PSXSampColl::GetSampleInfo() {
             }
 
             if (isSample) {
-                uint32_t extraGunkLength = 0;
-                uint8_t filterRangeByte = GetByte(i + 16);
-                uint8_t keyFlagByte = GetByte(i + 16 + 1);
+                uint32 extraGunkLength = 0;
+                uint8 filterRangeByte = GetByte(i + 16);
+                uint8 keyFlagByte = GetByte(i + 16 + 1);
                 if ((keyFlagByte & 0xF8) != 0)
                     break;
 
@@ -139,7 +139,7 @@ bool PSXSampColl::GetSampleInfo() {
                     GetWord(i + 28) == 0)
                     break;
 
-                uint32_t beginOffset = i;
+                uint32 beginOffset = i;
                 i += 16;
 
                 // skip through until we reach the chunk with the end flag set
@@ -169,12 +169,12 @@ bool PSXSampColl::GetSampleInfo() {
         }
         unLength = i - dwOffset;
     } else {
-        uint32_t sampleIndex = 0;
+        uint32 sampleIndex = 0;
         for (Common::Array<SizeOffsetPair>::iterator it = vagLocations.begin();
              it != vagLocations.end(); ++it) {
-            uint32_t offSampStart = dwOffset + it->offset;
-            uint32_t offDataEnd = offSampStart + it->size;
-            uint32_t offSampEnd = offSampStart;
+            uint32 offSampStart = dwOffset + it->offset;
+            uint32 offDataEnd = offSampStart + it->size;
+            uint32 offSampEnd = offSampStart;
 
             // detect loop end and ignore garbages like 00 07 77 77 77 77 77 etc.
             bool lastBlock;
@@ -202,8 +202,8 @@ bool PSXSampColl::GetSampleInfo() {
 //  PSXSamp
 //  *******
 
-PSXSamp::PSXSamp(VGMSampColl *sampColl, uint32_t offset, uint32_t length, uint32_t dataOffset,
-                 uint32_t dataLen, uint8_t nChannels, uint16_t theBPS, uint32_t theRate,
+PSXSamp::PSXSamp(VGMSampColl *sampColl, uint32 offset, uint32 length, uint32 dataOffset,
+                 uint32 dataLen, uint8 nChannels, uint16 theBPS, uint32 theRate,
                  Common::String name, bool bSetloopOnConversion)
     : VGMSamp(sampColl, offset, length, dataOffset, dataLen, nChannels, theBPS, theRate, name),
       bSetLoopOnConversion(bSetloopOnConversion) {
@@ -216,7 +216,7 @@ double PSXSamp::GetCompressionRatio() {
     return ((28.0 / 16.0) * 2);  // aka 3.5;
 }
 
-void PSXSamp::ConvertToStdWave(uint8_t *buf) {
+void PSXSamp::ConvertToStdWave(uint8 *buf) {
     int16 *uncompBuf = (int16 *)buf;
     VAGBlk theBlock;
     f32 prev1 = 0;
@@ -226,7 +226,7 @@ void PSXSamp::ConvertToStdWave(uint8_t *buf) {
         SetLoopStatus(0);  // loopStatus is initiated to -1.  We should default it now to not loop
 
     bool addrOutOfVirtFile = false;
-    for (uint32_t k = 0; k < dataLength; k += 0x10)  // for every adpcm chunk
+    for (uint32 k = 0; k < dataLength; k += 0x10)  // for every adpcm chunk
     {
         if (dwOffset + k + 16 > vgmfile->GetEndOffset()) {
             debug("Unexpected EOF (%s)", name.c_str());

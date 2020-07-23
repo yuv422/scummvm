@@ -10,13 +10,13 @@
 
 using namespace std;
 
-Vab::Vab(RawFile *file, uint32_t offset) : VGMInstrSet("PS1", file, offset) {}
+Vab::Vab(RawFile *file, uint32 offset) : VGMInstrSet("PS1", file, offset) {}
 
 Vab::~Vab(void) {}
 
 bool Vab::GetHeaderInfo() {
-    uint32_t nEndOffset = GetEndOffset();
-    uint32_t nMaxLength = nEndOffset - dwOffset;
+    uint32 nEndOffset = GetEndOffset();
+    uint32 nMaxLength = nEndOffset - dwOffset;
 
     if (nMaxLength < 0x20) {
         return false;
@@ -45,17 +45,17 @@ bool Vab::GetHeaderInfo() {
 }
 
 bool Vab::GetInstrPointers() {
-    uint32_t nEndOffset = GetEndOffset();
-    uint32_t nMaxLength = nEndOffset - dwOffset;
+    uint32 nEndOffset = GetEndOffset();
+    uint32 nMaxLength = nEndOffset - dwOffset;
 
-    uint32_t offProgs = dwOffset + 0x20;
-    uint32_t offToneAttrs = offProgs + (16 * 128);
+    uint32 offProgs = dwOffset + 0x20;
+    uint32 offToneAttrs = offProgs + (16 * 128);
 
-    uint16_t numPrograms = GetShort(dwOffset + 0x12);
-    uint16_t numTones = GetShort(dwOffset + 0x14);
-    uint16_t numVAGs = GetShort(dwOffset + 0x16);
+    uint16 numPrograms = GetShort(dwOffset + 0x12);
+    uint16 numTones = GetShort(dwOffset + 0x14);
+    uint16 numVAGs = GetShort(dwOffset + 0x16);
 
-    uint32_t offVAGOffsets = offToneAttrs + (32 * 16 * numPrograms);
+    uint32 offVAGOffsets = offToneAttrs + (32 * 16 * numPrograms);
 
     VGMHeader *progsHdr = AddHeader(offProgs, 16 * 128, "Program Table");
     VGMHeader *toneAttrsHdr = AddHeader(offToneAttrs, 32 * 16, "Tone Attributes Table");
@@ -78,16 +78,16 @@ bool Vab::GetInstrPointers() {
     // Rule 2. Do not load programs more than number of programs. Even if a program table value is
     // provided. Otherwise an out-of-order access can be caused in Tone Attributes Table. See the
     // swimming event BGM of Aitakute... ~your smiles in my heart~ for example. (github issue #115)
-    uint32_t numProgramsLoaded = 0;
-    for (uint32_t progIndex = 0; progIndex < 128 && numProgramsLoaded < numPrograms; progIndex++) {
-        uint32_t offCurrProg = offProgs + (progIndex * 16);
-        uint32_t offCurrToneAttrs = offToneAttrs + (uint32_t)(aInstrs.size() * 32 * 16);
+    uint32 numProgramsLoaded = 0;
+    for (uint32 progIndex = 0; progIndex < 128 && numProgramsLoaded < numPrograms; progIndex++) {
+        uint32 offCurrProg = offProgs + (progIndex * 16);
+        uint32 offCurrToneAttrs = offToneAttrs + (uint32)(aInstrs.size() * 32 * 16);
 
         if (offCurrToneAttrs + (32 * 16) > nEndOffset) {
             break;
         }
 
-        uint8_t numTonesPerInstr = GetByte(offCurrProg);
+        uint8 numTonesPerInstr = GetByte(offCurrProg);
         if (numTonesPerInstr > 32) {
            //TODO L_WARN("Program {:#x} contains too many tones ({})", progIndex, numTonesPerInstr);
         } else if (numTonesPerInstr != 0) {
@@ -117,16 +117,16 @@ bool Vab::GetInstrPointers() {
     if ((offVAGOffsets + 2 * 256) <= nEndOffset) {
         char name[256];
         Common::Array<SizeOffsetPair> vagLocations;
-        uint32_t totalVAGSize = 0;
+        uint32 totalVAGSize = 0;
         VGMHeader *vagOffsetHdr = AddHeader(offVAGOffsets, 2 * 256, "VAG Pointer Table");
 
-        uint32_t vagStartOffset = GetShort(offVAGOffsets) * 8;
+        uint32 vagStartOffset = GetShort(offVAGOffsets) * 8;
         vagOffsetHdr->AddSimpleItem(offVAGOffsets, 2, "VAG Size /8 #0");
         totalVAGSize = vagStartOffset;
 
-        for (uint32_t i = 0; i < numVAGs; i++) {
-            uint32_t vagOffset;
-            uint32_t vagSize;
+        for (uint32 i = 0; i < numVAGs; i++) {
+            uint32 vagOffset;
+            uint32 vagSize;
 
             if (i == 0) {
                 vagOffset = vagStartOffset;
@@ -149,7 +149,7 @@ bool Vab::GetInstrPointers() {
         unLength = (offVAGOffsets + 2 * 256) - dwOffset;
 
         // single VAB file?
-        uint32_t offVAGs = offVAGOffsets + 2 * 256;
+        uint32 offVAGs = offVAGOffsets + 2 * 256;
         if (dwOffset == 0 && vagLocations.size() != 0) {
             // load samples as well
             PSXSampColl *newSampColl =
@@ -171,8 +171,8 @@ bool Vab::GetInstrPointers() {
 // VabInstr
 // ********
 
-VabInstr::VabInstr(VGMInstrSet *instrSet, uint32_t offset, uint32_t length, uint32_t theBank,
-                   uint32_t theInstrNum, const Common::String &name)
+VabInstr::VabInstr(VGMInstrSet *instrSet, uint32 offset, uint32 length, uint32 theBank,
+                   uint32 theInstrNum, const Common::String &name)
     : VGMInstr(instrSet, offset, length, theBank, theInstrNum, name), masterVol(127) {}
 
 VabInstr::~VabInstr(void) {}
@@ -194,7 +194,7 @@ bool VabInstr::LoadInstr() {
 // VabRgn
 // ******
 
-VabRgn::VabRgn(VabInstr *instr, uint32_t offset) : VGMRgn(instr, offset) {}
+VabRgn::VabRgn(VabInstr *instr, uint32 offset) : VGMRgn(instr, offset) {}
 
 bool VabRgn::LoadRgn() {
     VabInstr *instr = (VabInstr *)parInstr;

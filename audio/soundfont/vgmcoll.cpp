@@ -43,17 +43,17 @@ void VGMColl::UnpackSampColl(SynthFile &synthfile, VGMSampColl *sampColl,
     for (size_t i = 0; i < nSamples; i++) {
         VGMSamp *samp = sampColl->samples[i];
 
-        uint32_t bufSize;
+        uint32 bufSize;
         if (samp->ulUncompressedSize)
             bufSize = samp->ulUncompressedSize;
         else
-            bufSize = (uint32_t)ceil((double)samp->dataLength * samp->GetCompressionRatio());
+            bufSize = (uint32)ceil((double)samp->dataLength * samp->GetCompressionRatio());
 
-        uint8_t *uncompSampBuf =
-            new uint8_t[bufSize];  // create a new memory space for the uncompressed wave
+        uint8 *uncompSampBuf =
+            new uint8[bufSize];  // create a new memory space for the uncompressed wave
         samp->ConvertToStdWave(uncompSampBuf);  // and uncompress into that space
 
-        uint16_t blockAlign = samp->bps / 8 * samp->channels;
+        uint16 blockAlign = samp->bps / 8 * samp->channels;
         SynthWave *wave =
             synthfile.AddWave(1, samp->channels, samp->rate, samp->rate * blockAlign, blockAlign,
                               samp->bps, bufSize, uncompSampBuf, (samp->name));
@@ -75,7 +75,7 @@ void VGMColl::UnpackSampColl(SynthFile &synthfile, VGMSampColl *sampColl,
             sampInfo->SetLoopInfo(samp->loop, samp);
 
         double attenuation = (samp->volume != -1) ? ConvertLogScaleValToAtten(samp->volume) : 0;
-        uint8_t unityKey = (samp->unityKey != -1) ? samp->unityKey : 0x3C;
+        uint8 unityKey = (samp->unityKey != -1) ? samp->unityKey : 0x3C;
         short fineTune = samp->fineTune;
         sampInfo->SetPitchInfo(unityKey, fineTune, attenuation);
     }
@@ -136,7 +136,7 @@ SynthFile *VGMColl::CreateSynthFile() {
             if (nRgns == 0)  // do not write an instrument if it has no regions
                 continue;
             SynthInstr *newInstr = synthfile->AddInstr(vgminstr->bank, vgminstr->instrNum);
-            for (uint32_t j = 0; j < nRgns; j++) {
+            for (uint32 j = 0; j < nRgns; j++) {
                 VGMRgn *rgn = vgminstr->aRgns[j];
                 //				if (rgn->sampNum+1 > sampColl->samples.size())
                 ////does thereferenced sample exist? 					continue;
@@ -160,7 +160,7 @@ SynthFile *VGMColl::CreateSynthFile() {
                 // see sampOffset declaration in header file for more info.
                 if (rgn->sampOffset != -1) {
                     bool bFoundIt = false;
-                    for (uint32_t s = 0; s < sampColl->samples.size(); s++) {  // for every sample
+                    for (uint32 s = 0; s < sampColl->samples.size(); s++) {  // for every sample
                         if (rgn->sampOffset == sampColl->samples[s]->dwOffset - sampColl->dwOffset -
                                                    sampColl->sampDataOffset) {
                             realSampNum = s;
@@ -198,12 +198,12 @@ SynthFile *VGMColl::CreateSynthFile() {
                 }
                 //   now we add the number of samples from the preceding SampColls to the value to
                 //   get the real sampNum in the final DLS file.
-                for (uint32_t k = 0; k < sampCollNum; k++)
+                for (uint32 k = 0; k < sampCollNum; k++)
                     realSampNum += finalSampColls[k]->samples.size();
 
                 SynthRgn *newRgn = newInstr->AddRgn();
                 newRgn->SetRanges(rgn->keyLow, rgn->keyHigh, rgn->velLow, rgn->velHigh);
-                newRgn->SetWaveLinkInfo(0, 0, 1, (uint32_t)realSampNum);
+                newRgn->SetWaveLinkInfo(0, 0, 1, (uint32)realSampNum);
 
                 if (realSampNum >= finalSamps.size()) {
                     debug("Sample %d does not exist", realSampNum);

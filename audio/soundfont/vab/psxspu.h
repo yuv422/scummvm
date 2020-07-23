@@ -92,25 +92,25 @@ inline int RoundToZero(int val) {
 
 template <class T>
 void PSXConvADSR(T *realADSR, unsigned short ADSR1, unsigned short ADSR2, bool bPS2) {
-    uint8_t Am = (ADSR1 & 0x8000) >> 15;  // if 1, then Exponential, else linear
-    uint8_t Ar = (ADSR1 & 0x7F00) >> 8;
-    uint8_t Dr = (ADSR1 & 0x00F0) >> 4;
-    uint8_t Sl = ADSR1 & 0x000F;
-    uint8_t Rm = (ADSR2 & 0x0020) >> 5;
-    uint8_t Rr = ADSR2 & 0x001F;
+    uint8 Am = (ADSR1 & 0x8000) >> 15;  // if 1, then Exponential, else linear
+    uint8 Ar = (ADSR1 & 0x7F00) >> 8;
+    uint8 Dr = (ADSR1 & 0x00F0) >> 4;
+    uint8 Sl = ADSR1 & 0x000F;
+    uint8 Rm = (ADSR2 & 0x0020) >> 5;
+    uint8 Rr = ADSR2 & 0x001F;
 
     // The following are unimplemented in conversion (because DLS and SF2 do not support Sustain
     // Rate)
-    uint8_t Sm = (ADSR2 & 0x8000) >> 15;
-    uint8_t Sd = (ADSR2 & 0x4000) >> 14;
-    uint8_t Sr = (ADSR2 >> 6) & 0x7F;
+    uint8 Sm = (ADSR2 & 0x8000) >> 15;
+    uint8 Sd = (ADSR2 & 0x4000) >> 14;
+    uint8 Sr = (ADSR2 >> 6) & 0x7F;
 
     PSXConvADSR(realADSR, Am, Ar, Dr, Sl, Sm, Sd, Sr, Rm, Rr, bPS2);
 }
 
 template <class T>
-void PSXConvADSR(T *realADSR, uint8_t Am, uint8_t Ar, uint8_t Dr, uint8_t Sl, uint8_t Sm,
-                 uint8_t Sd, uint8_t Sr, uint8_t Rm, uint8_t Rr, bool bPS2) {
+void PSXConvADSR(T *realADSR, uint8 Am, uint8 Ar, uint8 Dr, uint8 Sl, uint8 Sm,
+                 uint8 Sd, uint8 Sr, uint8 Rm, uint8 Rr, bool bPS2) {
     // Make sure all the ADSR values are within the valid ranges
     if (((Am & ~0x01) != 0) || ((Ar & ~0x7F) != 0) || ((Dr & ~0x0F) != 0) || ((Sl & ~0x0F) != 0) ||
         ((Rm & ~0x01) != 0) || ((Rr & ~0x1F) != 0) || ((Sm & ~0x01) != 0) || ((Sd & ~0x01) != 0) ||
@@ -169,7 +169,7 @@ void PSXConvADSR(T *realADSR, uint8_t Am, uint8_t Ar, uint8_t Dr, uint8_t Sl, ui
     envelope_level = 0x7FFFFFFF;
 
     bool bSustainLevFound = false;
-    uint32_t realSustainLevel;
+    uint32 realSustainLevel;
     // DLS decay rate value is to -96db (silence) not the sustain level
     for (l = 0; envelope_level > 0; l++) {
         if (4 * (Dr ^ 0x1F) < 0x18)
@@ -380,7 +380,7 @@ void PSXConvADSR(T *realADSR, uint8_t Am, uint8_t Ar, uint8_t Dr, uint8_t Sl, ui
 
 class PSXSampColl : public VGMSampColl {
    public:
-    PSXSampColl(const Common::String &format, VGMInstrSet *instrset, uint32_t offset, uint32_t length,
+    PSXSampColl(const Common::String &format, VGMInstrSet *instrset, uint32 offset, uint32 length,
                 const Common::Array<SizeOffsetPair> &vagLocations);
 
     virtual bool
@@ -392,15 +392,15 @@ class PSXSampColl : public VGMSampColl {
 
 class PSXSamp : public VGMSamp {
    public:
-    PSXSamp(VGMSampColl *sampColl, uint32_t offset, uint32_t length, uint32_t dataOffset,
-            uint32_t dataLen, uint8_t nChannels, uint16_t theBPS, uint32_t theRate,
+    PSXSamp(VGMSampColl *sampColl, uint32 offset, uint32 length, uint32 dataOffset,
+            uint32 dataLen, uint8 nChannels, uint16 theBPS, uint32 theRate,
             Common::String name, bool bSetLoopOnConversion = true);
     virtual ~PSXSamp(void);
 
     // ratio of space conserved.  should generally be > 1
     // used to calculate both uncompressed sample size and loopOff after conversion
     virtual double GetCompressionRatio();
-    virtual void ConvertToStdWave(uint8_t *buf);
+    virtual void ConvertToStdWave(uint8 *buf);
 
    private:
     void DecompVAGBlk(int16 *pSmp, VAGBlk *pVBlk, f32 *prev1, f32 *prev2);

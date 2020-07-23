@@ -18,8 +18,8 @@
 class Chunk {
    public:
     char id[4];     //  A chunk ID identifies the type of data within the chunk.
-    uint32_t size;  //  The size of the chunk data in bytes, excluding any pad byte.
-    uint8_t *data;  //  The actual data not including a possible pad byte to word align
+    uint32 size;  //  The size of the chunk data in bytes, excluding any pad byte.
+    uint8 *data;  //  The actual data not including a possible pad byte to word align
 
    public:
     Chunk(Common::String theId) : data(NULL), size(0) {
@@ -32,12 +32,12 @@ class Chunk {
             data = NULL;
         }
     }
-    void SetData(const void *src, uint32_t datasize);
-    virtual uint32_t GetSize();  //  Returns the size of the chunk in bytes, including any pad byte.
-    virtual void Write(uint8_t *buffer);
+    void SetData(const void *src, uint32 datasize);
+    virtual uint32 GetSize();  //  Returns the size of the chunk in bytes, including any pad byte.
+    virtual void Write(uint8 *buffer);
 
    protected:
-    static inline uint32_t GetPaddedSize(uint32_t size) { return size + (size % 2); }
+    static inline uint32 GetPaddedSize(uint32 size) { return size + (size % 2); }
 };
 
 ////////////////////////////////////////////////////////////////////////////
@@ -59,8 +59,8 @@ class ListTypeChunk : public Chunk {
     }
 
     Chunk *AddChildChunk(Chunk *ck);
-    virtual uint32_t GetSize();  //  Returns the size of the chunk in bytes, including any pad byte.
-    virtual void Write(uint8_t *buffer);
+    virtual uint32 GetSize();  //  Returns the size of the chunk in bytes, including any pad byte.
+    virtual void Write(uint8 *buffer);
 };
 
 ////////////////////////////////////////////////////////////////////////////
@@ -86,11 +86,11 @@ class RiffFile : public RIFFChunk {
    public:
     RiffFile(const Common::String& file_name, const Common::String& form);
 
-    static void WriteLIST(Common::Array<uint8_t> &buf, uint32_t listName, uint32_t listSize) {
+    static void WriteLIST(Common::Array<uint8> &buf, uint32 listName, uint32 listSize) {
     	//TODO
-//        PushTypeOnVectBE<uint32_t>(buf, 0x4C495354);  // write "LIST"
-//        PushTypeOnVect<uint32_t>(buf, listSize);
-//        PushTypeOnVectBE<uint32_t>(buf, listName);
+//        PushTypeOnVectBE<uint32>(buf, 0x4C495354);  // write "LIST"
+//        PushTypeOnVect<uint32>(buf, listSize);
+//        PushTypeOnVectBE<uint32>(buf, listName);
     }
 
     // Adds a null byte and ensures 16 bit alignment of a text string

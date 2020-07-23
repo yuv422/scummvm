@@ -11,7 +11,7 @@
 #include "common/str.h"
 #include "rifffile.h"
 
-typedef enum : uint16_t {
+typedef enum : uint16 {
     // Oscillator
     startAddrsOffset,  // sample start address -4 (0 to 0xffffff)   0
     endAddrsOffset,
@@ -94,7 +94,7 @@ typedef enum : uint16_t {
     endOper  //                                      60
 } SFGenerator;
 
-typedef enum : uint16_t {
+typedef enum : uint16 {
     /* Start of MIDI modulation operators */
     cc1_Mod,
     cc7_Vol,
@@ -110,7 +110,7 @@ typedef enum : uint16_t {
     endMod
 } SFModulator;
 
-typedef enum : uint16_t { linear } SFTransform;
+typedef enum : uint16 { linear } SFTransform;
 
 /*
 #define monoSample      0x0001
@@ -164,23 +164,23 @@ typedef enum : uint16_t { linear } SFTransform;
 #pragma pack(2)    /* set alignment to 2 byte boundary */
 
 struct sfVersionTag {
-    uint16_t wMajor;
-    uint16_t wMinor;
+    uint16 wMajor;
+    uint16 wMinor;
 };
 
 struct sfPresetHeader {
     char achPresetName[20];
-    uint16_t wPreset;
-    uint16_t wBank;
-    uint16_t wPresetBagNdx;
-    uint32_t dwLibrary;
-    uint32_t dwGenre;
-    uint32_t dwMorphology;
+    uint16 wPreset;
+    uint16 wBank;
+    uint16 wPresetBagNdx;
+    uint32 dwLibrary;
+    uint32 dwGenre;
+    uint32 dwMorphology;
 };
 
 struct sfPresetBag {
-    uint16_t wGenNdx;
-    uint16_t wModNdx;
+    uint16 wGenNdx;
+    uint16 wModNdx;
 };
 
 struct sfModList {
@@ -192,14 +192,14 @@ struct sfModList {
 };
 
 typedef struct {
-    uint8_t byLo;
-    uint8_t byHi;
+    uint8 byLo;
+    uint8 byHi;
 } rangesType;
 
 typedef union {
     rangesType ranges;
     int16_t shAmount;
-    uint16_t wAmount;
+    uint16 wAmount;
 } genAmountType;
 
 struct sfGenList {
@@ -222,15 +222,15 @@ struct sfInstGenList {
 
 struct sfInst {
     char achInstName[20];
-    uint16_t wInstBagNdx;
+    uint16 wInstBagNdx;
 };
 
 struct sfInstBag {
-    uint16_t wInstGenNdx;
-    uint16_t wInstModNdx;
+    uint16 wInstGenNdx;
+    uint16 wInstModNdx;
 };
 
-typedef enum : uint16_t {
+typedef enum : uint16 {
     monoSample = 1,
     rightSample = 2,
     leftSample = 4,
@@ -243,14 +243,14 @@ typedef enum : uint16_t {
 
 struct sfSample {
     char achSampleName[20];
-    uint32_t dwStart;
-    uint32_t dwEnd;
-    uint32_t dwStartloop;
-    uint32_t dwEndloop;
-    uint32_t dwSampleRate;
-    uint8_t byOriginalKey;
+    uint32 dwStart;
+    uint32 dwEnd;
+    uint32 dwStartloop;
+    uint32 dwEndloop;
+    uint32 dwSampleRate;
+    uint8 byOriginalKey;
     char chCorrection;
-    uint16_t wSampleLink;
+    uint16 wSampleLink;
     SFSampleLink sfSampleType;
 };
 
@@ -259,7 +259,7 @@ struct sfSample {
 class SF2StringChunk : public Chunk {
    public:
     SF2StringChunk(Common::String ckSig, Common::String info) : Chunk(ckSig) {
-        SetData(info.c_str(), (uint32_t)info.size());
+        SetData(info.c_str(), (uint32)info.size());
     }
 };
 

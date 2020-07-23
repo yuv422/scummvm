@@ -10,8 +10,8 @@
 // VGMSamp
 // *******
 
-VGMSamp::VGMSamp(VGMSampColl *sampColl, uint32_t offset, uint32_t length, uint32_t dataOffset,
-                 uint32_t dataLen, uint8_t nChannels, uint16_t theBPS, uint32_t theRate,
+VGMSamp::VGMSamp(VGMSampColl *sampColl, uint32 offset, uint32 length, uint32 dataOffset,
+                 uint32 dataLen, uint8 nChannels, uint16 theBPS, uint32 theRate,
                  Common::String theName)
     : parSampColl(sampColl),
       sampName(theName),
@@ -43,7 +43,7 @@ double VGMSamp::GetCompressionRatio() {
 // VGMSampColl
 // ***********
 
-VGMSampColl::VGMSampColl(const Common::String &format, RawFile *rawfile, uint32_t offset, uint32_t length,
+VGMSampColl::VGMSampColl(const Common::String &format, RawFile *rawfile, uint32 offset, uint32 length,
 						 Common::String theName)
 		: VGMFile(format, rawfile, offset, length, theName),
 		  parInstrSet(NULL),
@@ -53,7 +53,7 @@ VGMSampColl::VGMSampColl(const Common::String &format, RawFile *rawfile, uint32_
 }
 
 VGMSampColl::VGMSampColl(const Common::String &format, RawFile *rawfile, VGMInstrSet *instrset,
-						 uint32_t offset, uint32_t length, Common::String theName)
+						 uint32 offset, uint32 length, Common::String theName)
 		: VGMFile(format, rawfile, offset, length, theName),
 		  parInstrSet(instrset),
 		  bLoaded(false),

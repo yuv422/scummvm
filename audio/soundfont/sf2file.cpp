@@ -58,8 +58,8 @@ SF2File::SF2File(SynthFile *synthfile) : RiffFile(synthfile->name, "sfbk") {
         smplCk->size +=
             wave->dataSize + (46 * 2);  // plus the 46 padding samples required by sf2 spec
     }
-    smplCk->data = new uint8_t[smplCk->size];
-    uint32_t bufPtr = 0;
+    smplCk->data = new uint8[smplCk->size];
+    uint32 bufPtr = 0;
     for (size_t i = 0; i < numWaves; i++) {
         SynthWave *wave = synthfile->vWaves[i];
 
@@ -82,8 +82,8 @@ SF2File::SF2File(SynthFile *synthfile) : RiffFile(synthfile->name, "sfbk") {
     //***********
     Chunk *phdrCk = new Chunk("phdr");
     size_t numInstrs = synthfile->vInstrs.size();
-    phdrCk->size = (uint32_t)((numInstrs + 1) * sizeof(sfPresetHeader));
-    phdrCk->data = new uint8_t[phdrCk->size];
+    phdrCk->size = (uint32)((numInstrs + 1) * sizeof(sfPresetHeader));
+    phdrCk->data = new uint8[phdrCk->size];
 
     for (size_t i = 0; i < numInstrs; i++) {
         SynthInstr *instr = synthfile->vInstrs[i];
@@ -92,19 +92,19 @@ SF2File::SF2File(SynthFile *synthfile) : RiffFile(synthfile->name, "sfbk") {
         memset(&presetHdr, 0, sizeof(sfPresetHeader));
         memcpy(presetHdr.achPresetName, instr->name.c_str(),
                MIN((unsigned long)instr->name.size(), (unsigned long)20));
-        presetHdr.wPreset = (uint16_t)instr->ulInstrument;
+        presetHdr.wPreset = (uint16)instr->ulInstrument;
 
         // Despite being a 16-bit value, SF2 only supports banks up to 127. Since
         // it's pretty common to have either MSB or LSB be 0, we'll use whatever
         // one is not zero, with preference for MSB.
-        uint16_t bank16 = (uint16_t)instr->ulBank;
+        uint16 bank16 = (uint16)instr->ulBank;
 
         if ((bank16 & 0xFF00) == 0) {
             presetHdr.wBank = bank16 & 0x7F;
         } else {
             presetHdr.wBank = (bank16 >> 8) & 0x7F;
         }
-        presetHdr.wPresetBagNdx = (uint16_t)i;
+        presetHdr.wPresetBagNdx = (uint16)i;
         presetHdr.dwLibrary = 0;
         presetHdr.dwGenre = 0;
         presetHdr.dwMorphology = 0;
@@ -114,7 +114,7 @@ SF2File::SF2File(SynthFile *synthfile) : RiffFile(synthfile->name, "sfbk") {
     //  add terminal sfPresetBag
     sfPresetHeader presetHdr;
     memset(&presetHdr, 0, sizeof(sfPresetHeader));
-    presetHdr.wPresetBagNdx = (uint16_t)numInstrs;
+    presetHdr.wPresetBagNdx = (uint16)numInstrs;
     memcpy(phdrCk->data + (numInstrs * sizeof(sfPresetHeader)), &presetHdr, sizeof(sfPresetHeader));
     pdtaCk->AddChildChunk(phdrCk);
 
@@ -123,14 +123,14 @@ SF2File::SF2File(SynthFile *synthfile) : RiffFile(synthfile->name, "sfbk") {
     //***********
     Chunk *pbagCk = new Chunk("pbag");
     const size_t ITEMS_IN_PGEN = 2;
-    pbagCk->size = (uint32_t)((numInstrs + 1) * sizeof(sfPresetBag));
-    pbagCk->data = new uint8_t[pbagCk->size];
+    pbagCk->size = (uint32)((numInstrs + 1) * sizeof(sfPresetBag));
+    pbagCk->data = new uint8[pbagCk->size];
     for (size_t i = 0; i < numInstrs; i++) {
         SynthInstr *instr = synthfile->vInstrs[i];
 
         sfPresetBag presetBag;
         memset(&presetBag, 0, sizeof(sfPresetBag));
-        presetBag.wGenNdx = (uint16_t)(i * ITEMS_IN_PGEN);
+        presetBag.wGenNdx = (uint16)(i * ITEMS_IN_PGEN);
         presetBag.wModNdx = 0;
 
         memcpy(pbagCk->data + (i * sizeof(sfPresetBag)), &presetBag, sizeof(sfPresetBag));
@@ -138,7 +138,7 @@ SF2File::SF2File(SynthFile *synthfile) : RiffFile(synthfile->name, "sfbk") {
     //  add terminal sfPresetBag
     sfPresetBag presetBag;
     memset(&presetBag, 0, sizeof(sfPresetBag));
-    presetBag.wGenNdx = (uint16_t)(numInstrs * ITEMS_IN_PGEN);
+    presetBag.wGenNdx = (uint16)(numInstrs * ITEMS_IN_PGEN);
     memcpy(pbagCk->data + (numInstrs * sizeof(sfPresetBag)), &presetBag, sizeof(sfPresetBag));
     pdtaCk->AddChildChunk(pbagCk);
 
@@ -162,10 +162,10 @@ SF2File::SF2File(SynthFile *synthfile) : RiffFile(synthfile->name, "sfbk") {
     //***********
     Chunk *pgenCk = new Chunk("pgen");
     // pgenCk->size = (synthfile->vInstrs.size()+1) * sizeof(sfGenList);
-    pgenCk->size = (uint32_t)((synthfile->vInstrs.size() * sizeof(sfGenList) * ITEMS_IN_PGEN) +
+    pgenCk->size = (uint32)((synthfile->vInstrs.size() * sizeof(sfGenList) * ITEMS_IN_PGEN) +
                               sizeof(sfGenList));
-    pgenCk->data = new uint8_t[pgenCk->size];
-    uint32_t dataPtr = 0;
+    pgenCk->data = new uint8[pgenCk->size];
+    uint32 dataPtr = 0;
     for (size_t i = 0; i < numInstrs; i++) {
         SynthInstr *instr = synthfile->vInstrs[i];
 
@@ -179,7 +179,7 @@ SF2File::SF2File(SynthFile *synthfile) : RiffFile(synthfile->name, "sfbk") {
         dataPtr += sizeof(sfGenList);
 
         genList.sfGenOper = instrument;
-        genList.genAmount.wAmount = (uint16_t)i;
+        genList.genAmount.wAmount = (uint16)i;
         memcpy(pgenCk->data + dataPtr, &genList, sizeof(sfGenList));
         dataPtr += sizeof(sfGenList);
     }
@@ -194,8 +194,8 @@ SF2File::SF2File(SynthFile *synthfile) : RiffFile(synthfile->name, "sfbk") {
     // inst chunk
     //***********
     Chunk *instCk = new Chunk("inst");
-    instCk->size = (uint32_t)((synthfile->vInstrs.size() + 1) * sizeof(sfInst));
-    instCk->data = new uint8_t[instCk->size];
+    instCk->size = (uint32)((synthfile->vInstrs.size() + 1) * sizeof(sfInst));
+    instCk->data = new uint8[instCk->size];
     size_t rgnCounter = 0;
     for (size_t i = 0; i < numInstrs; i++) {
         SynthInstr *instr = synthfile->vInstrs[i];
@@ -204,7 +204,7 @@ SF2File::SF2File(SynthFile *synthfile) : RiffFile(synthfile->name, "sfbk") {
         memset(&inst, 0, sizeof(sfInst));
         memcpy(inst.achInstName, instr->name.c_str(),
                MIN((unsigned long)instr->name.size(), (unsigned long)20));
-        inst.wInstBagNdx = (uint16_t)rgnCounter;
+        inst.wInstBagNdx = (uint16)rgnCounter;
         rgnCounter += instr->vRgns.size();
 
         memcpy(instCk->data + (i * sizeof(sfInst)), &inst, sizeof(sfInst));
@@ -212,7 +212,7 @@ SF2File::SF2File(SynthFile *synthfile) : RiffFile(synthfile->name, "sfbk") {
     //  add terminal sfInst
     sfInst inst;
     memset(&inst, 0, sizeof(sfInst));
-    inst.wInstBagNdx = (uint16_t)rgnCounter;
+    inst.wInstBagNdx = (uint16)rgnCounter;
     memcpy(instCk->data + (numInstrs * sizeof(sfInst)), &inst, sizeof(sfInst));
     pdtaCk->AddChildChunk(instCk);
 
@@ -225,8 +225,8 @@ SF2File::SF2File(SynthFile *synthfile) : RiffFile(synthfile->name, "sfbk") {
     for (size_t i = 0; i < numInstrs; i++)
         numRgns += synthfile->vInstrs[i]->vRgns.size();
 
-    ibagCk->size = (uint32_t)((numRgns + 1) * sizeof(sfInstBag));
-    ibagCk->data = new uint8_t[ibagCk->size];
+    ibagCk->size = (uint32)((numRgns + 1) * sizeof(sfInstBag));
+    ibagCk->data = new uint8[ibagCk->size];
 
     rgnCounter = 0;
     int instGenCounter = 0;
@@ -266,8 +266,8 @@ SF2File::SF2File(SynthFile *synthfile) : RiffFile(synthfile->name, "sfbk") {
     // igen chunk
     //***********
     Chunk *igenCk = new Chunk("igen");
-    igenCk->size = (uint32_t)((numRgns * sizeof(sfInstGenList) * 11) + sizeof(sfInstGenList));
-    igenCk->data = new uint8_t[igenCk->size];
+    igenCk->size = (uint32)((numRgns * sizeof(sfInstGenList) * 11) + sizeof(sfInstGenList));
+    igenCk->data = new uint8[igenCk->size];
     dataPtr = 0;
     for (size_t i = 0; i < numInstrs; i++) {
         SynthInstr *instr = synthfile->vInstrs[i];
@@ -279,8 +279,8 @@ SF2File::SF2File(SynthFile *synthfile) : RiffFile(synthfile->name, "sfbk") {
             sfInstGenList instGenList;
             // Key range - (if exists) this must be the first chunk
             instGenList.sfGenOper = keyRange;
-            instGenList.genAmount.ranges.byLo = (uint8_t)rgn->usKeyLow;
-            instGenList.genAmount.ranges.byHi = (uint8_t)rgn->usKeyHigh;
+            instGenList.genAmount.ranges.byLo = (uint8)rgn->usKeyLow;
+            instGenList.genAmount.ranges.byHi = (uint8)rgn->usKeyHigh;
             memcpy(igenCk->data + dataPtr, &instGenList, sizeof(sfInstGenList));
             dataPtr += sizeof(sfInstGenList);
 
@@ -288,8 +288,8 @@ SF2File::SF2File(SynthFile *synthfile) : RiffFile(synthfile->name, "sfbk") {
             {
                 // Velocity range (if exists) this must be the next chunk
                 instGenList.sfGenOper = velRange;
-                instGenList.genAmount.ranges.byLo = (uint8_t)rgn->usVelLow;
-                instGenList.genAmount.ranges.byHi = (uint8_t)rgn->usVelHigh;
+                instGenList.genAmount.ranges.byLo = (uint8)rgn->usVelLow;
+                instGenList.genAmount.ranges.byHi = (uint8)rgn->usVelHigh;
                 memcpy(igenCk->data + dataPtr, &instGenList, sizeof(sfInstGenList));
                 dataPtr += sizeof(sfInstGenList);
             }
@@ -361,7 +361,7 @@ SF2File::SF2File(SynthFile *synthfile) : RiffFile(synthfile->name, "sfbk") {
 
             // sampleID - this is the terminal chunk
             instGenList.sfGenOper = sampleID;
-            instGenList.genAmount.wAmount = (uint16_t)(rgn->tableIndex);
+            instGenList.genAmount.wAmount = (uint16)(rgn->tableIndex);
             memcpy(igenCk->data + dataPtr, &instGenList, sizeof(sfInstGenList));
             dataPtr += sizeof(sfInstGenList);
 
@@ -387,10 +387,10 @@ SF2File::SF2File(SynthFile *synthfile) : RiffFile(synthfile->name, "sfbk") {
     Chunk *shdrCk = new Chunk("shdr");
 
     size_t numSamps = synthfile->vWaves.size();
-    shdrCk->size = (uint32_t)((numSamps + 1) * sizeof(sfSample));
-    shdrCk->data = new uint8_t[shdrCk->size];
+    shdrCk->size = (uint32)((numSamps + 1) * sizeof(sfSample));
+    shdrCk->data = new uint8[shdrCk->size];
 
-    uint32_t sampOffset = 0;
+    uint32 sampOffset = 0;
     for (size_t i = 0; i < numSamps; i++) {
         SynthWave *wave = synthfile->vWaves[i];
 
@@ -399,7 +399,7 @@ SF2File::SF2File(SynthFile *synthfile) : RiffFile(synthfile->name, "sfbk") {
         memcpy(samp.achSampleName, wave->name.c_str(),
                MIN((unsigned long)wave->name.size(), (unsigned long)20));
         samp.dwStart = sampOffset;
-        samp.dwEnd = samp.dwStart + (wave->dataSize / sizeof(uint16_t));
+        samp.dwEnd = samp.dwStart + (wave->dataSize / sizeof(uint16));
         sampOffset = samp.dwEnd + 46;  // plus the 46 padding samples required by sf2 spec
 
         // Search through all regions for an associated sampInfo structure with this sample
@@ -426,7 +426,7 @@ SF2File::SF2File(SynthFile *synthfile) : RiffFile(synthfile->name, "sfbk") {
         samp.dwStartloop = samp.dwStart + sampInfo->ulLoopStart;
         samp.dwEndloop = samp.dwStartloop + sampInfo->ulLoopLength;
         samp.dwSampleRate = wave->dwSamplesPerSec;
-        samp.byOriginalKey = (uint8_t)(sampInfo->usUnityNote);
+        samp.byOriginalKey = (uint8)(sampInfo->usUnityNote);
         samp.chCorrection = (char)(sampInfo->sFineTune);
         samp.wSampleLink = 0;
         samp.sfSampleType = monoSample;
@@ -444,8 +444,8 @@ SF2File::SF2File(SynthFile *synthfile) : RiffFile(synthfile->name, "sfbk") {
 SF2File::~SF2File(void) {}
 
 const void *SF2File::SaveToMem() {
-    uint32_t size = this->GetSize();
-    uint8_t *buf = new uint8_t[size];
+    uint32 size = this->GetSize();
+    uint8 *buf = new uint8[size];
     this->Write(buf);
     return buf;
 }

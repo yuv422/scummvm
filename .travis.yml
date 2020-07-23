@@ -56,8 +56,8 @@ addons:
     update: true
 
 branches:
- only:
-   - master
+# only:
+#   - master
 
 matrix:
   include:
@@ -94,9 +94,9 @@ script:
   - ccache --show-stats > /tmp/ccache_after
   - diff -U999 /tmp/ccache_before /tmp/ccache_after || true
 
-notifications:
-  irc:
-    channels:
-      - "chat.freenode.net#scummvm"
-    on_success: change
-    on_failure: always
+#notifications:
+#  irc:
+#    channels:
+#      - "chat.freenode.net#scummvm"
+#    on_success: change
+#    on_failure: always

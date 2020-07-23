@@ -26,8 +26,8 @@ class VGMHeader;
 class VGMItem {
    public:
     VGMItem();
-    VGMItem(VGMFile *thevgmfile, uint32_t theOffset, uint32_t theLength = 0,
-            const Common::String theName = "", uint8_t color = 0);
+    VGMItem(VGMFile *thevgmfile, uint32 theOffset, uint32 theLength = 0,
+            const Common::String theName = "", uint8 color = 0);
     virtual ~VGMItem(void);
 
    public:
@@ -35,28 +35,28 @@ class VGMItem {
 
    protected:
     // TODO make inline
-    uint32_t GetBytes(uint32_t nIndex, uint32_t nCount, void *pBuffer);
-    uint8_t GetByte(uint32_t offset);
-    uint16_t GetShort(uint32_t offset);
+    uint32 GetBytes(uint32 nIndex, uint32 nCount, void *pBuffer);
+    uint8 GetByte(uint32 offset);
+    uint16 GetShort(uint32 offset);
 
    public:
-    uint8_t color;
+    uint8 color;
     VGMFile *vgmfile;
     Common::String name;
-    uint32_t dwOffset;  // offset in the pDoc data buffer
-    uint32_t unLength;  // num of bytes the event engulfs
+    uint32 dwOffset;  // offset in the pDoc data buffer
+    uint32 unLength;  // num of bytes the event engulfs
 };
 
 class VGMContainerItem : public VGMItem {
    public:
     VGMContainerItem();
-    VGMContainerItem(VGMFile *thevgmfile, uint32_t theOffset, uint32_t theLength = 0,
-                     const Common::String theName = "", uint8_t color = CLR_HEADER);
+    VGMContainerItem(VGMFile *thevgmfile, uint32 theOffset, uint32 theLength = 0,
+                     const Common::String theName = "", uint8 color = CLR_HEADER);
     virtual ~VGMContainerItem(void);
 
-    VGMHeader *AddHeader(uint32_t offset, uint32_t length, const Common::String &name = "Header");
+    VGMHeader *AddHeader(uint32 offset, uint32 length, const Common::String &name = "Header");
 
-    void AddSimpleItem(uint32_t offset, uint32_t length, const Common::String &theName);
+    void AddSimpleItem(uint32 offset, uint32 length, const Common::String &theName);
 
     template <class T>
     void AddContainer(Common::Array<T *> &container) {
@@ -75,7 +75,7 @@ class VGMFile : public VGMContainerItem {
 public:
 
 public:
-	VGMFile(const Common::String &format, RawFile *theRawFile, uint32_t offset, uint32_t length = 0,
+	VGMFile(const Common::String &format, RawFile *theRawFile, uint32 offset, uint32 length = 0,
 			Common::String theName = "VGM File");
 	virtual ~VGMFile();
 
@@ -87,11 +87,11 @@ public:
 	size_t size() const noexcept { return unLength; }
 	Common::String name() const noexcept { return m_name; }
 
-	uint32_t GetBytes(uint32_t nIndex, uint32_t nCount, void *pBuffer);
+	uint32 GetBytes(uint32 nIndex, uint32 nCount, void *pBuffer);
 
-	inline uint8_t GetByte(uint32_t offset) const { return rawfile->GetByte(offset); }
-	inline uint16_t GetShort(uint32_t offset) const { return rawfile->GetShort(offset); }
-	inline uint32_t GetWord(uint32_t offset) const { return rawfile->GetWord(offset); }
+	inline uint8 GetByte(uint32 offset) const { return rawfile->GetByte(offset); }
+	inline uint16 GetShort(uint32 offset) const { return rawfile->GetShort(offset); }
+	inline uint32 GetWord(uint32 offset) const { return rawfile->GetWord(offset); }
 	/*
 	 * For whatever reason, you can create null-length VGMItems.
 	 * The only safe way for now is to
@@ -105,7 +105,7 @@ public:
 
 protected:
 	Common::String format;
-	uint32_t id;
+	uint32 id;
 	Common::String m_name;
 };
 
@@ -115,7 +115,7 @@ protected:
 
 class VGMHeader : public VGMContainerItem {
 public:
-	VGMHeader(VGMItem *parItem, uint32_t offset = 0, uint32_t length = 0,
+	VGMHeader(VGMItem *parItem, uint32 offset = 0, uint32 length = 0,
 			  const Common::String &name = "Header");
 	virtual ~VGMHeader();
 };
@@ -130,28 +130,28 @@ class VGMSampColl;
 
 class VGMRgn : public VGMContainerItem {
 public:
-	VGMRgn(VGMInstr *instr, uint32_t offset, uint32_t length = 0, Common::String name = "Region");
-	VGMRgn(VGMInstr *instr, uint32_t offset, uint32_t length, uint8_t keyLow, uint8_t keyHigh,
-		   uint8_t velLow, uint8_t velHigh, int sampNum, Common::String name = "Region");
+	VGMRgn(VGMInstr *instr, uint32 offset, uint32 length = 0, Common::String name = "Region");
+	VGMRgn(VGMInstr *instr, uint32 offset, uint32 length, uint8 keyLow, uint8 keyHigh,
+		   uint8 velLow, uint8 velHigh, int sampNum, Common::String name = "Region");
 	~VGMRgn();
 
 	virtual bool LoadRgn() { return true; }
 
-	void AddGeneralItem(uint32_t offset, uint32_t length, const Common::String &name);
+	void AddGeneralItem(uint32 offset, uint32 length, const Common::String &name);
 	void SetFineTune(int16_t relativePitchCents) { fineTune = relativePitchCents; }
-	void SetPan(uint8_t pan);
-	void AddPan(uint8_t pan, uint32_t offset, uint32_t length = 1);
-	void AddVolume(double volume, uint32_t offset, uint32_t length = 1);
-	void AddUnityKey(int8_t unityKey, uint32_t offset, uint32_t length = 1);
-	void AddKeyLow(uint8_t keyLow, uint32_t offset, uint32_t length = 1);
-	void AddKeyHigh(uint8_t keyHigh, uint32_t offset, uint32_t length = 1);
-	void AddSampNum(int sampNum, uint32_t offset, uint32_t length = 1);
+	void SetPan(uint8 pan);
+	void AddPan(uint8 pan, uint32 offset, uint32 length = 1);
+	void AddVolume(double volume, uint32 offset, uint32 length = 1);
+	void AddUnityKey(int8_t unityKey, uint32 offset, uint32 length = 1);
+	void AddKeyLow(uint8 keyLow, uint32 offset, uint32 length = 1);
+	void AddKeyHigh(uint8 keyHigh, uint32 offset, uint32 length = 1);
+	void AddSampNum(int sampNum, uint32 offset, uint32 length = 1);
 
 	VGMInstr *parInstr = nullptr;
-	uint8_t keyLow = 0;
-	uint8_t keyHigh = 127;
-	uint8_t velLow = 0;
-	uint8_t velHigh = 127;
+	uint8 keyLow = 0;
+	uint8 keyHigh = 127;
+	uint8 velLow = 0;
+	uint8 velHigh = 127;
 
 	int8_t unityKey = -1;
 	short fineTune = 0;
@@ -159,7 +159,7 @@ public:
 	Loop loop;
 
 	int sampNum = 0;
-	uint32_t sampOffset = -1; /* Offset wrt whatever collection of samples we have */
+	uint32 sampOffset = -1; /* Offset wrt whatever collection of samples we have */
 	VGMSampColl *sampCollPtr = nullptr;
 
 	double volume = -1;        /* Percentage of full volume */
@@ -170,8 +170,8 @@ public:
 	double sustain_level = -1; /* Percentage */
 	double sustain_time = 0;   /* In seconds (no positive rate!) */
 
-	uint16_t attack_transform = no_transform;
-	uint16_t release_transform = no_transform;
+	uint16 attack_transform = no_transform;
+	uint16 release_transform = no_transform;
 
 	Common::Array<VGMRgnItem *> items;
 };
@@ -196,7 +196,7 @@ public:
 		RIT_SAMPNUM
 	};
 
-	VGMRgnItem(VGMRgn *rgn, RgnItemType theType, uint32_t offset, uint32_t length,
+	VGMRgnItem(VGMRgn *rgn, RgnItemType theType, uint32 offset, uint32 length,
 			   const Common::String &name);
 
 public:

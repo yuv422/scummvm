@@ -20,20 +20,20 @@ class RawFile {
 
     virtual size_t size() const = 0;
 
-    bool IsValidOffset(uint32_t ofs) { return ofs < size(); }
+    bool IsValidOffset(uint32 ofs) { return ofs < size(); }
 
     const char *begin() const noexcept { return data(); }
     const char *end()  { return data() + size(); }
     virtual const char *data() const = 0;
 
     virtual const char &operator[](const size_t i) const = 0;
-    virtual uint8_t GetByte(size_t offset) const = 0;
-    virtual uint16_t GetShort(size_t offset) const = 0;
-    virtual uint32_t GetWord(size_t offset) const = 0;
-    virtual uint16_t GetShortBE(size_t offset) const = 0;
-    virtual uint32_t GetWordBE(size_t offset) const = 0;
+    virtual uint8 GetByte(size_t offset) const = 0;
+    virtual uint16 GetShort(size_t offset) const = 0;
+    virtual uint32 GetWord(size_t offset) const = 0;
+    virtual uint16 GetShortBE(size_t offset) const = 0;
+    virtual uint32 GetWordBE(size_t offset) const = 0;
 
-    uint32_t GetBytes(size_t offset, uint32_t nCount, void *pBuffer) const;
+    uint32 GetBytes(size_t offset, uint32 nCount, void *pBuffer) const;
 
    private:
     enum ProcessFlags { UseLoaders = 1, UseScanners = 2 };
@@ -51,15 +51,15 @@ public:
 	const char &operator[](size_t offset) const override { return _data[offset]; } //TODO look at this warning
 	const char *data() const override;
 
-	uint8_t GetByte(size_t offset) const override;
+	uint8 GetByte(size_t offset) const override;
 
-	uint16_t GetShort(size_t offset) const override;
+	uint16 GetShort(size_t offset) const override;
 
-	uint32_t GetWord(size_t offset) const override;
+	uint32 GetWord(size_t offset) const override;
 
-	uint16_t GetShortBE(size_t offset) const override;
+	uint16 GetShortBE(size_t offset) const override;
 
-	uint32_t GetWordBE(size_t offset) const override;
+	uint32 GetWordBE(size_t offset) const override;
 
 	size_t size() const override;
 

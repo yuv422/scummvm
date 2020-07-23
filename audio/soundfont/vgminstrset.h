@@ -25,7 +25,7 @@ class VGMRgnItem;
 class VGMInstrSet : public VGMFile {
    public:
 
-    VGMInstrSet(const Common::String &format, RawFile *file, uint32_t offset, uint32_t length = 0,
+    VGMInstrSet(const Common::String &format, RawFile *file, uint32 offset, uint32 length = 0,
                 Common::String name = "VGMInstrSet", VGMSampColl *theSampColl = NULL);
     virtual ~VGMInstrSet(void);
 
@@ -45,15 +45,15 @@ class VGMInstrSet : public VGMFile {
 
 class VGMInstr : public VGMContainerItem {
    public:
-    VGMInstr(VGMInstrSet *parInstrSet, uint32_t offset, uint32_t length, uint32_t bank,
-             uint32_t instrNum, const Common::String &name = "Instrument");
+    VGMInstr(VGMInstrSet *parInstrSet, uint32 offset, uint32 length, uint32 bank,
+             uint32 instrNum, const Common::String &name = "Instrument");
     virtual ~VGMInstr(void);
 
     virtual bool LoadInstr();
 
    public:
-    uint32_t bank;
-    uint32_t instrNum;
+    uint32 bank;
+    uint32 instrNum;
 
     VGMInstrSet *parInstrSet;
     Common::Array<VGMRgn *> aRgns;

@@ -18,27 +18,27 @@ enum WAVE_TYPE { WT_UNDEFINED, WT_PCM8, WT_PCM16 };
 class VGMSamp : public VGMItem {
    public:
 	
-    VGMSamp(VGMSampColl *sampColl, uint32_t offset = 0, uint32_t length = 0,
-            uint32_t dataOffset = 0, uint32_t dataLength = 0, uint8_t channels = 1,
-            uint16_t bps = 16, uint32_t rate = 0, Common::String name = "Sample");
+    VGMSamp(VGMSampColl *sampColl, uint32 offset = 0, uint32 length = 0,
+            uint32 dataOffset = 0, uint32 dataLength = 0, uint8 channels = 1,
+            uint16 bps = 16, uint32 rate = 0, Common::String name = "Sample");
     virtual ~VGMSamp();
 
     virtual double GetCompressionRatio();  // ratio of space conserved.  should generally be > 1
     // used to calculate both uncompressed sample size and loopOff after conversion
-	virtual void ConvertToStdWave(uint8_t *buf) {};
+	virtual void ConvertToStdWave(uint8 *buf) {};
 
     inline void SetLoopStatus(int loopStat) { loop.loopStatus = loopStat; }
-    inline void SetLoopOffset(uint32_t loopStart) { loop.loopStart = loopStart; }
-    inline void SetLoopLength(uint32_t theLoopLength) { loop.loopLength = theLoopLength; }
+    inline void SetLoopOffset(uint32 loopStart) { loop.loopStart = loopStart; }
+    inline void SetLoopLength(uint32 theLoopLength) { loop.loopLength = theLoopLength; }
 
    public:
     WAVE_TYPE waveType;
-    uint32_t dataOff;  // offset of original sample data
-    uint32_t dataLength;
-    uint16_t bps;      // bits per sample
-    uint32_t rate;     // sample rate in herz (samples per second)
-    uint8_t channels;  // mono or stereo?
-    uint32_t ulUncompressedSize;
+    uint32 dataOff;  // offset of original sample data
+    uint32 dataLength;
+    uint16 bps;      // bits per sample
+    uint32 rate;     // sample rate in herz (samples per second)
+    uint8 channels;  // mono or stereo?
+    uint32 ulUncompressedSize;
 
     bool bPSXLoopInfoPrioritizing;
     Loop loop;
@@ -56,10 +56,10 @@ class VGMSamp : public VGMItem {
 
 class VGMSampColl : public VGMFile {
 public:
-	VGMSampColl(const Common::String &format, RawFile *rawfile, uint32_t offset, uint32_t length = 0,
+	VGMSampColl(const Common::String &format, RawFile *rawfile, uint32 offset, uint32 length = 0,
 				Common::String theName = "VGMSampColl");
-	VGMSampColl(const Common::String &format, RawFile *rawfile, VGMInstrSet *instrset, uint32_t offset,
-				uint32_t length = 0, Common::String theName = "VGMSampColl");
+	VGMSampColl(const Common::String &format, RawFile *rawfile, VGMInstrSet *instrset, uint32 offset,
+				uint32 length = 0, Common::String theName = "VGMSampColl");
 	virtual ~VGMSampColl(void);
 
 	virtual bool Load();
@@ -71,7 +71,7 @@ protected:
 public:
 	bool bLoaded;
 
-	uint32_t sampDataOffset;  // offset of the beginning of the sample data.  Used for
+	uint32 sampDataOffset;  // offset of the beginning of the sample data.  Used for
 	// rgn->sampOffset matching
 	VGMInstrSet *parInstrSet;
 	Common::Array<VGMSamp *> samples;
