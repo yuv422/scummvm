@@ -39,10 +39,8 @@ static bool bRateTableInitialized = 0;
 
 // Sample Block
 typedef struct _VAGBlk {
-    struct {
-        uint8 range : 4;
-        uint8 filter : 4;
-    };
+    uint8 range;
+    uint8 filter;
 
     struct {
         b8 end : 1;      // End block
@@ -56,7 +54,7 @@ typedef struct _VAGBlk {
 double LinAmpDecayTimeToLinDBDecayTime(double secondsToFullAtten, int linearVolumeRange);
 
 // InitADSR is shamelessly ripped from P.E.Op.S
-static void InitADSR(void) {
+static void InitADSR() {
     unsigned long r, rs, rd;
     int i;
 
@@ -116,20 +114,13 @@ void PSXConvADSR(T *realADSR, uint8 Am, uint8 Ar, uint8 Dr, uint8 Sl, uint8 Sm,
         ((Rm & ~0x01) != 0) || ((Rr & ~0x1F) != 0) || ((Sm & ~0x01) != 0) || ((Sd & ~0x01) != 0) ||
         ((Sr & ~0x7F) != 0)) {
     	error("ADSR parameter(s) out of range");
-// TODO       L_ERROR("ADSR parameter(s) out of range"
-//            "({:#x}, {:#x}, {:#x}, {:#x}, {:#x}, {:#x}, {:#x}, {:#x}, {:#x})",
-//            Am, Ar, Dr, Sl, Rm, Rr, Sm, Sd, Sr
-//        );
-
-        return;
     }
 
     // PS1 games use 44k, PS2 uses 48k
     double sampleRate = bPS2 ? 48000 : 44100;
 
-    int rateIncTable[8] = {0, 4, 6, 8, 9, 10, 11, 12};
     long envelope_level;
-    double samples;
+    double samples = 0.0;
     unsigned long rate;
     unsigned long remainder;
     double timeInSecs;
@@ -375,7 +366,6 @@ void PSXConvADSR(T *realADSR, uint8 Am, uint8 Ar, uint8 Dr, uint8 Sl, uint8 Sm,
 
     // Calculations are done, so now add the articulation data
     // artic->AddADSR(attack_time, Am, decay_time, sustain_lev, release_time, 0);
-    return;
 }
 
 class PSXSampColl : public VGMSampColl {
@@ -395,12 +385,12 @@ class PSXSamp : public VGMSamp {
     PSXSamp(VGMSampColl *sampColl, uint32 offset, uint32 length, uint32 dataOffset,
             uint32 dataLen, uint8 nChannels, uint16 theBPS, uint32 theRate,
             Common::String name, bool bSetLoopOnConversion = true);
-    virtual ~PSXSamp(void);
+    ~PSXSamp() override { }
 
-    // ratio of space conserved.  should generally be > 1
+	// ratio of space conserved.  should generally be > 1
     // used to calculate both uncompressed sample size and loopOff after conversion
-    virtual double GetCompressionRatio();
-    virtual void ConvertToStdWave(uint8 *buf);
+    double GetCompressionRatio() override;
+    void ConvertToStdWave(uint8 *buf) override;
 
    private:
     void DecompVAGBlk(int16 *pSmp, VAGBlk *pVBlk, f32 *prev1, f32 *prev2);

@@ -31,16 +31,6 @@ uint32 MemFile::GetWord(size_t offset) const {
 	return _seekableReadStream->readUint32LE();
 }
 
-uint16 MemFile::GetShortBE(size_t offset) const {
-	_seekableReadStream->seek(offset);
-	return _seekableReadStream->readUint16BE();
-}
-
-uint32 MemFile::GetWordBE(size_t offset) const {
-	_seekableReadStream->seek(offset);
-	return _seekableReadStream->readUint32BE();
-}
-
 size_t MemFile::size() const {
 	return _seekableReadStream->size();
 }

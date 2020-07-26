@@ -174,9 +174,9 @@ SynthFile *VGMColl::CreateSynthFile(VGMInstrSet *theInstrSet) {
 
                 // Determine the sampCollNum (index into our finalSampColls vector)
                 size_t sampCollNum = finalSampColls.size();
-                for (size_t i = 0; i < finalSampColls.size(); i++) {
-                    if (finalSampColls[i] == sampColl)
-                        sampCollNum = i;
+                for (size_t k = 0; k < finalSampColls.size(); k++) {
+                    if (finalSampColls[k] == sampColl)
+                        sampCollNum = k;
                 }
                 if (sampCollNum == finalSampColls.size()) {
                     debug("SampColl does not exist");

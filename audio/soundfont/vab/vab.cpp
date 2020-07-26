@@ -4,6 +4,7 @@
  * refer to the included LICENSE.txt file
  */
 
+#include "common/debug.h"
 #include "common/scummsys.h"
 #include "vab.h"
 #include "psxspu.h"
@@ -12,7 +13,7 @@ using namespace std;
 
 Vab::Vab(RawFile *file, uint32 offset) : VGMInstrSet("PS1", file, offset) {}
 
-Vab::~Vab(void) {}
+Vab::~Vab() {}
 
 bool Vab::GetHeaderInfo() {
     uint32 nEndOffset = GetEndOffset();
@@ -46,13 +47,11 @@ bool Vab::GetHeaderInfo() {
 
 bool Vab::GetInstrPointers() {
     uint32 nEndOffset = GetEndOffset();
-    uint32 nMaxLength = nEndOffset - dwOffset;
 
     uint32 offProgs = dwOffset + 0x20;
     uint32 offToneAttrs = offProgs + (16 * 128);
 
     uint16 numPrograms = GetShort(dwOffset + 0x12);
-    uint16 numTones = GetShort(dwOffset + 0x14);
     uint16 numVAGs = GetShort(dwOffset + 0x16);
 
     uint32 offVAGOffsets = offToneAttrs + (32 * 16 * numPrograms);
@@ -61,11 +60,11 @@ bool Vab::GetInstrPointers() {
     VGMHeader *toneAttrsHdr = AddHeader(offToneAttrs, 32 * 16, "Tone Attributes Table");
 
     if (numPrograms > 128) {
-// TODO       L_ERROR("Too many programs ({:#x}), offset {:#x}", numPrograms, dwOffset);
+		debug("Too many programs %x, offset %x", numPrograms, dwOffset);
         return false;
     }
     if (numVAGs > 255) {
-//  TODO      L_ERROR("Too many VAGs ({:#x}), offset {:#x}", numVAGs, dwOffset);
+		debug("Too many VAGs %x, offset %x", numVAGs, dwOffset);
         return false;
     }
 
@@ -89,22 +88,22 @@ bool Vab::GetInstrPointers() {
 
         uint8 numTonesPerInstr = GetByte(offCurrProg);
         if (numTonesPerInstr > 32) {
-           //TODO L_WARN("Program {:#x} contains too many tones ({})", progIndex, numTonesPerInstr);
+           debug("Program %x contains too many tones (%d)", progIndex, numTonesPerInstr);
         } else if (numTonesPerInstr != 0) {
             VabInstr *newInstr = new VabInstr(this, offCurrToneAttrs, 0x20 * 16, 0, progIndex);
             aInstrs.push_back(newInstr);
             GetBytes(offCurrProg, 0x10, &newInstr->attr);
 
-            VGMHeader *hdr = progsHdr->AddHeader(offCurrProg, 0x10, "Program");
-            hdr->AddSimpleItem(offCurrProg + 0x00, 1, "Number of Tones");
-            hdr->AddSimpleItem(offCurrProg + 0x01, 1, "Volume");
-            hdr->AddSimpleItem(offCurrProg + 0x02, 1, "Priority");
-            hdr->AddSimpleItem(offCurrProg + 0x03, 1, "Mode");
-            hdr->AddSimpleItem(offCurrProg + 0x04, 1, "Pan");
-            hdr->AddSimpleItem(offCurrProg + 0x05, 1, "Reserved");
-            hdr->AddSimpleItem(offCurrProg + 0x06, 2, "Attribute");
-            hdr->AddSimpleItem(offCurrProg + 0x08, 4, "Reserved");
-            hdr->AddSimpleItem(offCurrProg + 0x0c, 4, "Reserved");
+            VGMHeader *progHdr = progsHdr->AddHeader(offCurrProg, 0x10, "Program");
+            progHdr->AddSimpleItem(offCurrProg + 0x00, 1, "Number of Tones");
+            progHdr->AddSimpleItem(offCurrProg + 0x01, 1, "Volume");
+            progHdr->AddSimpleItem(offCurrProg + 0x02, 1, "Priority");
+            progHdr->AddSimpleItem(offCurrProg + 0x03, 1, "Mode");
+            progHdr->AddSimpleItem(offCurrProg + 0x04, 1, "Pan");
+            progHdr->AddSimpleItem(offCurrProg + 0x05, 1, "Reserved");
+            progHdr->AddSimpleItem(offCurrProg + 0x06, 2, "Attribute");
+            progHdr->AddSimpleItem(offCurrProg + 0x08, 4, "Reserved");
+            progHdr->AddSimpleItem(offCurrProg + 0x0c, 4, "Reserved");
 
             newInstr->masterVol = GetByte(offCurrProg + 0x01);
 

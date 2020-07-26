@@ -210,8 +210,6 @@ PSXSamp::PSXSamp(VGMSampColl *sampColl, uint32 offset, uint32 length, uint32 dat
     bPSXLoopInfoPrioritizing = true;
 }
 
-PSXSamp::~PSXSamp() {}
-
 double PSXSamp::GetCompressionRatio() {
     return ((28.0 / 16.0) * 2);  // aka 3.5;
 }

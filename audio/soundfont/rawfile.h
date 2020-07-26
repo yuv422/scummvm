@@ -26,17 +26,13 @@ class RawFile {
     const char *end()  { return data() + size(); }
     virtual const char *data() const = 0;
 
-    virtual const char &operator[](const size_t i) const = 0;
     virtual uint8 GetByte(size_t offset) const = 0;
     virtual uint16 GetShort(size_t offset) const = 0;
     virtual uint32 GetWord(size_t offset) const = 0;
-    virtual uint16 GetShortBE(size_t offset) const = 0;
-    virtual uint32 GetWordBE(size_t offset) const = 0;
 
     uint32 GetBytes(size_t offset, uint32 nCount, void *pBuffer) const;
 
    private:
-    enum ProcessFlags { UseLoaders = 1, UseScanners = 2 };
 };
 
 class MemFile : public RawFile {
@@ -48,20 +44,12 @@ public:
 	MemFile(const byte *data, uint32 size);
 	~MemFile() override;
 
-	const char &operator[](size_t offset) const override { return _data[offset]; } //TODO look at this warning
 	const char *data() const override;
 
 	uint8 GetByte(size_t offset) const override;
-
 	uint16 GetShort(size_t offset) const override;
-
 	uint32 GetWord(size_t offset) const override;
 
-	uint16 GetShortBE(size_t offset) const override;
-
-	uint32 GetWordBE(size_t offset) const override;
-
 	size_t size() const override;
-
 };
 #endif // AUDIO_SOUNDFONT_RAWFILE_H
