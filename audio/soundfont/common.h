@@ -25,7 +25,9 @@
 #include "common/scummsys.h"
 #include "common/array.h"
 
-enum LoopMeasure { LM_SAMPLES, LM_BYTES };
+enum LoopMeasure {
+	LM_SAMPLES, LM_BYTES
+};
 
 struct Loop {
 	Loop()
@@ -45,19 +47,20 @@ struct Loop {
 };
 
 struct SizeOffsetPair {
-    uint32 size;
-    uint32 offset;
+	uint32 size;
+	uint32 offset;
 
-    SizeOffsetPair() : size(0), offset(0) {}
+	SizeOffsetPair() : size(0), offset(0) {}
 
-    SizeOffsetPair(uint32 offset_, uint32 size_) : size(size_), offset(offset_) {}
+	SizeOffsetPair(uint32 offset_, uint32 size_) : size(size_), offset(offset_) {}
 };
 
-template <class T>
+template<class T>
 void DeleteVect(Common::Array<T *> &array) {
 	for (typename Common::Array<T *>::iterator iter = array.begin(); iter != array.end(); iter++) {
 		delete (*iter);
 	}
 	array.clear();
 }
+
 #endif // AUDIO_SOUNDFONT_COMMON_H

@@ -13,27 +13,27 @@ using namespace std;
 VGMItem::VGMItem() {}
 
 VGMItem::VGMItem(VGMFile *thevgmfile, uint32 theOffset, uint32 theLength, const Common::String theName)
-    : _vgmfile(thevgmfile),
-	  _name(theName),
-	  _dwOffset(theOffset),
-	  _unLength(theLength) {}
+		: _vgmfile(thevgmfile),
+		  _name(theName),
+		  _dwOffset(theOffset),
+		  _unLength(theLength) {}
 
 VGMItem::~VGMItem() {}
 
 RawFile *VGMItem::GetRawFile() {
-    return _vgmfile->_rawfile;
+	return _vgmfile->_rawfile;
 }
 
 uint32 VGMItem::GetBytes(uint32 nIndex, uint32 nCount, void *pBuffer) {
-    return _vgmfile->GetBytes(nIndex, nCount, pBuffer);
+	return _vgmfile->GetBytes(nIndex, nCount, pBuffer);
 }
 
 uint8 VGMItem::GetByte(uint32 offset) {
-    return _vgmfile->GetByte(offset);
+	return _vgmfile->GetByte(offset);
 }
 
 uint16 VGMItem::GetShort(uint32 offset) {
-    return _vgmfile->GetShort(offset);
+	return _vgmfile->GetShort(offset);
 }
 
 //  ****************
@@ -41,30 +41,30 @@ uint16 VGMItem::GetShort(uint32 offset) {
 //  ****************
 
 VGMContainerItem::VGMContainerItem() : VGMItem() {
-    AddContainer(_headers);
-    AddContainer(_localitems);
+	AddContainer(_headers);
+	AddContainer(_localitems);
 }
 
 VGMContainerItem::VGMContainerItem(VGMFile *thevgmfile, uint32 theOffset, uint32 theLength,
-                                   const Common::String theName)
-    : VGMItem(thevgmfile, theOffset, theLength, theName) {
-    AddContainer(_headers);
-    AddContainer(_localitems);
+								   const Common::String theName)
+		: VGMItem(thevgmfile, theOffset, theLength, theName) {
+	AddContainer(_headers);
+	AddContainer(_localitems);
 }
 
 VGMContainerItem::~VGMContainerItem() {
-    DeleteVect(_headers);
-    DeleteVect(_localitems);
+	DeleteVect(_headers);
+	DeleteVect(_localitems);
 }
 
 VGMHeader *VGMContainerItem::AddHeader(uint32 offset, uint32 length, const Common::String &name) {
-    VGMHeader *header = new VGMHeader(this, offset, length, name);
-    _headers.push_back(header);
-    return header;
+	VGMHeader *header = new VGMHeader(this, offset, length, name);
+	_headers.push_back(header);
+	return header;
 }
 
 void VGMContainerItem::AddSimpleItem(uint32 offset, uint32 length, const Common::String &name) {
-    _localitems.push_back(new VGMItem(this->_vgmfile, offset, length, name));
+	_localitems.push_back(new VGMItem(this->_vgmfile, offset, length, name));
 }
 
 // *********
@@ -122,8 +122,8 @@ VGMRgn::VGMRgn(VGMInstr *instr, uint32 offset, uint32 length, Common::String nam
 		: VGMContainerItem(instr->_parInstrSet, offset, length, name),
 		  _keyLow(0),
 		  _keyHigh(127),
-		  _velLow (0),
-		  _velHigh (127),
+		  _velLow(0),
+		  _velHigh(127),
 		  _unityKey(-1),
 		  _fineTune(0),
 		  _sampNum(0),

@@ -11,32 +11,32 @@
 // *******
 
 VGMSamp::VGMSamp(VGMSampColl *sampColl, uint32 offset, uint32 length, uint32 dataOffset,
-                 uint32 dataLen, uint8 nChannels, uint16 theBPS, uint32 theRate,
-                 Common::String theName)
-    : parSampColl(sampColl),
-      sampName(theName),
-      VGMItem(sampColl->_vgmfile, offset, length),
-      dataOff(dataOffset),
-      dataLength(dataLen),
-      bps(theBPS),
-      rate(theRate),
-      ulUncompressedSize(0),
-      channels(nChannels),
-      pan(0),
-      unityKey(-1),
-      fineTune(0),
-      volume(-1),
-      waveType(WT_UNDEFINED),
-      bPSXLoopInfoPrioritizing(false) {
+				 uint32 dataLen, uint8 nChannels, uint16 theBPS, uint32 theRate,
+				 Common::String theName)
+		: parSampColl(sampColl),
+		  sampName(theName),
+		  VGMItem(sampColl->_vgmfile, offset, length),
+		  dataOff(dataOffset),
+		  dataLength(dataLen),
+		  bps(theBPS),
+		  rate(theRate),
+		  ulUncompressedSize(0),
+		  channels(nChannels),
+		  pan(0),
+		  unityKey(-1),
+		  fineTune(0),
+		  volume(-1),
+		  waveType(WT_UNDEFINED),
+		  bPSXLoopInfoPrioritizing(false) {
 	_name = sampName;  // I would do this in the initialization list, but VGMItem()
-                             // constructor is called before sampName is initialized,
-    // so data() ends up returning a bad pointer
+	// constructor is called before sampName is initialized,
+	// so data() ends up returning a bad pointer
 }
 
 VGMSamp::~VGMSamp() {}
 
 double VGMSamp::GetCompressionRatio() {
-    return 1.0;
+	return 1.0;
 }
 
 // ***********

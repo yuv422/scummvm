@@ -20,48 +20,48 @@ class VGMItem;
 class VGMHeader;
 
 class VGMItem {
-   public:
-    VGMItem();
-    VGMItem(VGMFile *thevgmfile, uint32 theOffset, uint32 theLength = 0,
-            const Common::String theName = "");
-    virtual ~VGMItem(void);
+public:
+	VGMItem();
+	VGMItem(VGMFile *thevgmfile, uint32 theOffset, uint32 theLength = 0,
+			const Common::String theName = "");
+	virtual ~VGMItem(void);
 
-   public:
-    RawFile *GetRawFile();
+public:
+	RawFile *GetRawFile();
 
-   protected:
-    // TODO make inline
-    uint32 GetBytes(uint32 nIndex, uint32 nCount, void *pBuffer);
-    uint8 GetByte(uint32 offset);
-    uint16 GetShort(uint32 offset);
+protected:
+	// TODO make inline
+	uint32 GetBytes(uint32 nIndex, uint32 nCount, void *pBuffer);
+	uint8 GetByte(uint32 offset);
+	uint16 GetShort(uint32 offset);
 
-   public:
-    VGMFile *_vgmfile;
-    Common::String _name;
-    uint32 _dwOffset;  // offset in the pDoc data buffer
-    uint32 _unLength;  // num of bytes the event engulfs
+public:
+	VGMFile *_vgmfile;
+	Common::String _name;
+	uint32 _dwOffset;  // offset in the pDoc data buffer
+	uint32 _unLength;  // num of bytes the event engulfs
 };
 
 class VGMContainerItem : public VGMItem {
-   public:
-    VGMContainerItem();
-    VGMContainerItem(VGMFile *thevgmfile, uint32 theOffset, uint32 theLength = 0,
-                     const Common::String theName = "");
-    virtual ~VGMContainerItem(void);
+public:
+	VGMContainerItem();
+	VGMContainerItem(VGMFile *thevgmfile, uint32 theOffset, uint32 theLength = 0,
+					 const Common::String theName = "");
+	virtual ~VGMContainerItem(void);
 
-    VGMHeader *AddHeader(uint32 offset, uint32 length, const Common::String &name = "Header");
+	VGMHeader *AddHeader(uint32 offset, uint32 length, const Common::String &name = "Header");
 
-    void AddSimpleItem(uint32 offset, uint32 length, const Common::String &theName);
+	void AddSimpleItem(uint32 offset, uint32 length, const Common::String &theName);
 
-    template <class T>
-    void AddContainer(Common::Array<T *> &container) {
-        _containers.push_back(reinterpret_cast<Common::Array<VGMItem *> *>(&container));
-    }
+	template<class T>
+	void AddContainer(Common::Array<T *> &container) {
+		_containers.push_back(reinterpret_cast<Common::Array<VGMItem *> *>(&container));
+	}
 
-   public:
-    Common::Array<VGMHeader *> _headers;
-    Common::Array<Common::Array<VGMItem *> *> _containers;
-    Common::Array<VGMItem *> _localitems;
+public:
+	Common::Array<VGMHeader *> _headers;
+	Common::Array<Common::Array<VGMItem *> *> _containers;
+	Common::Array<VGMItem *> _localitems;
 };
 
 class VGMColl;

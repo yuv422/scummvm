@@ -8,12 +8,12 @@
 #include "rawfile.h"
 
 uint32 RawFile::GetBytes(size_t offset, uint32 nCount, void *pBuffer) const {
-    memcpy(pBuffer, data() + offset, nCount);
-    return nCount;
+	memcpy(pBuffer, data() + offset, nCount);
+	return nCount;
 }
 
 const char *MemFile::data() const {
-	return (const char *)_data;
+	return (const char *) _data;
 }
 
 uint8 MemFile::GetByte(size_t offset) const {

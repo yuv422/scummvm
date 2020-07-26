@@ -15,24 +15,24 @@
 class VGMFile;
 
 class RawFile {
-   public:
-    virtual ~RawFile() { };
+public:
+	virtual ~RawFile() {};
 
-    virtual size_t size() const = 0;
+	virtual size_t size() const = 0;
 
-    bool IsValidOffset(uint32 ofs) { return ofs < size(); }
+	bool IsValidOffset(uint32 ofs) { return ofs < size(); }
 
-    const char *begin() const { return data(); }
-    const char *end()  { return data() + size(); }
-    virtual const char *data() const = 0;
+	const char *begin() const { return data(); }
+	const char *end() { return data() + size(); }
+	virtual const char *data() const = 0;
 
-    virtual uint8 GetByte(size_t offset) const = 0;
-    virtual uint16 GetShort(size_t offset) const = 0;
-    virtual uint32 GetWord(size_t offset) const = 0;
+	virtual uint8 GetByte(size_t offset) const = 0;
+	virtual uint16 GetShort(size_t offset) const = 0;
+	virtual uint32 GetWord(size_t offset) const = 0;
 
-    uint32 GetBytes(size_t offset, uint32 nCount, void *pBuffer) const;
+	uint32 GetBytes(size_t offset, uint32 nCount, void *pBuffer) const;
 
-   private:
+private:
 };
 
 class MemFile : public RawFile {
@@ -52,4 +52,5 @@ public:
 
 	size_t size() const override;
 };
+
 #endif // AUDIO_SOUNDFONT_RAWFILE_H
