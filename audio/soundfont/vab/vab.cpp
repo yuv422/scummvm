@@ -140,7 +140,7 @@ bool Vab::GetInstrPointers() {
                 vagLocations.push_back(SizeOffsetPair(vagOffset, vagSize));
                 totalVAGSize += vagSize;
             } else {
-              //TODO  L_WARN("VAG #{} at {:#x} with size {:#x}) is invalid", i + 1, vagOffset, vagSize);
+              debug("VAG #%d at %x with size %x) is invalid", i + 1, vagOffset, vagSize);
             }
         }
 		_unLength = (offVAGOffsets + 2 * 256) - _dwOffset;
@@ -225,7 +225,7 @@ bool VabRgn::LoadRgn() {
 		_sampNum = 0;
 
     if (_keyLow > _keyHigh) {
-       //TODO L_ERROR("Low key higher than high key {} > {} (at {:#x})", keyLow, keyHigh, dwOffset);
+        debug("Low key higher than high key %d > %d (at %x)", _keyLow, _keyHigh, _dwOffset);
         return false;
     }
 
