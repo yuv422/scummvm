@@ -67,10 +67,10 @@ double LinAmpDecayTimeToLinDBDecayTime(double secondsToFullAtten, int linearVolu
 PSXSampColl::PSXSampColl(VGMInstrSet *instrset, uint32 offset,
                          uint32 length, const Common::Array<SizeOffsetPair> &vagLocations)
     : VGMSampColl(instrset->GetRawFile(), instrset, offset, length),
-      vagLocations(vagLocations) {}
+	  _vagLocations(vagLocations) {}
 
 bool PSXSampColl::GetSampleInfo() {
-    if (vagLocations.empty()) {
+    if (_vagLocations.empty()) {
         /*
          * We scan through the sample section, and determine the offsets and size of each sample
          * We do this by searching for series of 16 0x00 value bytes.  These indicate the beginning
@@ -170,8 +170,8 @@ bool PSXSampColl::GetSampleInfo() {
 		_unLength = i - _dwOffset;
     } else {
         uint32 sampleIndex = 0;
-        for (Common::Array<SizeOffsetPair>::iterator it = vagLocations.begin();
-             it != vagLocations.end(); ++it) {
+        for (Common::Array<SizeOffsetPair>::iterator it = _vagLocations.begin();
+			 it != _vagLocations.end(); ++it) {
             uint32 offSampStart = _dwOffset + it->offset;
             uint32 offDataEnd = offSampStart + it->size;
             uint32 offSampEnd = offSampStart;
@@ -206,7 +206,7 @@ PSXSamp::PSXSamp(VGMSampColl *sampColl, uint32 offset, uint32 length, uint32 dat
                  uint32 dataLen, uint8 nChannels, uint16 theBPS, uint32 theRate,
                  Common::String name, bool bSetloopOnConversion)
     : VGMSamp(sampColl, offset, length, dataOffset, dataLen, nChannels, theBPS, theRate, name),
-      bSetLoopOnConversion(bSetloopOnConversion) {
+	  _setLoopOnConversion(bSetloopOnConversion) {
     bPSXLoopInfoPrioritizing = true;
 }
 
@@ -220,7 +220,7 @@ void PSXSamp::ConvertToStdWave(uint8 *buf) {
     f32 prev1 = 0;
     f32 prev2 = 0;
 
-    if (this->bSetLoopOnConversion)
+    if (this->_setLoopOnConversion)
         SetLoopStatus(0);  // loopStatus is initiated to -1.  We should default it now to not loop
 
     bool addrOutOfVirtFile = false;
@@ -241,7 +241,7 @@ void PSXSamp::ConvertToStdWave(uint8 *buf) {
 
         // this can be the loop point, but in wd, this info is stored in the instrset
         theBlock.flag.loop = (GetByte(_dwOffset + k + 1) & 4) > 0;
-        if (this->bSetLoopOnConversion) {
+        if (this->_setLoopOnConversion) {
             if (theBlock.flag.loop) {
                 this->SetLoopOffset(k);
                 this->SetLoopLength(dataLength - k);

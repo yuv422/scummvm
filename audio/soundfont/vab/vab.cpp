@@ -40,8 +40,6 @@ bool Vab::GetHeaderInfo() {
     vabHdr->AddSimpleItem(_dwOffset + 0x1b, 1, "Bank Attributes 2");
     vabHdr->AddSimpleItem(_dwOffset + 0x1c, 4, "Reserved");
 
-    GetBytes(_dwOffset, 0x20, &hdr);
-
     return true;
 }
 
@@ -92,7 +90,7 @@ bool Vab::GetInstrPointers() {
         } else if (numTonesPerInstr != 0) {
             VabInstr *newInstr = new VabInstr(this, offCurrToneAttrs, 0x20 * 16, 0, progIndex);
             _aInstrs.push_back(newInstr);
-            GetBytes(offCurrProg, 0x10, &newInstr->attr);
+            newInstr->_tones = GetByte(offCurrProg + 0);
 
             VGMHeader *progHdr = progsHdr->AddHeader(offCurrProg, 0x10, "Program");
             progHdr->AddSimpleItem(offCurrProg + 0x00, 1, "Number of Tones");
@@ -105,7 +103,7 @@ bool Vab::GetInstrPointers() {
             progHdr->AddSimpleItem(offCurrProg + 0x08, 4, "Reserved");
             progHdr->AddSimpleItem(offCurrProg + 0x0c, 4, "Reserved");
 
-            newInstr->masterVol = GetByte(offCurrProg + 0x01);
+            newInstr->_masterVol = GetByte(offCurrProg + 0x01);
 
             toneAttrsHdr->_unLength = offCurrToneAttrs + (32 * 16) - offToneAttrs;
 
@@ -170,12 +168,12 @@ bool Vab::GetInstrPointers() {
 
 VabInstr::VabInstr(VGMInstrSet *instrSet, uint32 offset, uint32 length, uint32 theBank,
                    uint32 theInstrNum, const Common::String &name)
-    : VGMInstr(instrSet, offset, length, theBank, theInstrNum, name), masterVol(127) {}
+    : VGMInstr(instrSet, offset, length, theBank, theInstrNum, name), _masterVol(127) {}
 
 VabInstr::~VabInstr(void) {}
 
 bool VabInstr::LoadInstr() {
-    int8_t numRgns = attr.tones;
+    int8_t numRgns = _tones;
     for (int i = 0; i < numRgns; i++) {
         VabRgn *rgn = new VabRgn(this, _dwOffset + i * 0x20);
         if (!rgn->LoadRgn()) {
@@ -196,11 +194,10 @@ VabRgn::VabRgn(VabInstr *instr, uint32 offset) : VGMRgn(instr, offset) {}
 bool VabRgn::LoadRgn() {
     VabInstr *instr = (VabInstr *)_parInstr;
 	_unLength = 0x20;
-    GetBytes(_dwOffset, 0x20, &attr);
 
     AddGeneralItem(_dwOffset, 1, "Priority");
     AddGeneralItem(_dwOffset + 1, 1, "Mode (use reverb?)");
-    AddVolume((GetByte(_dwOffset + 2) * instr->masterVol) / (127.0 * 127.0), _dwOffset + 2, 1);
+    AddVolume((GetByte(_dwOffset + 2) * instr->_masterVol) / (127.0 * 127.0), _dwOffset + 2, 1);
     AddPan(GetByte(_dwOffset + 3), _dwOffset + 3);
     AddUnityKey(GetByte(_dwOffset + 4), _dwOffset + 4);
     AddGeneralItem(_dwOffset + 5, 1, "Pitch Tune");
@@ -222,8 +219,8 @@ bool VabRgn::LoadRgn() {
     AddGeneralItem(_dwOffset + 26, 2, "Reserved");
     AddGeneralItem(_dwOffset + 28, 2, "Reserved");
     AddGeneralItem(_dwOffset + 30, 2, "Reserved");
-    ADSR1 = attr.adsr1;
-    ADSR2 = attr.adsr2;
+	_ADSR1 = GetShort(_dwOffset + 16);
+	_ADSR2 = GetShort(_dwOffset + 18);
     if ((int)_sampNum < 0)
 		_sampNum = 0;
 
@@ -241,6 +238,6 @@ bool VabRgn::LoadRgn() {
     double cents = ft * 100.0 / 128.0;
     SetFineTune((int16_t)cents);
 
-    PSXConvADSR<VabRgn>(this, ADSR1, ADSR2, false);
+    PSXConvADSR<VabRgn>(this, _ADSR1, _ADSR2, false);
     return true;
 }

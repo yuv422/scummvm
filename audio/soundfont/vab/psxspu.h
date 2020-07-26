@@ -377,7 +377,7 @@ class PSXSampColl : public VGMSampColl {
     GetSampleInfo();  // retrieve sample info, including pointers to data, # channels, rate, etc.
 
    protected:
-    Common::Array<SizeOffsetPair> vagLocations;
+    Common::Array<SizeOffsetPair> _vagLocations;
 };
 
 class PSXSamp : public VGMSamp {
@@ -397,7 +397,7 @@ class PSXSamp : public VGMSamp {
 
    public:
 
-    bool bSetLoopOnConversion;
+    bool _setLoopOnConversion;
 };
 
 #endif // AUDIO_SOUNDFONT_PSXSPU_H
