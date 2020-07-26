@@ -439,8 +439,7 @@ SF2File::SF2File(SynthFile *synthfile) : RiffFile(synthfile->name, "sfbk") {
 SF2File::~SF2File(void) {}
 
 const void *SF2File::SaveToMem() {
-    uint32 size = this->GetSize();
-    uint8 *buf = new uint8[size];
+    uint8 *buf = new uint8[this->GetSize()];
     this->Write(buf);
     return buf;
 }

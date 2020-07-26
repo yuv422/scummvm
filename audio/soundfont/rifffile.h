@@ -76,7 +76,7 @@ class RIFFChunk : public ListTypeChunk {
 ////////////////////////////////////////////////////////////////////////////
 class LISTChunk : public ListTypeChunk {
    public:
-    LISTChunk(Common::String type) : ListTypeChunk("LIST", type) {}
+    LISTChunk(Common::String theType) : ListTypeChunk("LIST", theType) {}
 };
 
 ////////////////////////////////////////////////////////////////////////////

@@ -542,7 +542,7 @@ Common::SeekableReadStream *SoundManager::loadSoundFont() {
 	free(bodyData);
 
 	MemFile *memFile = new MemFile(vabData, headSize + bodySize);
-	debug("Loaded vab file size: %d", memFile->size());
+	debug("Loaded vab file size: %lu", memFile->size());
 	Vab *vab = new Vab(memFile, 0);
 	vab->LoadVGMFile();
 	VGMColl vabCollection;

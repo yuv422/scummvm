@@ -163,7 +163,7 @@ SynthFile *VGMColl::CreateSynthFile(VGMInstrSet *theInstrSet) {
                     }
                     if (!bFoundIt) {
                         debug("Failed matching region to a sample with offset %X (Instrset "
-                                "%d, Instr %d, Region %d)",
+                                "%lu, Instr %lu, Region %d)",
                                 rgn->sampOffset, inst, i, j);
                         realSampNum = 0;
                     }
@@ -192,7 +192,7 @@ SynthFile *VGMColl::CreateSynthFile(VGMInstrSet *theInstrSet) {
                 newRgn->SetWaveLinkInfo(0, 0, 1, (uint32)realSampNum);
 
                 if (realSampNum >= finalSamps.size()) {
-                    debug("Sample %d does not exist", realSampNum);
+                    debug("Sample %lu does not exist", realSampNum);
                     realSampNum = finalSamps.size() - 1;
                 }
 
