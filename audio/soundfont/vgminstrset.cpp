@@ -14,10 +14,10 @@ using namespace std;
 // VGMInstrSet
 // ***********
 
-VGMInstrSet::VGMInstrSet(const Common::String &format, /*FmtID fmtID,*/
-                         RawFile *file, uint32 offset, uint32 length, Common::String name,
+VGMInstrSet::VGMInstrSet(const Common::String &theFormat, /*FmtID fmtID,*/
+                         RawFile *file, uint32 offset, uint32 length, Common::String theName,
                          VGMSampColl *theSampColl)
-    : VGMFile(format, file, offset, length, name),
+    : VGMFile(theFormat, file, offset, length, theName),
       sampColl(theSampColl) {
     AddContainer<VGMInstr>(aInstrs);
 }

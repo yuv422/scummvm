@@ -10,17 +10,15 @@
 
 using namespace std;
 
-VGMItem::VGMItem() : color(0) {}
+VGMItem::VGMItem() {}
 
-VGMItem::VGMItem(VGMFile *thevgmfile, uint32 theOffset, uint32 theLength, const Common::String theName,
-                 uint8 theColor)
+VGMItem::VGMItem(VGMFile *thevgmfile, uint32 theOffset, uint32 theLength, const Common::String theName)
     : vgmfile(thevgmfile),
       name(theName),
       dwOffset(theOffset),
-      unLength(theLength),
-      color(theColor) {}
+      unLength(theLength) {}
 
-VGMItem::~VGMItem(void) {}
+VGMItem::~VGMItem() {}
 
 RawFile *VGMItem::GetRawFile() {
     return vgmfile->rawfile;
@@ -48,8 +46,8 @@ VGMContainerItem::VGMContainerItem() : VGMItem() {
 }
 
 VGMContainerItem::VGMContainerItem(VGMFile *thevgmfile, uint32 theOffset, uint32 theLength,
-                                   const Common::String theName, uint8 color)
-    : VGMItem(thevgmfile, theOffset, theLength, theName, color) {
+                                   const Common::String theName)
+    : VGMItem(thevgmfile, theOffset, theLength, theName) {
     AddContainer(headers);
     AddContainer(localitems);
 }
@@ -66,7 +64,7 @@ VGMHeader *VGMContainerItem::AddHeader(uint32 offset, uint32 length, const Commo
 }
 
 void VGMContainerItem::AddSimpleItem(uint32 offset, uint32 length, const Common::String &name) {
-    localitems.push_back(new VGMItem(this->vgmfile, offset, length, name, CLR_HEADER));
+    localitems.push_back(new VGMItem(this->vgmfile, offset, length, name));
 }
 
 // *********
@@ -132,7 +130,6 @@ VGMRgn::VGMRgn(VGMInstr *instr, uint32 offset, uint32 length, Common::String nam
 		unityKey(-1),
 		fineTune(0),
 		sampNum(0),
-		sampOffset(-1),
 		sampCollPtr(nullptr),
 		volume(-1),
 		pan(0.5),

@@ -99,7 +99,7 @@ SynthFile *VGMColl::CreateSynthFile(VGMInstrSet *theInstrSet) {
     Common::Array<VGMSamp *> finalSamps;
     Common::Array<VGMSampColl *> finalSampColls;
 
-	for (int i = 0; i < instrsets.size(); i++) {
+	for (uint32 i = 0; i < instrsets.size(); i++) {
 		VGMSampColl *instrset_sampcoll = instrsets[i]->sampColl;
 		if (instrset_sampcoll) {
 			finalSampColls.push_back(instrset_sampcoll);
@@ -141,36 +141,7 @@ SynthFile *VGMColl::CreateSynthFile(VGMInstrSet *theInstrSet) {
                 }
 
                 // Determine the sample number within the rgn's associated SampColl
-                size_t realSampNum;
-                // If a sample offset is provided, then find the sample number based on this offset.
-                // see sampOffset declaration in header file for more info.
-                if (rgn->sampOffset != -1) {
-                    bool bFoundIt = false;
-                    for (uint32 s = 0; s < sampColl->samples.size(); s++) {  // for every sample
-                        if (rgn->sampOffset == sampColl->samples[s]->dwOffset - sampColl->dwOffset -
-                                                   sampColl->sampDataOffset) {
-                            realSampNum = s;
-
-                            // samples[m]->loop.loopStart =
-                            // parInstrSet->aInstrs[i]->aRgns[k]->loop.loopStart;
-                            // samples[m]->loop.loopLength = (samples[m]->dataLength) -
-                            // (parInstrSet->aInstrs[i]->aRgns[k]->loop.loopStart);
-                            // //[aInstrs[i]->aRegions[k]->sample_num]->dwUncompSize/2) -
-                            // ((aInstrs[i]->aRegions[k]->loop_point*28)/16); //to end of sample
-                            bFoundIt = true;
-                            break;
-                        }
-                    }
-                    if (!bFoundIt) {
-                        debug("Failed matching region to a sample with offset %X (Instrset "
-                                "%lu, Instr %lu, Region %d)",
-                                rgn->sampOffset, inst, i, j);
-                        realSampNum = 0;
-                    }
-                }
-                // Otherwise, the sample number should be explicitly defined in the rgn.
-                else
-                    realSampNum = rgn->sampNum;
+                size_t realSampNum = rgn->sampNum;
 
                 // Determine the sampCollNum (index into our finalSampColls vector)
                 size_t sampCollNum = finalSampColls.size();

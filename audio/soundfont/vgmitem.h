@@ -12,10 +12,6 @@
 #include "rawfile.h"
 #include "synthfile.h"
 
-enum EventColors {
-    CLR_HEADER
-};
-
 class RawFile;
 
 //template <class T>
@@ -27,7 +23,7 @@ class VGMItem {
    public:
     VGMItem();
     VGMItem(VGMFile *thevgmfile, uint32 theOffset, uint32 theLength = 0,
-            const Common::String theName = "", uint8 color = 0);
+            const Common::String theName = "");
     virtual ~VGMItem(void);
 
    public:
@@ -40,7 +36,6 @@ class VGMItem {
     uint16 GetShort(uint32 offset);
 
    public:
-    uint8 color;
     VGMFile *vgmfile;
     Common::String name;
     uint32 dwOffset;  // offset in the pDoc data buffer
@@ -51,7 +46,7 @@ class VGMContainerItem : public VGMItem {
    public:
     VGMContainerItem();
     VGMContainerItem(VGMFile *thevgmfile, uint32 theOffset, uint32 theLength = 0,
-                     const Common::String theName = "", uint8 color = CLR_HEADER);
+                     const Common::String theName = "");
     virtual ~VGMContainerItem(void);
 
     VGMHeader *AddHeader(uint32 offset, uint32 length, const Common::String &name = "Header");
@@ -157,7 +152,6 @@ public:
 	Loop loop;
 
 	int sampNum;
-	uint32 sampOffset; /* Offset wrt whatever collection of samples we have */
 	VGMSampColl *sampCollPtr;
 
 	double volume;        /* Percentage of full volume */
