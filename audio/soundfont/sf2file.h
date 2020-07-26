@@ -262,7 +262,7 @@ struct sfInstBag {
     uint16 wInstModNdx;
 };
 
-typedef enum : uint16 {
+typedef enum {
     monoSample = 1,
     rightSample = 2,
     leftSample = 4,
@@ -271,7 +271,9 @@ typedef enum : uint16 {
     RomRightSample = 0x8002,
     RomLeftSample = 0x8004,
     RomLinkedSample = 0x8008
-} SFSampleLink;
+} SFSampleLinkType;
+
+typedef uint16 SFSampleLink;
 
 struct sfSample {
     char achSampleName[20];

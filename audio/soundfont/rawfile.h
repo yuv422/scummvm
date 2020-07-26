@@ -16,7 +16,7 @@ class VGMFile;
 
 class RawFile {
    public:
-    virtual ~RawFile() = default;
+    virtual ~RawFile() { };
 
     virtual size_t size() const = 0;
 
@@ -46,7 +46,7 @@ private:
 
 public:
 	MemFile(const byte *data, uint32 size);
-	~MemFile();
+	~MemFile() override;
 
 	const char &operator[](size_t offset) const override { return _data[offset]; } //TODO look at this warning
 	const char *data() const override;

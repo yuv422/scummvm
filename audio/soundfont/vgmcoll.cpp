@@ -27,14 +27,6 @@ double ConvertPercentAmplitudeToAttenDB_SF2(double percent) {
 	return MIN(-atten, 100.0);
 }
 
-VGMColl::VGMColl(Common::String theName) : VGMItem(), name(std::move(theName)) {}
-
-void VGMColl::AddInstrSet(VGMInstrSet *theInstrSet) {
-    if (theInstrSet != nullptr) {
-        instrsets.push_back(theInstrSet);
-    }
-}
-
 void VGMColl::UnpackSampColl(SynthFile &synthfile, VGMSampColl *sampColl,
                              Common::Array<VGMSamp *> &finalSamps) {
     assert(sampColl != nullptr);
@@ -81,10 +73,10 @@ void VGMColl::UnpackSampColl(SynthFile &synthfile, VGMSampColl *sampColl,
     }
 }
 
-SF2File *VGMColl::CreateSF2File() {
-    SynthFile *synthfile = CreateSynthFile();
+SF2File *VGMColl::CreateSF2File(VGMInstrSet *theInstrSet) {
+    SynthFile *synthfile = CreateSynthFile(theInstrSet);
     if (!synthfile) {
-        debug("SF2 conversion for '%s' aborted", name.c_str());
+        debug("SF2 conversion aborted");
         return nullptr;
     }
 
@@ -93,9 +85,11 @@ SF2File *VGMColl::CreateSF2File() {
     return sf2file;
 }
 
-SynthFile *VGMColl::CreateSynthFile() {
+SynthFile *VGMColl::CreateSynthFile(VGMInstrSet *theInstrSet) {
+	Common::Array<VGMInstrSet *> instrsets;
+	instrsets.push_back(theInstrSet);
     if (instrsets.empty()) {
-        debug("%s has no instruments", name.c_str());
+        debug("No instruments found.");
         return nullptr;
     }
 
@@ -105,24 +99,16 @@ SynthFile *VGMColl::CreateSynthFile() {
     Common::Array<VGMSamp *> finalSamps;
     Common::Array<VGMSampColl *> finalSampColls;
 
-    /* Grab samples either from the local sampcolls or from the instrument sets */
-    if (!sampcolls.empty()) {
-        for (int sam = 0; sam < sampcolls.size(); sam++) {
-            finalSampColls.push_back(sampcolls[sam]);
-            UnpackSampColl(*synthfile, sampcolls[sam], finalSamps);
-        }
-    } else {
-        for (int i = 0; i < instrsets.size(); i++) {
-            VGMSampColl *instrset_sampcoll = instrsets[i]->sampColl;
-            if (instrset_sampcoll) {
-                finalSampColls.push_back(instrset_sampcoll);
-                UnpackSampColl(*synthfile, instrset_sampcoll, finalSamps);
-            }
-        }
-    }
+	for (int i = 0; i < instrsets.size(); i++) {
+		VGMSampColl *instrset_sampcoll = instrsets[i]->sampColl;
+		if (instrset_sampcoll) {
+			finalSampColls.push_back(instrset_sampcoll);
+			UnpackSampColl(*synthfile, instrset_sampcoll, finalSamps);
+		}
+	}
 
     if (finalSamps.empty()) {
-        debug("No sample collection present for '%s'", name.c_str());
+        debug("No sample collection present");
         delete synthfile;
         return nullptr;
     }

@@ -131,8 +131,6 @@ class VGMSampColl;
 class VGMRgn : public VGMContainerItem {
 public:
 	VGMRgn(VGMInstr *instr, uint32 offset, uint32 length = 0, Common::String name = "Region");
-	VGMRgn(VGMInstr *instr, uint32 offset, uint32 length, uint8 keyLow, uint8 keyHigh,
-		   uint8 velLow, uint8 velHigh, int sampNum, Common::String name = "Region");
 	~VGMRgn();
 
 	virtual bool LoadRgn() { return true; }

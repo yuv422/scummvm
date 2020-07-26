@@ -124,20 +124,26 @@ VGMHeader::~VGMHeader() {}
 // ******
 
 VGMRgn::VGMRgn(VGMInstr *instr, uint32 offset, uint32 length, Common::String name)
-		: VGMContainerItem(instr->parInstrSet, offset, length, name), parInstr(instr) {
-	AddContainer<VGMRgnItem>(items);
-}
-
-VGMRgn::VGMRgn(VGMInstr *instr, uint32 offset, uint32 length, uint8 theKeyLow,
-			   uint8 theKeyHigh, uint8 theVelLow, uint8 theVelHigh, int theSampNum,
-			   Common::String name)
 		: VGMContainerItem(instr->parInstrSet, offset, length, name),
-		  parInstr(instr),
-		  keyLow(theKeyLow),
-		  keyHigh(theKeyHigh),
-		  velLow(theVelLow),
-		  velHigh(theVelHigh),
-		  sampNum(theSampNum) {
+		keyLow(0),
+		keyHigh(127),
+		velLow (0),
+		velHigh (127),
+		unityKey(-1),
+		fineTune(0),
+		sampNum(0),
+		sampOffset(-1),
+		sampCollPtr(nullptr),
+		volume(-1),
+		pan(0.5),
+		attack_time(0),
+		decay_time(0),
+		release_time(0),
+		sustain_level(-1),
+		sustain_time(0),
+		attack_transform(no_transform),
+		release_transform(no_transform),
+		parInstr(instr) {
 	AddContainer<VGMRgnItem>(items);
 }
 

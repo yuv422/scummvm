@@ -545,14 +545,12 @@ Common::SeekableReadStream *SoundManager::loadSoundFont() {
 	debug("Loaded vab file size: %d", memFile->size());
 	Vab *vab = new Vab(memFile, 0);
 	vab->LoadVGMFile();
-	VGMColl *vabCollection = new VGMColl("");
-	vabCollection->AddInstrSet(vab);
-	SF2File *file = vabCollection->CreateSF2File();
+	VGMColl vabCollection;
+	SF2File *file = vabCollection.CreateSF2File(vab);
 	const byte *bytes = (const byte *)file->SaveToMem();
 	uint32 size = file->GetSize();
 
 	delete file;
-	delete vabCollection;
 	delete vab;
 	delete memFile;
 //	Common::DumpFile *dumpFile = new Common::DumpFile();
