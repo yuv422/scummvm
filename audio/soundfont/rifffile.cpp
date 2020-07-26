@@ -46,10 +46,10 @@ Chunk *ListTypeChunk::AddChildChunk(Chunk *ck) {
 }
 
 uint32 ListTypeChunk::GetSize() {
-    uint32 size = 12;  // id + size + "LIST"
+    uint32 listChunkSize = 12;  // id + size + "LIST"
     for (Common::List<Chunk *>::iterator iter = this->childChunks.begin(); iter != childChunks.end(); iter++)
-        size += (*iter)->GetSize();
-    return GetPaddedSize(size);
+		listChunkSize += (*iter)->GetSize();
+    return GetPaddedSize(listChunkSize);
 }
 
 void ListTypeChunk::Write(uint8 *buffer) {
@@ -62,15 +62,15 @@ void ListTypeChunk::Write(uint8 *buffer) {
         bufOffset += (*iter)->GetSize();
     }
 
-    uint32 size = bufOffset;
-    uint32 padsize = GetPaddedSize(size) - size;
+    uint32 unpaddedSize = bufOffset;
+    uint32 padsize = GetPaddedSize(unpaddedSize) - unpaddedSize;
     *(uint32 *)(buffer + 4) =
-        size + padsize - 8;  // Microsoft says the chunkSize doesn't contain padding size, but many
+			unpaddedSize + padsize - 8;  // Microsoft says the chunkSize doesn't contain padding size, but many
                              // software cannot handle the alignment.
 
     // Add pad byte
     if (padsize != 0) {
-        memset(data + size, 0, padsize);
+        memset(data + unpaddedSize, 0, padsize);
     }
 }
 

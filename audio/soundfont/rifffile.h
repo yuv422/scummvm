@@ -37,7 +37,7 @@ class Chunk {
     virtual void Write(uint8 *buffer);
 
    protected:
-    static inline uint32 GetPaddedSize(uint32 size) { return size + (size % 2); }
+    static inline uint32 GetPaddedSize(uint32 originalSize) { return originalSize + (originalSize % 2); }
 };
 
 ////////////////////////////////////////////////////////////////////////////
