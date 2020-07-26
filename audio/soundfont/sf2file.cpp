@@ -126,8 +126,6 @@ SF2File::SF2File(SynthFile *synthfile) : RiffFile(synthfile->name, "sfbk") {
     pbagCk->size = (uint32)((numInstrs + 1) * sizeof(sfPresetBag));
     pbagCk->data = new uint8[pbagCk->size];
     for (size_t i = 0; i < numInstrs; i++) {
-        SynthInstr *instr = synthfile->vInstrs[i];
-
         sfPresetBag presetBag;
         memset(&presetBag, 0, sizeof(sfPresetBag));
         presetBag.wGenNdx = (uint16)(i * ITEMS_IN_PGEN);
@@ -167,8 +165,6 @@ SF2File::SF2File(SynthFile *synthfile) : RiffFile(synthfile->name, "sfbk") {
     pgenCk->data = new uint8[pgenCk->size];
     uint32 dataPtr = 0;
     for (size_t i = 0; i < numInstrs; i++) {
-        SynthInstr *instr = synthfile->vInstrs[i];
-
         sfGenList genList;
         memset(&genList, 0, sizeof(sfGenList));
 
@@ -221,11 +217,11 @@ SF2File::SF2File(SynthFile *synthfile) : RiffFile(synthfile->name, "sfbk") {
     //***********
     Chunk *ibagCk = new Chunk("ibag");
 
-    size_t numRgns = 0;
+    size_t totalNumRgns = 0;
     for (size_t i = 0; i < numInstrs; i++)
-        numRgns += synthfile->vInstrs[i]->vRgns.size();
+		totalNumRgns += synthfile->vInstrs[i]->vRgns.size();
 
-    ibagCk->size = (uint32)((numRgns + 1) * sizeof(sfInstBag));
+    ibagCk->size = (uint32)((totalNumRgns + 1) * sizeof(sfInstBag));
     ibagCk->data = new uint8[ibagCk->size];
 
     rgnCounter = 0;
@@ -235,7 +231,6 @@ SF2File::SF2File(SynthFile *synthfile) : RiffFile(synthfile->name, "sfbk") {
 
         size_t numRgns = instr->vRgns.size();
         for (size_t j = 0; j < numRgns; j++) {
-            SynthRgn *rgn = instr->vRgns[j];
             sfInstBag instBag;
             memset(&instBag, 0, sizeof(sfInstBag));
             instBag.wInstGenNdx = instGenCounter;
@@ -266,7 +261,7 @@ SF2File::SF2File(SynthFile *synthfile) : RiffFile(synthfile->name, "sfbk") {
     // igen chunk
     //***********
     Chunk *igenCk = new Chunk("igen");
-    igenCk->size = (uint32)((numRgns * sizeof(sfInstGenList) * 11) + sizeof(sfInstGenList));
+    igenCk->size = (uint32)((totalNumRgns * sizeof(sfInstGenList) * 11) + sizeof(sfInstGenList));
     igenCk->data = new uint8[igenCk->size];
     dataPtr = 0;
     for (size_t i = 0; i < numInstrs; i++) {
@@ -377,7 +372,7 @@ SF2File::SF2File(SynthFile *synthfile) : RiffFile(synthfile->name, "sfbk") {
     sfInstGenList instGenList;
     memset(&instGenList, 0, sizeof(sfInstGenList));
     memcpy(igenCk->data + dataPtr, &instGenList, sizeof(sfInstGenList));
-    // memset(ibagCk->data + (numRgns*sizeof(sfInstBag)), 0, sizeof(sfInstBag));
+    // memset(ibagCk->data + (totalNumRgns*sizeof(sfInstBag)), 0, sizeof(sfInstBag));
     // igenCk->SetData(&genList, sizeof(sfGenList));
     pdtaCk->AddChildChunk(igenCk);
 

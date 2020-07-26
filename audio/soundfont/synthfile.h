@@ -69,16 +69,18 @@ class SynthInstr {
 
 class SynthRgn {
    public:
-    SynthRgn(void) : sampinfo(NULL), art(NULL) {}
-    SynthRgn(uint16 keyLow, uint16 keyHigh, uint16 velLow, uint16 velHigh)
-        : usKeyLow(keyLow),
-          usKeyHigh(keyHigh),
-          usVelLow(velLow),
-          usVelHigh(velHigh),
+    SynthRgn()
+        : usKeyLow(0),
+          usKeyHigh(0),
+          usVelLow(0),
+          usVelHigh(0),
           sampinfo(NULL),
-          art(NULL) {}
-    SynthRgn(uint16 keyLow, uint16 keyHigh, uint16 velLow, uint16 velHigh, SynthArt &art);
-    ~SynthRgn(void);
+          art(NULL),
+          fusOptions(0),
+		  usPhaseGroup(0),
+		  channel(0),
+		  tableIndex(0) {}
+    ~SynthRgn();
 
     SynthArt *AddArt(void);
     SynthArt *AddArt(Common::Array<SynthConnectionBlock *> connBlocks);
@@ -106,8 +108,8 @@ class SynthRgn {
 
 class SynthArt {
    public:
-    SynthArt(void) {}
-    ~SynthArt(void);
+    SynthArt() {}
+    ~SynthArt();
 
     void AddADSR(double attack, Transform atk_transform, double decay, double sustain_lev,
                  double sustain_time, double release_time, Transform rls_transform);
@@ -131,7 +133,7 @@ class SynthArt {
 
 class SynthSampInfo {
    public:
-    SynthSampInfo(void) {}
+    SynthSampInfo() {}
     SynthSampInfo(uint16 unityNote, int16 fineTune, double atten, int8 sampleLoops,
                   uint32 loopType, uint32 loopStart, uint32 loopLength)
         : usUnityNote(unityNote),
@@ -141,7 +143,7 @@ class SynthSampInfo {
           ulLoopType(loopType),
           ulLoopStart(loopStart),
           ulLoopLength(loopLength) {}
-    ~SynthSampInfo(void) {}
+    ~SynthSampInfo() {}
 
     void SetLoopInfo(Loop &loop, VGMSamp *samp);
     // void SetPitchInfo(uint16 unityNote, int16 fineTune, double attenuation);

@@ -28,8 +28,8 @@ SynthInstr *SynthFile::AddInstr(uint32 bank, uint32 instrNum) {
     return vInstrs.back();
 }
 
-SynthInstr *SynthFile::AddInstr(uint32 bank, uint32 instrNum, Common::String name) {
-    vInstrs.insert(vInstrs.end(), new SynthInstr(bank, instrNum, name));
+SynthInstr *SynthFile::AddInstr(uint32 bank, uint32 instrNum, Common::String instrName) {
+    vInstrs.insert(vInstrs.end(), new SynthInstr(bank, instrNum, instrName));
     return vInstrs.back();
 }
 
@@ -37,10 +37,10 @@ void SynthFile::DeleteInstr(uint32 bank, uint32 instrNum) {}
 
 SynthWave *SynthFile::AddWave(uint16 formatTag, uint16 channels, int samplesPerSec,
                               int aveBytesPerSec, uint16 blockAlign, uint16 bitsPerSample,
-                              uint32 waveDataSize, unsigned char *waveData, Common::String name) {
+                              uint32 waveDataSize, unsigned char *waveData, Common::String WaveName) {
     vWaves.insert(vWaves.end(),
                   new SynthWave(formatTag, channels, samplesPerSec, aveBytesPerSec, blockAlign,
-                                bitsPerSample, waveDataSize, waveData, name));
+                                bitsPerSample, waveDataSize, waveData, WaveName));
     return vWaves.back();
 }
 
@@ -123,7 +123,6 @@ void SynthRgn::SetWaveLinkInfo(uint16 options, uint16 phaseGroup, uint32 theChan
 //  ********
 
 SynthArt::~SynthArt() {
-    // DeleteVect(vConnBlocks);
 }
 
 void SynthArt::AddADSR(double attack, Transform atk_transform, double decay, double sustain_level,
