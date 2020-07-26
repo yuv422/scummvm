@@ -14,17 +14,16 @@ using namespace std;
 // VGMInstrSet
 // ***********
 
-VGMInstrSet::VGMInstrSet(const Common::String &theFormat, /*FmtID fmtID,*/
-                         RawFile *file, uint32 offset, uint32 length, Common::String theName,
+VGMInstrSet::VGMInstrSet(RawFile *file, uint32 offset, uint32 length, Common::String theName,
                          VGMSampColl *theSampColl)
-    : VGMFile(theFormat, file, offset, length, theName),
-      sampColl(theSampColl) {
-    AddContainer<VGMInstr>(aInstrs);
+    : VGMFile(file, offset, length, theName),
+	  _sampColl(theSampColl) {
+    AddContainer<VGMInstr>(_aInstrs);
 }
 
 VGMInstrSet::~VGMInstrSet() {
-    DeleteVect<VGMInstr>(aInstrs);
-    delete sampColl;
+    DeleteVect<VGMInstr>(_aInstrs);
+    delete _sampColl;
 }
 
 bool VGMInstrSet::Load() {
@@ -35,11 +34,11 @@ bool VGMInstrSet::Load() {
     if (!LoadInstrs())
         return false;
 
-    if (aInstrs.size() == 0)
+    if (_aInstrs.size() == 0)
         return false;
 
-    if (sampColl != NULL) {
-        if (!sampColl->Load()) {
+    if (_sampColl != NULL) {
+        if (!_sampColl->Load()) {
           error("Failed to load VGMSampColl");
         }
     }
@@ -56,9 +55,9 @@ bool VGMInstrSet::GetInstrPointers() {
 }
 
 bool VGMInstrSet::LoadInstrs() {
-    size_t nInstrs = aInstrs.size();
+    size_t nInstrs = _aInstrs.size();
     for (size_t i = 0; i < nInstrs; i++) {
-        if (!aInstrs[i]->LoadInstr())
+        if (!_aInstrs[i]->LoadInstr())
             return false;
     }
     return true;
@@ -71,14 +70,14 @@ bool VGMInstrSet::LoadInstrs() {
 VGMInstr::VGMInstr(VGMInstrSet *instrSet, uint32 offset, uint32 length, uint32 theBank,
                    uint32 theInstrNum, const Common::String &name)
     : VGMContainerItem(instrSet, offset, length, name),
-      parInstrSet(instrSet),
-      bank(theBank),
-      instrNum(theInstrNum) {
-    AddContainer<VGMRgn>(aRgns);
+	  _parInstrSet(instrSet),
+	  _bank(theBank),
+	  _instrNum(theInstrNum) {
+    AddContainer<VGMRgn>(_aRgns);
 }
 
 VGMInstr::~VGMInstr() {
-    DeleteVect<VGMRgn>(aRgns);
+    DeleteVect<VGMRgn>(_aRgns);
 }
 
 bool VGMInstr::LoadInstr() {

@@ -36,10 +36,10 @@ class VGMItem {
     uint16 GetShort(uint32 offset);
 
    public:
-    VGMFile *vgmfile;
-    Common::String name;
-    uint32 dwOffset;  // offset in the pDoc data buffer
-    uint32 unLength;  // num of bytes the event engulfs
+    VGMFile *_vgmfile;
+    Common::String _name;
+    uint32 _dwOffset;  // offset in the pDoc data buffer
+    uint32 _unLength;  // num of bytes the event engulfs
 };
 
 class VGMContainerItem : public VGMItem {
@@ -55,13 +55,13 @@ class VGMContainerItem : public VGMItem {
 
     template <class T>
     void AddContainer(Common::Array<T *> &container) {
-        containers.push_back(reinterpret_cast<Common::Array<VGMItem *> *>(&container));
+        _containers.push_back(reinterpret_cast<Common::Array<VGMItem *> *>(&container));
     }
 
    public:
-    Common::Array<VGMHeader *> headers;
-    Common::Array<Common::Array<VGMItem *> *> containers;
-    Common::Array<VGMItem *> localitems;
+    Common::Array<VGMHeader *> _headers;
+    Common::Array<Common::Array<VGMItem *> *> _containers;
+    Common::Array<VGMItem *> _localitems;
 };
 
 class VGMColl;
@@ -70,7 +70,7 @@ class VGMFile : public VGMContainerItem {
 public:
 
 public:
-	VGMFile(const Common::String &format, RawFile *theRawFile, uint32 offset, uint32 length = 0,
+	VGMFile(RawFile *theRawFile, uint32 offset, uint32 length = 0,
 			Common::String theName = "VGM File");
 	virtual ~VGMFile();
 
@@ -79,29 +79,24 @@ public:
 
 	RawFile *GetRawFile();
 
-	size_t size() const { return unLength; }
-	Common::String name() const { return m_name; }
+	size_t size() const { return _unLength; }
+	Common::String name() const { return _name; }
 
 	uint32 GetBytes(uint32 nIndex, uint32 nCount, void *pBuffer);
 
-	inline uint8 GetByte(uint32 offset) const { return rawfile->GetByte(offset); }
-	inline uint16 GetShort(uint32 offset) const { return rawfile->GetShort(offset); }
-	inline uint32 GetWord(uint32 offset) const { return rawfile->GetWord(offset); }
+	inline uint8 GetByte(uint32 offset) const { return _rawfile->GetByte(offset); }
+	inline uint16 GetShort(uint32 offset) const { return _rawfile->GetShort(offset); }
+	inline uint32 GetWord(uint32 offset) const { return _rawfile->GetWord(offset); }
 	/*
 	 * For whatever reason, you can create null-length VGMItems.
 	 * The only safe way for now is to
 	 * assume maximum length
 	 */
-	size_t GetEndOffset() { return rawfile->size(); }
+	size_t GetEndOffset() { return _rawfile->size(); }
 
-	const char *data() const { return rawfile->data() + dwOffset; }
+	const char *data() const { return _rawfile->data() + _dwOffset; }
 
-	RawFile *rawfile;
-
-protected:
-	Common::String format;
-	uint32 id;
-	Common::String m_name;
+	RawFile *_rawfile;
 };
 
 // *********
@@ -131,7 +126,7 @@ public:
 	virtual bool LoadRgn() { return true; }
 
 	void AddGeneralItem(uint32 offset, uint32 length, const Common::String &name);
-	void SetFineTune(int16_t relativePitchCents) { fineTune = relativePitchCents; }
+	void SetFineTune(int16_t relativePitchCents) { _fineTune = relativePitchCents; }
 	void SetPan(uint8 pan);
 	void AddPan(uint8 pan, uint32 offset, uint32 length = 1);
 	void AddVolume(double volume, uint32 offset, uint32 length = 1);
@@ -140,32 +135,32 @@ public:
 	void AddKeyHigh(uint8 keyHigh, uint32 offset, uint32 length = 1);
 	void AddSampNum(int sampNum, uint32 offset, uint32 length = 1);
 
-	VGMInstr *parInstr;
-	uint8 keyLow;
-	uint8 keyHigh;
-	uint8 velLow;
-	uint8 velHigh;
+	VGMInstr *_parInstr;
+	uint8 _keyLow;
+	uint8 _keyHigh;
+	uint8 _velLow;
+	uint8 _velHigh;
 
-	int8_t unityKey;
-	short fineTune;
+	int8_t _unityKey;
+	short _fineTune;
 
-	Loop loop;
+	Loop _loop;
 
-	int sampNum;
-	VGMSampColl *sampCollPtr;
+	int _sampNum;
+	VGMSampColl *_sampCollPtr;
 
-	double volume;        /* Percentage of full volume */
-	double pan;           /* Left 0 <- 0.5 Center -> 1 Right */
-	double attack_time;   /* In seconds */
-	double decay_time;    /* In seconds */
-	double release_time;  /* In seconds */
-	double sustain_level; /* Percentage */
-	double sustain_time;  /* In seconds (no positive rate!) */
+	double _volume;        /* Percentage of full volume */
+	double _pan;           /* Left 0 <- 0.5 Center -> 1 Right */
+	double _attack_time;   /* In seconds */
+	double _decay_time;    /* In seconds */
+	double _release_time;  /* In seconds */
+	double _sustain_level; /* Percentage */
+	double _sustain_time;  /* In seconds (no positive rate!) */
 
-	uint16 attack_transform;
-	uint16 release_transform;
+	uint16 _attack_transform;
+	uint16 _release_transform;
 
-	Common::Array<VGMRgnItem *> items;
+	Common::Array<VGMRgnItem *> _items;
 };
 
 // **********
@@ -192,7 +187,7 @@ public:
 			   const Common::String &name);
 
 public:
-	RgnItemType type;
+	RgnItemType _type;
 };
 
 #endif // AUDIO_SOUNDFONT_VGMITEM_H

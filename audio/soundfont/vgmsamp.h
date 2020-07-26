@@ -56,9 +56,9 @@ class VGMSamp : public VGMItem {
 
 class VGMSampColl : public VGMFile {
 public:
-	VGMSampColl(const Common::String &format, RawFile *rawfile, uint32 offset, uint32 length = 0,
+	VGMSampColl(RawFile *rawfile, uint32 offset, uint32 length = 0,
 				Common::String theName = "VGMSampColl");
-	VGMSampColl(const Common::String &format, RawFile *rawfile, VGMInstrSet *instrset, uint32 offset,
+	VGMSampColl(RawFile *rawfile, VGMInstrSet *instrset, uint32 offset,
 				uint32 length = 0, Common::String theName = "VGMSampColl");
 	virtual ~VGMSampColl(void);
 

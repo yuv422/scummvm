@@ -48,7 +48,7 @@ void VGMColl::UnpackSampColl(SynthFile &synthfile, VGMSampColl *sampColl,
         uint16 blockAlign = samp->bps / 8 * samp->channels;
         SynthWave *wave =
             synthfile.AddWave(1, samp->channels, samp->rate, samp->rate * blockAlign, blockAlign,
-                              samp->bps, bufSize, uncompSampBuf, (samp->name));
+                              samp->bps, bufSize, uncompSampBuf, (samp->_name));
         finalSamps.push_back(samp);
 
         // If we don't have any loop information, then don't create a sampInfo structure for the
@@ -100,7 +100,7 @@ SynthFile *VGMColl::CreateSynthFile(VGMInstrSet *theInstrSet) {
     Common::Array<VGMSampColl *> finalSampColls;
 
 	for (uint32 i = 0; i < instrsets.size(); i++) {
-		VGMSampColl *instrset_sampcoll = instrsets[i]->sampColl;
+		VGMSampColl *instrset_sampcoll = instrsets[i]->_sampColl;
 		if (instrset_sampcoll) {
 			finalSampColls.push_back(instrset_sampcoll);
 			UnpackSampColl(*synthfile, instrset_sampcoll, finalSamps);
@@ -115,25 +115,25 @@ SynthFile *VGMColl::CreateSynthFile(VGMInstrSet *theInstrSet) {
 
     for (size_t inst = 0; inst < instrsets.size(); inst++) {
         VGMInstrSet *set = instrsets[inst];
-        size_t nInstrs = set->aInstrs.size();
+        size_t nInstrs = set->_aInstrs.size();
         for (size_t i = 0; i < nInstrs; i++) {
-            VGMInstr *vgminstr = set->aInstrs[i];
-            size_t nRgns = vgminstr->aRgns.size();
+            VGMInstr *vgminstr = set->_aInstrs[i];
+            size_t nRgns = vgminstr->_aRgns.size();
             if (nRgns == 0)  // do not write an instrument if it has no regions
                 continue;
-            SynthInstr *newInstr = synthfile->AddInstr(vgminstr->bank, vgminstr->instrNum);
+            SynthInstr *newInstr = synthfile->AddInstr(vgminstr->_bank, vgminstr->_instrNum);
             for (uint32 j = 0; j < nRgns; j++) {
-                VGMRgn *rgn = vgminstr->aRgns[j];
+                VGMRgn *rgn = vgminstr->_aRgns[j];
                 //				if (rgn->sampNum+1 > sampColl->samples.size())
                 ////does thereferenced sample exist? 					continue;
 
                 // Determine the SampColl associated with this rgn.  If there's an explicit pointer
                 // to it, use that.
-                VGMSampColl *sampColl = rgn->sampCollPtr;
+                VGMSampColl *sampColl = rgn->_sampCollPtr;
                 if (!sampColl) {
                     // If rgn is of an InstrSet with an embedded SampColl, use that SampColl.
-                    if (((VGMInstrSet *)rgn->vgmfile)->sampColl)
-                        sampColl = ((VGMInstrSet *)rgn->vgmfile)->sampColl;
+                    if (((VGMInstrSet *)rgn->_vgmfile)->_sampColl)
+                        sampColl = ((VGMInstrSet *)rgn->_vgmfile)->_sampColl;
 
                     // If that does not exist, assume the first SampColl
                     else
@@ -141,7 +141,7 @@ SynthFile *VGMColl::CreateSynthFile(VGMInstrSet *theInstrSet) {
                 }
 
                 // Determine the sample number within the rgn's associated SampColl
-                size_t realSampNum = rgn->sampNum;
+                size_t realSampNum = rgn->_sampNum;
 
                 // Determine the sampCollNum (index into our finalSampColls vector)
                 size_t sampCollNum = finalSampColls.size();
@@ -159,7 +159,7 @@ SynthFile *VGMColl::CreateSynthFile(VGMInstrSet *theInstrSet) {
                     realSampNum += finalSampColls[k]->samples.size();
 
                 SynthRgn *newRgn = newInstr->AddRgn();
-                newRgn->SetRanges(rgn->keyLow, rgn->keyHigh, rgn->velLow, rgn->velHigh);
+                newRgn->SetRanges(rgn->_keyLow, rgn->_keyHigh, rgn->_velLow, rgn->_velHigh);
                 newRgn->SetWaveLinkInfo(0, 0, 1, (uint32)realSampNum);
 
                 if (realSampNum >= finalSamps.size()) {
@@ -181,8 +181,8 @@ SynthFile *VGMColl::CreateSynthFile(VGMInstrSet *theInstrSet) {
                         if (samp->loop.loopStart != 0 || samp->loop.loopLength != 0)
                             sampInfo->SetLoopInfo(samp->loop, samp);
                         else {
-                            rgn->loop.loopStatus = samp->loop.loopStatus;
-                            sampInfo->SetLoopInfo(rgn->loop, samp);
+                            rgn->_loop.loopStatus = samp->loop.loopStatus;
+                            sampInfo->SetLoopInfo(rgn->_loop, samp);
                         }
                     } else {
                         delete synthfile;
@@ -191,7 +191,7 @@ SynthFile *VGMColl::CreateSynthFile(VGMInstrSet *theInstrSet) {
                 }
                 // The normal method: First, we check if the rgn has loop info defined.
                 // If it doesn't, then use the sample's loop info.
-                else if (rgn->loop.loopStatus == -1) {
+                else if (rgn->_loop.loopStatus == -1) {
                     if (samp->loop.loopStatus != -1)
                         sampInfo->SetLoopInfo(samp->loop, samp);
                     else {
@@ -199,41 +199,41 @@ SynthFile *VGMColl::CreateSynthFile(VGMInstrSet *theInstrSet) {
                         error("argh2"); //TODO
                     }
                 } else
-                    sampInfo->SetLoopInfo(rgn->loop, samp);
+                    sampInfo->SetLoopInfo(rgn->_loop, samp);
 
                 int8_t realUnityKey = -1;
-                if (rgn->unityKey == -1)
+                if (rgn->_unityKey == -1)
                     realUnityKey = samp->unityKey;
                 else
-                    realUnityKey = rgn->unityKey;
+                    realUnityKey = rgn->_unityKey;
                 if (realUnityKey == -1)
                     realUnityKey = 0x3C;
 
                 short realFineTune;
-                if (rgn->fineTune == 0)
+                if (rgn->_fineTune == 0)
                     realFineTune = samp->fineTune;
                 else
-                    realFineTune = rgn->fineTune;
+                    realFineTune = rgn->_fineTune;
 
                 double attenuation;
-                if (rgn->volume != -1)
-                    attenuation = ConvertLogScaleValToAtten(rgn->volume);
+                if (rgn->_volume != -1)
+                    attenuation = ConvertLogScaleValToAtten(rgn->_volume);
                 else if (samp->volume != -1)
                     attenuation = ConvertLogScaleValToAtten(samp->volume);
                 else
                     attenuation = 0;
 
                 double sustainLevAttenDb;
-                if (rgn->sustain_level == -1)
+                if (rgn->_sustain_level == -1)
                     sustainLevAttenDb = 0.0;
                 else
-                    sustainLevAttenDb = ConvertPercentAmplitudeToAttenDB_SF2(rgn->sustain_level);
+                    sustainLevAttenDb = ConvertPercentAmplitudeToAttenDB_SF2(rgn->_sustain_level);
 
                 SynthArt *newArt = newRgn->AddArt();
-                newArt->AddPan(rgn->pan);
-                newArt->AddADSR(rgn->attack_time, (Transform)rgn->attack_transform, rgn->decay_time,
-                                sustainLevAttenDb, rgn->sustain_time, rgn->release_time,
-                                (Transform)rgn->release_transform);
+                newArt->AddPan(rgn->_pan);
+                newArt->AddADSR(rgn->_attack_time, (Transform)rgn->_attack_transform, rgn->_decay_time,
+								sustainLevAttenDb, rgn->_sustain_time, rgn->_release_time,
+								(Transform)rgn->_release_transform);
 
                 sampInfo->SetPitchInfo(realUnityKey, realFineTune, attenuation);
             }

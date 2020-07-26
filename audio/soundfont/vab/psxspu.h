@@ -152,7 +152,7 @@ void PSXConvADSR(T *realADSR, uint8 Am, uint8 Ar, uint8 Dr, uint8 Sl, uint8 Sm,
         samples += ceil(fmax(0, 0x1FFFFFFF - (long)remainder) / (double)rate);
     }
     timeInSecs = samples / sampleRate;
-    realADSR->attack_time = timeInSecs;
+    realADSR->_attack_time = timeInSecs;
     //	}
 
     // Decay Time
@@ -198,17 +198,17 @@ void PSXConvADSR(T *realADSR, uint8 Am, uint8 Ar, uint8 Dr, uint8 Sl, uint8 Sm,
     }
     samples = l;
     timeInSecs = samples / sampleRate;
-    realADSR->decay_time = timeInSecs;
+    realADSR->_decay_time = timeInSecs;
 
     // Sustain Rate
 
     envelope_level = 0x7FFFFFFF;
     // increasing... we won't even bother
     if (Sd == 0) {
-        realADSR->sustain_time = -1;
+        realADSR->_sustain_time = -1;
     } else {
         if (Sr == 0x7F)
-            realADSR->sustain_time = -1;  // this is actually infinite
+            realADSR->_sustain_time = -1;  // this is actually infinite
         else {
             // linear
             if (Sm == 0) {
@@ -273,7 +273,7 @@ void PSXConvADSR(T *realADSR, uint8 Am, uint8 Ar, uint8 Dr, uint8 Sl, uint8 Sm,
                 samples = l;
             }
             timeInSecs = samples / sampleRate;
-            realADSR->sustain_time =
+            realADSR->_sustain_time =
                 /*Sm ? timeInSecs : */ LinAmpDecayTimeToLinDBDecayTime(timeInSecs, 0x800);
         }
     }
@@ -284,13 +284,13 @@ void PSXConvADSR(T *realADSR, uint8 Am, uint8 Ar, uint8 Dr, uint8 Sl, uint8 Sm,
     // 0.030517578139210854);	//in DLS, sustain level is measured as a percentage
     if (Sl == 0)
         realSustainLevel = 0x07FFFFFF;
-    realADSR->sustain_level = realSustainLevel / (double)0x7FFFFFFF;
+    realADSR->_sustain_level = realSustainLevel / (double)0x7FFFFFFF;
 
     // If decay is going unused, and there's a sustain rate with sustain level close to max...
     //  we'll put the sustain_rate in place of the decay rate.
-    if ((realADSR->decay_time < 2 || (Dr == 0x0F && Sl >= 0x0C)) && Sr < 0x7E && Sd == 1) {
-        realADSR->sustain_level = 0;
-        realADSR->decay_time = realADSR->sustain_time;
+    if ((realADSR->_decay_time < 2 || (Dr == 0x0F && Sl >= 0x0C)) && Sr < 0x7E && Sd == 1) {
+        realADSR->_sustain_level = 0;
+        realADSR->_decay_time = realADSR->_sustain_time;
         // realADSR->decay_time = 0.5;
     }
 
@@ -349,7 +349,7 @@ void PSXConvADSR(T *realADSR, uint8 Am, uint8 Ar, uint8 Dr, uint8 Sl, uint8 Sm,
     // time from max value to 0, not from sustain level. if (Rm == 0) // if it's linear 	timeInSecs *=
     //LINEAR_RELEASE_COMPENSATION;
 
-    realADSR->release_time =
+    realADSR->_release_time =
         /*Rm ? timeInSecs : */ LinAmpDecayTimeToLinDBDecayTime(timeInSecs, 0x800);
 
     // We need to compensate the decay and release times to represent them as the time from full vol
@@ -370,7 +370,7 @@ void PSXConvADSR(T *realADSR, uint8 Am, uint8 Ar, uint8 Dr, uint8 Sl, uint8 Sm,
 
 class PSXSampColl : public VGMSampColl {
    public:
-    PSXSampColl(const Common::String &format, VGMInstrSet *instrset, uint32 offset, uint32 length,
+    PSXSampColl(VGMInstrSet *instrset, uint32 offset, uint32 length,
                 const Common::Array<SizeOffsetPair> &vagLocations);
 
     virtual bool

@@ -15,7 +15,7 @@ VGMSamp::VGMSamp(VGMSampColl *sampColl, uint32 offset, uint32 length, uint32 dat
                  Common::String theName)
     : parSampColl(sampColl),
       sampName(theName),
-      VGMItem(sampColl->vgmfile, offset, length),
+      VGMItem(sampColl->_vgmfile, offset, length),
       dataOff(dataOffset),
       dataLength(dataLen),
       bps(theBPS),
@@ -28,7 +28,7 @@ VGMSamp::VGMSamp(VGMSampColl *sampColl, uint32 offset, uint32 length, uint32 dat
       volume(-1),
       waveType(WT_UNDEFINED),
       bPSXLoopInfoPrioritizing(false) {
-    name = sampName;  // I would do this in the initialization list, but VGMItem()
+	_name = sampName;  // I would do this in the initialization list, but VGMItem()
                              // constructor is called before sampName is initialized,
     // so data() ends up returning a bad pointer
 }
@@ -43,18 +43,18 @@ double VGMSamp::GetCompressionRatio() {
 // VGMSampColl
 // ***********
 
-VGMSampColl::VGMSampColl(const Common::String &format, RawFile *rawfile, uint32 offset, uint32 length,
+VGMSampColl::VGMSampColl(RawFile *rawfile, uint32 offset, uint32 length,
 						 Common::String theName)
-		: VGMFile(format, rawfile, offset, length, theName),
+		: VGMFile(rawfile, offset, length, theName),
 		  parInstrSet(NULL),
 		  bLoaded(false),
 		  sampDataOffset(0) {
 	AddContainer<VGMSamp>(samples);
 }
 
-VGMSampColl::VGMSampColl(const Common::String &format, RawFile *rawfile, VGMInstrSet *instrset,
+VGMSampColl::VGMSampColl(RawFile *rawfile, VGMInstrSet *instrset,
 						 uint32 offset, uint32 length, Common::String theName)
-		: VGMFile(format, rawfile, offset, length, theName),
+		: VGMFile(rawfile, offset, length, theName),
 		  parInstrSet(instrset),
 		  bLoaded(false),
 		  sampDataOffset(0) {
@@ -76,7 +76,7 @@ bool VGMSampColl::Load() {
 	if (samples.size() == 0)
 		return false;
 
-	if (unLength == 0) {
+	if (_unLength == 0) {
 		for (Common::Array<VGMSamp *>::iterator itr = samples.begin(); itr != samples.end(); ++itr) {
 			VGMSamp *samp = (*itr);
 
@@ -91,8 +91,8 @@ bool VGMSampColl::Load() {
 			//	dwOffset = samp->dwOffset;
 			//}
 
-			if (dwOffset + unLength < samp->dwOffset + samp->unLength) {
-				unLength = (samp->dwOffset + samp->unLength) - dwOffset;
+			if (_dwOffset + _unLength < samp->_dwOffset + samp->_unLength) {
+				_unLength = (samp->_dwOffset + samp->_unLength) - _dwOffset;
 			}
 		}
 	}

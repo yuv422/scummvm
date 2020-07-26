@@ -25,7 +25,7 @@ class VGMRgnItem;
 class VGMInstrSet : public VGMFile {
    public:
 
-    VGMInstrSet(const Common::String &format, RawFile *file, uint32 offset, uint32 length = 0,
+    VGMInstrSet(RawFile *file, uint32 offset, uint32 length = 0,
                 Common::String name = "VGMInstrSet", VGMSampColl *theSampColl = NULL);
     virtual ~VGMInstrSet(void);
 
@@ -35,8 +35,8 @@ class VGMInstrSet : public VGMFile {
     virtual bool LoadInstrs();
 
    public:
-    Common::Array<VGMInstr *> aInstrs;
-    VGMSampColl *sampColl;
+    Common::Array<VGMInstr *> _aInstrs;
+    VGMSampColl *_sampColl;
 };
 
 // ********
@@ -52,10 +52,10 @@ class VGMInstr : public VGMContainerItem {
     virtual bool LoadInstr();
 
    public:
-    uint32 bank;
-    uint32 instrNum;
+    uint32 _bank;
+    uint32 _instrNum;
 
-    VGMInstrSet *parInstrSet;
-    Common::Array<VGMRgn *> aRgns;
+    VGMInstrSet *_parInstrSet;
+    Common::Array<VGMRgn *> _aRgns;
 };
 #endif // AUDIO_SOUNDFONT_VGMINSTRSET_H

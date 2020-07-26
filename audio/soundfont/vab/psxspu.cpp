@@ -64,9 +64,9 @@ double LinAmpDecayTimeToLinDBDecayTime(double secondsToFullAtten, int linearVolu
  * Thanks to Antires for his ADPCM decompression routine.
  */
 
-PSXSampColl::PSXSampColl(const Common::String &format, VGMInstrSet *instrset, uint32 offset,
+PSXSampColl::PSXSampColl(VGMInstrSet *instrset, uint32 offset,
                          uint32 length, const Common::Array<SizeOffsetPair> &vagLocations)
-    : VGMSampColl(format, instrset->GetRawFile(), instrset, offset, length),
+    : VGMSampColl(instrset->GetRawFile(), instrset, offset, length),
       vagLocations(vagLocations) {}
 
 bool PSXSampColl::GetSampleInfo() {
@@ -77,12 +77,12 @@ bool PSXSampColl::GetSampleInfo() {
          * of a sample, and they will never be found at any other point within the adpcm sample
          * data.
          */
-        uint32 nEndOffset = dwOffset + unLength;
-        if (unLength == 0) {
+        uint32 nEndOffset = _dwOffset + _unLength;
+        if (_unLength == 0) {
             nEndOffset = GetEndOffset();
         }
 
-        uint32 i = dwOffset;
+        uint32 i = _dwOffset;
         while (i + 32 <= nEndOffset) {
             bool isSample = false;
 
@@ -167,12 +167,12 @@ bool PSXSampColl::GetSampleInfo() {
                 break;
             }
         }
-        unLength = i - dwOffset;
+		_unLength = i - _dwOffset;
     } else {
         uint32 sampleIndex = 0;
         for (Common::Array<SizeOffsetPair>::iterator it = vagLocations.begin();
              it != vagLocations.end(); ++it) {
-            uint32 offSampStart = dwOffset + it->offset;
+            uint32 offSampStart = _dwOffset + it->offset;
             uint32 offDataEnd = offSampStart + it->size;
             uint32 offSampEnd = offSampStart;
 
@@ -188,9 +188,9 @@ bool PSXSampColl::GetSampleInfo() {
                 offSampEnd += 16;
             } while (!lastBlock);
 
-            PSXSamp *samp = new PSXSamp(this, dwOffset + it->offset, it->size,
-                                        dwOffset + it->offset, offSampEnd - offSampStart, 1, 16,
-                                        44100, Common::String::format("Sample %d", sampleIndex));
+            PSXSamp *samp = new PSXSamp(this, _dwOffset + it->offset, it->size,
+										_dwOffset + it->offset, offSampEnd - offSampStart, 1, 16,
+										44100, Common::String::format("Sample %d", sampleIndex));
             samples.push_back(samp);
             sampleIndex++;
         }
@@ -226,21 +226,21 @@ void PSXSamp::ConvertToStdWave(uint8 *buf) {
     bool addrOutOfVirtFile = false;
     for (uint32 k = 0; k < dataLength; k += 0x10)  // for every adpcm chunk
     {
-        if (dwOffset + k + 16 > vgmfile->GetEndOffset()) {
-            debug("Unexpected EOF (%s)", name.c_str());
+        if (_dwOffset + k + 16 > _vgmfile->GetEndOffset()) {
+            debug("Unexpected EOF (%s)", _name.c_str());
             break;
-        } else if (!addrOutOfVirtFile && k + 16 > unLength) {
-			debug("Unexpected end of PSXSamp (%s)", name.c_str());
+        } else if (!addrOutOfVirtFile && k + 16 > _unLength) {
+			debug("Unexpected end of PSXSamp (%s)", _name.c_str());
             addrOutOfVirtFile = true;
         }
 
-        theBlock.range = GetByte(dwOffset + k) & 0xF;
-        theBlock.filter = (GetByte(dwOffset + k) & 0xF0) >> 4;
-        theBlock.flag.end = GetByte(dwOffset + k + 1) & 1;
-        theBlock.flag.looping = (GetByte(dwOffset + k + 1) & 2) > 0;
+        theBlock.range = GetByte(_dwOffset + k) & 0xF;
+        theBlock.filter = (GetByte(_dwOffset + k) & 0xF0) >> 4;
+        theBlock.flag.end = GetByte(_dwOffset + k + 1) & 1;
+        theBlock.flag.looping = (GetByte(_dwOffset + k + 1) & 2) > 0;
 
         // this can be the loop point, but in wd, this info is stored in the instrset
-        theBlock.flag.loop = (GetByte(dwOffset + k + 1) & 4) > 0;
+        theBlock.flag.loop = (GetByte(_dwOffset + k + 1) & 4) > 0;
         if (this->bSetLoopOnConversion) {
             if (theBlock.flag.loop) {
                 this->SetLoopOffset(k);
@@ -251,7 +251,7 @@ void PSXSamp::ConvertToStdWave(uint8 *buf) {
             }
         }
 
-        GetRawFile()->GetBytes(dwOffset + k + 2, 14, theBlock.brr);
+        GetRawFile()->GetBytes(_dwOffset + k + 2, 14, theBlock.brr);
 
         // each decompressed pcm block is 52 bytes   EDIT: (wait, isn't it 56 bytes? or is it 28?)
         DecompVAGBlk(uncompBuf + ((k * 28) / 16), &theBlock, &prev1, &prev2);

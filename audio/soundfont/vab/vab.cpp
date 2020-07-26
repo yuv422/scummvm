@@ -11,36 +11,36 @@
 
 using namespace std;
 
-Vab::Vab(RawFile *file, uint32 offset) : VGMInstrSet("PS1", file, offset) {}
+Vab::Vab(RawFile *file, uint32 offset) : VGMInstrSet(file, offset) {}
 
 Vab::~Vab() {}
 
 bool Vab::GetHeaderInfo() {
     uint32 nEndOffset = GetEndOffset();
-    uint32 nMaxLength = nEndOffset - dwOffset;
+    uint32 nMaxLength = nEndOffset - _dwOffset;
 
     if (nMaxLength < 0x20) {
         return false;
     }
 
-    m_name = "VAB";
+    _name = "VAB";
 
-    VGMHeader *vabHdr = AddHeader(dwOffset, 0x20, "VAB Header");
-    vabHdr->AddSimpleItem(dwOffset + 0x00, 4, "ID");
-    vabHdr->AddSimpleItem(dwOffset + 0x04, 4, "Version");
-    vabHdr->AddSimpleItem(dwOffset + 0x08, 4, "VAB ID");
-    vabHdr->AddSimpleItem(dwOffset + 0x0c, 4, "Total Size");
-    vabHdr->AddSimpleItem(dwOffset + 0x10, 2, "Reserved");
-    vabHdr->AddSimpleItem(dwOffset + 0x12, 2, "Number of Programs");
-    vabHdr->AddSimpleItem(dwOffset + 0x14, 2, "Number of Tones");
-    vabHdr->AddSimpleItem(dwOffset + 0x16, 2, "Number of VAGs");
-    vabHdr->AddSimpleItem(dwOffset + 0x18, 1, "Master Volume");
-    vabHdr->AddSimpleItem(dwOffset + 0x19, 1, "Master Pan");
-    vabHdr->AddSimpleItem(dwOffset + 0x1a, 1, "Bank Attributes 1");
-    vabHdr->AddSimpleItem(dwOffset + 0x1b, 1, "Bank Attributes 2");
-    vabHdr->AddSimpleItem(dwOffset + 0x1c, 4, "Reserved");
+    VGMHeader *vabHdr = AddHeader(_dwOffset, 0x20, "VAB Header");
+    vabHdr->AddSimpleItem(_dwOffset + 0x00, 4, "ID");
+    vabHdr->AddSimpleItem(_dwOffset + 0x04, 4, "Version");
+    vabHdr->AddSimpleItem(_dwOffset + 0x08, 4, "VAB ID");
+    vabHdr->AddSimpleItem(_dwOffset + 0x0c, 4, "Total Size");
+    vabHdr->AddSimpleItem(_dwOffset + 0x10, 2, "Reserved");
+    vabHdr->AddSimpleItem(_dwOffset + 0x12, 2, "Number of Programs");
+    vabHdr->AddSimpleItem(_dwOffset + 0x14, 2, "Number of Tones");
+    vabHdr->AddSimpleItem(_dwOffset + 0x16, 2, "Number of VAGs");
+    vabHdr->AddSimpleItem(_dwOffset + 0x18, 1, "Master Volume");
+    vabHdr->AddSimpleItem(_dwOffset + 0x19, 1, "Master Pan");
+    vabHdr->AddSimpleItem(_dwOffset + 0x1a, 1, "Bank Attributes 1");
+    vabHdr->AddSimpleItem(_dwOffset + 0x1b, 1, "Bank Attributes 2");
+    vabHdr->AddSimpleItem(_dwOffset + 0x1c, 4, "Reserved");
 
-    GetBytes(dwOffset, 0x20, &hdr);
+    GetBytes(_dwOffset, 0x20, &hdr);
 
     return true;
 }
@@ -48,11 +48,11 @@ bool Vab::GetHeaderInfo() {
 bool Vab::GetInstrPointers() {
     uint32 nEndOffset = GetEndOffset();
 
-    uint32 offProgs = dwOffset + 0x20;
+    uint32 offProgs = _dwOffset + 0x20;
     uint32 offToneAttrs = offProgs + (16 * 128);
 
-    uint16 numPrograms = GetShort(dwOffset + 0x12);
-    uint16 numVAGs = GetShort(dwOffset + 0x16);
+    uint16 numPrograms = GetShort(_dwOffset + 0x12);
+    uint16 numVAGs = GetShort(_dwOffset + 0x16);
 
     uint32 offVAGOffsets = offToneAttrs + (32 * 16 * numPrograms);
 
@@ -60,11 +60,11 @@ bool Vab::GetInstrPointers() {
     VGMHeader *toneAttrsHdr = AddHeader(offToneAttrs, 32 * 16, "Tone Attributes Table");
 
     if (numPrograms > 128) {
-		debug("Too many programs %x, offset %x", numPrograms, dwOffset);
+		debug("Too many programs %x, offset %x", numPrograms, _dwOffset);
         return false;
     }
     if (numVAGs > 255) {
-		debug("Too many VAGs %x, offset %x", numVAGs, dwOffset);
+		debug("Too many VAGs %x, offset %x", numVAGs, _dwOffset);
         return false;
     }
 
@@ -80,7 +80,7 @@ bool Vab::GetInstrPointers() {
     uint32 numProgramsLoaded = 0;
     for (uint32 progIndex = 0; progIndex < 128 && numProgramsLoaded < numPrograms; progIndex++) {
         uint32 offCurrProg = offProgs + (progIndex * 16);
-        uint32 offCurrToneAttrs = offToneAttrs + (uint32)(aInstrs.size() * 32 * 16);
+        uint32 offCurrToneAttrs = offToneAttrs + (uint32)(_aInstrs.size() * 32 * 16);
 
         if (offCurrToneAttrs + (32 * 16) > nEndOffset) {
             break;
@@ -91,7 +91,7 @@ bool Vab::GetInstrPointers() {
            debug("Program %x contains too many tones (%d)", progIndex, numTonesPerInstr);
         } else if (numTonesPerInstr != 0) {
             VabInstr *newInstr = new VabInstr(this, offCurrToneAttrs, 0x20 * 16, 0, progIndex);
-            aInstrs.push_back(newInstr);
+            _aInstrs.push_back(newInstr);
             GetBytes(offCurrProg, 0x10, &newInstr->attr);
 
             VGMHeader *progHdr = progsHdr->AddHeader(offCurrProg, 0x10, "Program");
@@ -107,7 +107,7 @@ bool Vab::GetInstrPointers() {
 
             newInstr->masterVol = GetByte(offCurrProg + 0x01);
 
-            toneAttrsHdr->unLength = offCurrToneAttrs + (32 * 16) - offToneAttrs;
+            toneAttrsHdr->_unLength = offCurrToneAttrs + (32 * 16) - offToneAttrs;
 
             numProgramsLoaded++;
         }
@@ -145,18 +145,16 @@ bool Vab::GetInstrPointers() {
               //TODO  L_WARN("VAG #{} at {:#x} with size {:#x}) is invalid", i + 1, vagOffset, vagSize);
             }
         }
-        unLength = (offVAGOffsets + 2 * 256) - dwOffset;
+		_unLength = (offVAGOffsets + 2 * 256) - _dwOffset;
 
         // single VAB file?
         uint32 offVAGs = offVAGOffsets + 2 * 256;
-        if (dwOffset == 0 && vagLocations.size() != 0) {
+        if (_dwOffset == 0 && vagLocations.size() != 0) {
             // load samples as well
             PSXSampColl *newSampColl =
-                new PSXSampColl(format, this, offVAGs, totalVAGSize, vagLocations);
+                new PSXSampColl(this, offVAGs, totalVAGSize, vagLocations);
             if (newSampColl->LoadVGMFile()) {
-                //TODO pRoot->AddVGMFile(newSampColl);
-
-                this->sampColl = newSampColl;
+                this->_sampColl = newSampColl;
             } else {
                 delete newSampColl;
             }
@@ -179,12 +177,12 @@ VabInstr::~VabInstr(void) {}
 bool VabInstr::LoadInstr() {
     int8_t numRgns = attr.tones;
     for (int i = 0; i < numRgns; i++) {
-        VabRgn *rgn = new VabRgn(this, dwOffset + i * 0x20);
+        VabRgn *rgn = new VabRgn(this, _dwOffset + i * 0x20);
         if (!rgn->LoadRgn()) {
             delete rgn;
             return false;
         }
-        aRgns.push_back(rgn);
+        _aRgns.push_back(rgn);
     }
     return true;
 }
@@ -196,40 +194,40 @@ bool VabInstr::LoadInstr() {
 VabRgn::VabRgn(VabInstr *instr, uint32 offset) : VGMRgn(instr, offset) {}
 
 bool VabRgn::LoadRgn() {
-    VabInstr *instr = (VabInstr *)parInstr;
-    unLength = 0x20;
-    GetBytes(dwOffset, 0x20, &attr);
+    VabInstr *instr = (VabInstr *)_parInstr;
+	_unLength = 0x20;
+    GetBytes(_dwOffset, 0x20, &attr);
 
-    AddGeneralItem(dwOffset, 1, "Priority");
-    AddGeneralItem(dwOffset + 1, 1, "Mode (use reverb?)");
-    AddVolume((GetByte(dwOffset + 2) * instr->masterVol) / (127.0 * 127.0), dwOffset + 2, 1);
-    AddPan(GetByte(dwOffset + 3), dwOffset + 3);
-    AddUnityKey(GetByte(dwOffset + 4), dwOffset + 4);
-    AddGeneralItem(dwOffset + 5, 1, "Pitch Tune");
-    AddKeyLow(GetByte(dwOffset + 6), dwOffset + 6);
-    AddKeyHigh(GetByte(dwOffset + 7), dwOffset + 7);
-    AddGeneralItem(dwOffset + 8, 1, "Vibrato Width");
-    AddGeneralItem(dwOffset + 9, 1, "Vibrato Time");
-    AddGeneralItem(dwOffset + 10, 1, "Portamento Width");
-    AddGeneralItem(dwOffset + 11, 1, "Portamento Holding Time");
-    AddGeneralItem(dwOffset + 12, 1, "Pitch Bend Min");
-    AddGeneralItem(dwOffset + 13, 1, "Pitch Bend Max");
-    AddGeneralItem(dwOffset + 14, 1, "Reserved");
-    AddGeneralItem(dwOffset + 15, 1, "Reserved");
-    AddGeneralItem(dwOffset + 16, 2, "ADSR1");
-    AddGeneralItem(dwOffset + 18, 2, "ADSR2");
-    AddGeneralItem(dwOffset + 20, 2, "Parent Program");
-    AddSampNum(GetShort(dwOffset + 22) - 1, dwOffset + 22, 2);
-    AddGeneralItem(dwOffset + 24, 2, "Reserved");
-    AddGeneralItem(dwOffset + 26, 2, "Reserved");
-    AddGeneralItem(dwOffset + 28, 2, "Reserved");
-    AddGeneralItem(dwOffset + 30, 2, "Reserved");
+    AddGeneralItem(_dwOffset, 1, "Priority");
+    AddGeneralItem(_dwOffset + 1, 1, "Mode (use reverb?)");
+    AddVolume((GetByte(_dwOffset + 2) * instr->masterVol) / (127.0 * 127.0), _dwOffset + 2, 1);
+    AddPan(GetByte(_dwOffset + 3), _dwOffset + 3);
+    AddUnityKey(GetByte(_dwOffset + 4), _dwOffset + 4);
+    AddGeneralItem(_dwOffset + 5, 1, "Pitch Tune");
+    AddKeyLow(GetByte(_dwOffset + 6), _dwOffset + 6);
+    AddKeyHigh(GetByte(_dwOffset + 7), _dwOffset + 7);
+    AddGeneralItem(_dwOffset + 8, 1, "Vibrato Width");
+    AddGeneralItem(_dwOffset + 9, 1, "Vibrato Time");
+    AddGeneralItem(_dwOffset + 10, 1, "Portamento Width");
+    AddGeneralItem(_dwOffset + 11, 1, "Portamento Holding Time");
+    AddGeneralItem(_dwOffset + 12, 1, "Pitch Bend Min");
+    AddGeneralItem(_dwOffset + 13, 1, "Pitch Bend Max");
+    AddGeneralItem(_dwOffset + 14, 1, "Reserved");
+    AddGeneralItem(_dwOffset + 15, 1, "Reserved");
+    AddGeneralItem(_dwOffset + 16, 2, "ADSR1");
+    AddGeneralItem(_dwOffset + 18, 2, "ADSR2");
+    AddGeneralItem(_dwOffset + 20, 2, "Parent Program");
+    AddSampNum(GetShort(_dwOffset + 22) - 1, _dwOffset + 22, 2);
+    AddGeneralItem(_dwOffset + 24, 2, "Reserved");
+    AddGeneralItem(_dwOffset + 26, 2, "Reserved");
+    AddGeneralItem(_dwOffset + 28, 2, "Reserved");
+    AddGeneralItem(_dwOffset + 30, 2, "Reserved");
     ADSR1 = attr.adsr1;
     ADSR2 = attr.adsr2;
-    if ((int)sampNum < 0)
-        sampNum = 0;
+    if ((int)_sampNum < 0)
+		_sampNum = 0;
 
-    if (keyLow > keyHigh) {
+    if (_keyLow > _keyHigh) {
        //TODO L_ERROR("Low key higher than high key {} > {} (at {:#x})", keyLow, keyHigh, dwOffset);
         return false;
     }
@@ -239,7 +237,7 @@ bool VabRgn::LoadRgn() {
     // least) I am not sure if the interpretation of this value depends on a driver or VAB version.
     // The following code takes the byte as signed, since it could be a typical extended
     // implementation.
-    int8_t ft = (int8_t)GetByte(dwOffset + 5);
+    int8_t ft = (int8_t)GetByte(_dwOffset + 5);
     double cents = ft * 100.0 / 128.0;
     SetFineTune((int16_t)cents);
 
