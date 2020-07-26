@@ -145,31 +145,31 @@ public:
 	void AddKeyHigh(uint8 keyHigh, uint32 offset, uint32 length = 1);
 	void AddSampNum(int sampNum, uint32 offset, uint32 length = 1);
 
-	VGMInstr *parInstr = nullptr;
-	uint8 keyLow = 0;
-	uint8 keyHigh = 127;
-	uint8 velLow = 0;
-	uint8 velHigh = 127;
+	VGMInstr *parInstr;
+	uint8 keyLow;
+	uint8 keyHigh;
+	uint8 velLow;
+	uint8 velHigh;
 
-	int8_t unityKey = -1;
-	short fineTune = 0;
+	int8_t unityKey;
+	short fineTune;
 
 	Loop loop;
 
-	int sampNum = 0;
-	uint32 sampOffset = -1; /* Offset wrt whatever collection of samples we have */
-	VGMSampColl *sampCollPtr = nullptr;
+	int sampNum;
+	uint32 sampOffset; /* Offset wrt whatever collection of samples we have */
+	VGMSampColl *sampCollPtr;
 
-	double volume = -1;        /* Percentage of full volume */
-	double pan = 0.5;          /* Left 0 <- 0.5 Center -> 1 Right */
-	double attack_time = 0;    /* In seconds */
-	double decay_time = 0;     /* In seconds */
-	double release_time = 0;   /* In seconds */
-	double sustain_level = -1; /* Percentage */
-	double sustain_time = 0;   /* In seconds (no positive rate!) */
+	double volume;        /* Percentage of full volume */
+	double pan;           /* Left 0 <- 0.5 Center -> 1 Right */
+	double attack_time;   /* In seconds */
+	double decay_time;    /* In seconds */
+	double release_time;  /* In seconds */
+	double sustain_level; /* Percentage */
+	double sustain_time;  /* In seconds (no positive rate!) */
 
-	uint16 attack_transform = no_transform;
-	uint16 release_transform = no_transform;
+	uint16 attack_transform;
+	uint16 release_transform;
 
 	Common::Array<VGMRgnItem *> items;
 };

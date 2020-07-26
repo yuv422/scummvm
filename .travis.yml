@@ -63,11 +63,13 @@ matrix:
   include:
     - os: linux
       compiler: gcc
-      env: CONFIGFLAGS="--enable-opl2lpt --enable-text-console"
+#      env: CONFIGFLAGS="--enable-opl2lpt --enable-text-console"
+      env: CONFIGFLAGS="--enable-opl2lpt --enable-text-console --disable-all-engines --enable-engine=dragons"
       cache: ccache
     - os: linux
       compiler: clang
-      env: CONFIGFLAGS="--enable-opl2lpt --enable-text-console"
+#      env: CONFIGFLAGS="--enable-opl2lpt --enable-text-console"
+      env: CONFIGFLAGS="--enable-opl2lpt --enable-text-console --disable-all-engines --enable-engine=dragons"
       cache: ccache
       before_script:
         - sudo ln -s $(which ccache) /usr/lib/ccache/clang

@@ -67,7 +67,7 @@ MODULE_OBJS := \
 	soundfont/vgminstrset.o \
 	soundfont/vgmitem.o \
 	soundfont/vgmsamp.o \
-	soundfont/vab/psxpsu.o \
+	soundfont/vab/psxspu.o \
 	soundfont/vab/vab.o
 
 ifndef DISABLE_NUKED_OPL
