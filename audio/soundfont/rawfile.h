@@ -22,7 +22,7 @@ class RawFile {
 
     bool IsValidOffset(uint32 ofs) { return ofs < size(); }
 
-    const char *begin() const noexcept { return data(); }
+    const char *begin() const { return data(); }
     const char *end()  { return data() + size(); }
     virtual const char *data() const = 0;
 

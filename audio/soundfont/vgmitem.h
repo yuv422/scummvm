@@ -84,8 +84,8 @@ public:
 
 	RawFile *GetRawFile();
 
-	size_t size() const noexcept { return unLength; }
-	Common::String name() const noexcept { return m_name; }
+	size_t size() const { return unLength; }
+	Common::String name() const { return m_name; }
 
 	uint32 GetBytes(uint32 nIndex, uint32 nCount, void *pBuffer);
 

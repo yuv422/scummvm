@@ -6,12 +6,13 @@
 #ifndef AUDIO_SOUNDFONT_SF2FILE_H
 #define AUDIO_SOUNDFONT_SF2FILE_H
 
+#include <common/endian.h>
 #include "common/scummsys.h"
 #include "common/array.h"
 #include "common/str.h"
 #include "rifffile.h"
 
-typedef enum : uint16 {
+typedef enum {
     // Oscillator
     startAddrsOffset,  // sample start address -4 (0 to 0xffffff)   0
     endAddrsOffset,
@@ -92,9 +93,11 @@ typedef enum : uint16 {
     overridingRootKey,
     unused5,
     endOper  //                                      60
-} SFGenerator;
+} SFGeneratorType;
 
-typedef enum : uint16 {
+typedef uint16 SFGenerator;
+
+typedef enum {
     /* Start of MIDI modulation operators */
     cc1_Mod,
     cc7_Vol,
@@ -108,10 +111,13 @@ typedef enum : uint16 {
     ccIndirectModY,
 
     endMod
-} SFModulator;
+} SFModulatorType;
 
-typedef enum : uint16 { linear } SFTransform;
+typedef uint16 SFModulator;
 
+typedef enum { linear } SFTransformType;
+
+typedef uint16 SFTransform;
 /*
 #define monoSample      0x0001
 #define rightSample     0x0002
@@ -194,17 +200,43 @@ struct sfModList {
 typedef struct {
     uint8 byLo;
     uint8 byHi;
+
+	uint8 * write(uint8 *buffer, uint32 *offset) {
+		buffer[0] = byLo;
+		buffer[1] = byHi;
+		*offset += 2;
+		return buffer + 2;
+	}
 } rangesType;
 
 typedef union {
     rangesType ranges;
     int16_t shAmount;
     uint16 wAmount;
+
+    //TODO fix union.
+    uint8 * write(uint8 *buffer, uint32 *offset) {
+    	buffer = ranges.write(buffer, offset);
+		WRITE_LE_INT16(buffer, shAmount);
+		buffer += 2;
+		*offset += 2;
+		WRITE_LE_UINT16(buffer, wAmount);
+		buffer += 2;
+		*offset += 2;
+		return buffer;
+    }
 } genAmountType;
 
 struct sfGenList {
     SFGenerator sfGenOper;
     genAmountType genAmount;
+
+    uint8 * write(uint8 *buffer, uint32 *offset) {
+    	WRITE_LE_UINT16(buffer, sfGenOper);
+		buffer += 2;
+		*offset += 2;
+    	return genAmount.write(buffer, offset);
+    }
 };
 
 struct sfInstModList {
