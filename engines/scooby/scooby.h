@@ -19,11 +19,13 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  */
-#ifndef SCUMMVM_SCOOBY_H
-#define SCUMMVM_SCOOBY_H
+#ifndef SCOOBY_SCOOBY_H
+#define SCOOBY_SCOOBY_H
 
 #include "gui/EventRecorder.h"
 #include "engines/engine.h"
+#include "scooby/file.h"
+#include "scooby/gfx.h"
 
 namespace Scooby {
 
@@ -54,17 +56,24 @@ enum kReadSaveHeaderError {
 };
 
 class ScoobyEngine : public Engine {
+private:
+	File *_file;
+	Gfx *_gfx;
+
 public:
 	ScoobyEngine(OSystem *syst, const ADGameDescription *desc);
-	~ScoobyEngine();
+	~ScoobyEngine() override;
 
-//	void updateEvents();
+	void updateEvents();
 	Common::Error run() override;
 
 	Common::String getSavegameFilename(int num);
 	static Common::String getSavegameFilename(const Common::String &target, int num);
 	static kReadSaveHeaderError readSaveHeader(Common::SeekableReadStream *in, SaveHeader &header, bool skipThumbnail = true);
+
+private:
+	void gameLoop();
 };
 
 }
-#endif // SCUMMVM_SCOOBY_H
+#endif // SCOOBY_SCOOBY_H

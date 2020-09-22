@@ -2,6 +2,8 @@ MODULE := engines/scooby
 
 MODULE_OBJS := \
     detection.o \
+    file.o \
+    gfx.o \
     scooby.o
 
 # This module can be built as a plugin

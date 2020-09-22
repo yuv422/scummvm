@@ -45,7 +45,7 @@ static const ScoobyGameDescription gameDescriptions[] = {
 					0,
 					AD_ENTRY1s("scooby.md", "40a323e76dfa5892c0cd534f5bc3da6f", 2097152),
 					Common::EN_USA,
-					Common::kPlatformPSX,
+					Common::kPlatformMegaDrive,
 					ADGF_DROPPLATFORM,
 					GUIO0()
 			},

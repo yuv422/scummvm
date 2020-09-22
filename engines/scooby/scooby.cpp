@@ -33,7 +33,7 @@ namespace Scooby {
 
 
 Scooby::ScoobyEngine::ScoobyEngine(OSystem *syst, const ADGameDescription *desc): Engine(syst) {
-
+	_file = nullptr;
 }
 
 ScoobyEngine::~ScoobyEngine() {
@@ -41,7 +41,28 @@ ScoobyEngine::~ScoobyEngine() {
 }
 
 Common::Error ScoobyEngine::run() {
+	_file = new File(this);
+	_gfx = new Gfx();
+
+	if (ConfMan.hasKey("save_slot")) {
+		loadGameState(ConfMan.getInt("save_slot"));
+	} else {
+		// Intro
+		// Main menu
+	}
+
+	if (!shouldQuit()) {
+//		_scene->draw();
+//		_screen->updateScreen();
+
+		gameLoop();
+	}
+
 	debug("Ok");
+
+	delete _gfx;
+	delete _file;
+
 	return Common::kNoError;
 }
 
@@ -55,6 +76,26 @@ Common::String ScoobyEngine::getSavegameFilename(const Common::String &target, i
 
 kReadSaveHeaderError ScoobyEngine::readSaveHeader(Common::SeekableReadStream *in, SaveHeader &header, bool skipThumbnail) {
 	return kRSHEIoError;
+}
+
+void ScoobyEngine::updateEvents() {
+	Common::Event event;
+
+	while (_eventMan->pollEvent(event)) {
+		switch (event.type) {
+		case Common::EVENT_QUIT :
+			quitGame();
+			break;
+
+		default: break;
+		}
+	}
+}
+
+void ScoobyEngine::gameLoop() {
+	while (!shouldQuit()) {
+		updateEvents();
+	}
 }
 
 } // End of namespace Scooby
