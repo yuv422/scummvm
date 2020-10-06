@@ -23,6 +23,7 @@
 #ifndef SCOOBY_GFX_H
 #define SCOOBY_GFX_H
 
+#include "scooby/md/vdp.h"
 #include "graphics/surface.h"
 
 namespace Scooby {
@@ -31,8 +32,14 @@ class Gfx {
 private:
 	Graphics::PixelFormat _pixelFormat;
 	Graphics::Surface *_backSurface;
+	VDP *_vdp;
 public:
-	Gfx();
+	Gfx(VDP *vdp);
+
+	void drawFrame();
+
+private:
+	void updateScreen();
 };
 
 } // End of namespace Scooby

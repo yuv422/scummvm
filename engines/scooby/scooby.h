@@ -26,6 +26,7 @@
 #include "engines/engine.h"
 #include "scooby/file.h"
 #include "scooby/gfx.h"
+#include "scooby/md/vdp.h"
 
 namespace Scooby {
 
@@ -59,6 +60,9 @@ class ScoobyEngine : public Engine {
 private:
 	File *_file;
 	Gfx *_gfx;
+	VDP *_vdp;
+
+	uint32 _nextUpdatetime;
 
 public:
 	ScoobyEngine(OSystem *syst, const ADGameDescription *desc);
@@ -71,8 +75,17 @@ public:
 	static Common::String getSavegameFilename(const Common::String &target, int num);
 	static kReadSaveHeaderError readSaveHeader(Common::SeekableReadStream *in, SaveHeader &header, bool skipThumbnail = true);
 
+	void waitForFrames(uint16 numFrames);
+
+	void fadeFromBlack(uint16 *palette);
+	void fadeToBlack();
 private:
 	void gameLoop();
+	uint32 calulateTimeLeft();
+	void wait();
+
+	void setupInitialVdpRegisters();
+	void introSequence();
 };
 
 }

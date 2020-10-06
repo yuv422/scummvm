@@ -30,17 +30,29 @@ namespace Scooby {
 
 class ScoobyEngine;
 
-class File {
+class File : public Common::SeekableReadStream, public Common::ReadStreamEndian {
 public:
 	explicit File(ScoobyEngine *vm);
-	virtual ~File();
+	~File() override;
 
-	Common::SeekableReadStream *decompressBytes(uint32 offset);
+	uint32 decompressBytes(uint32 offset, byte *dataPtr, uint32 dataSize);
 
+	bool eos() const override;
+
+	uint32 read(void *dataPtr, uint32 dataSize) override;
+
+	int32 pos() const override;
+
+	int32 size() const override;
+
+	bool seek(int32 offset, int whence) override;
+
+	bool offsetFromStart(int32 offset);
 private:
 	ScoobyEngine *_vm;
 	Common::File _fd;
 public:
+
 };
 
 
