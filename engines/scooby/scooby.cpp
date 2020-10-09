@@ -36,6 +36,10 @@ namespace Scooby {
 Scooby::ScoobyEngine::ScoobyEngine(OSystem *syst, const ADGameDescription *desc): Engine(syst) {
 	_file = nullptr;
 	_nextUpdatetime = 0;
+
+	_DAT_00ff07f8 = 0;
+	_SHORT_00ff07fa = 0;
+	_DAT_00ff09eb_flags = 0;
 }
 
 ScoobyEngine::~ScoobyEngine() {
@@ -134,28 +138,27 @@ void ScoobyEngine::waitForFrames(uint16 numFrames) {
 
 void ScoobyEngine::introSequence() {
 	//SEGA Logo
-	byte buf[2000];
+	byte buf[0x8000];
 	uint16 palette[64];
 
 	_file->offsetFromStart(0x23226);
 	_file->read(buf, 48 * 2);
 
-	byte *ptr = buf;
-	uint16 destAddress = 0xc594;
-	for (int i = 0; i < 4; i++) {
-		_vdp->writeVRAM(destAddress, ptr, 0xc * 2);
-		destAddress += 0x80;
-		ptr += (0xc * 2);
-	}
+	_gfx->loadTilemap(VDP::PlaneA, buf, 10, 11, 0xc, 4);
+
+//	byte *ptr = buf;
+//	uint16 destAddress = 0xc594;
+//	for (int i = 0; i < 4; i++) {
+//		_vdp->writeVRAM(destAddress, ptr, 0xc * 2);
+//		destAddress += 0x80;
+//		ptr += (0xc * 2);
+//	}
 
 	uint16 size = _file->decompressBytes(0x23286, buf, sizeof(buf));
 	debug("Size: %d", size);
 	_vdp->writeVRAM(0, buf, size);
 
-	_file->offsetFromStart(0x236a0);
-	for (int i = 0; i < 64; i++) {
-		palette[i] = _file->readUint16();
-	}
+	loadPalette(0x236a0, palette);
 
 	fadeFromBlack(palette);
 
@@ -175,6 +178,108 @@ void ScoobyEngine::introSequence() {
 
 	waitForFrames(100);
 
+	fadeToBlack();
+	_vdp->zeroVRAM(0, 0x8000);
+
+	/* VDP: Mode Register 4
+   320 pixel (40 cell) wide mode.
+   Progressive mode. */
+	_vdp->control_port_w(0x8c81);
+
+	// Scooby title
+	_file->offsetFromStart(0x278e0);
+	_file->read(buf, 0x28 * 0x1c * 2);
+	_gfx->loadTilemap(VDP::PlaneA, buf, 0, 0, 0x28, 0x1c);
+
+	_file->offsetFromStart(0x23720);
+	_file->read(buf, 0x20e0 * 2);
+	_vdp->writeVRAM(0, buf, 0x20e0 * 2);
+
+	loadPalette(0x281a0, palette);
+
+	fadeFromBlack(palette);
+
+	waitForFrames(300);
+
+	fadeToBlack();
+	_vdp->zeroVRAM(0, 0x8000);
+
+	/* VDP: Mode Register 4
+   256 pixel (32 cell) wide mode.
+   Progressive mode. */
+	_vdp->control_port_w(0x8c00);
+
+	_DAT_00ff09eb_flags |= 2u;
+	_DAT_00ff07f8 = 0;
+
+	// Acclaim logo
+	_file->offsetFromStart(0x219c0);
+	_file->read(buf, 0x20 * 0x6 * 2);
+	_gfx->loadTilemap(VDP::PlaneA, buf, 0, 9, 0x20, 0x6);
+
+	_file->offsetFromStart(0x21b40);
+	_file->read(buf, 0x180 * 2);
+	_vdp->writeVRAM(0xe480, buf, 0x180 * 2);
+
+	size = _file->decompressBytes(0x21e40, buf, sizeof(buf));
+	_vdp->writeVRAM(0, buf, size);
+
+	loadPalette(0x2241a, palette);
+
+	_SHORT_00ff07fa = -0x100;
+	_vdp->writeVRAMWord(0xdc00, 0);
+	_vdp->writeVRAMWord(0xdc02, _SHORT_00ff07fa);
+
+	fadeFromBlack(palette);
+
+	//TODO this was done in vblank handler in original game
+	do {
+		waitForFrames(1);
+		_SHORT_00ff07fa += 4;
+		_vdp->writeVRAMWord(0xdc00, 0);
+		_vdp->writeVRAMWord(0xdc02, _SHORT_00ff07fa);
+	} while (_SHORT_00ff07fa < 0x30);
+
+	waitForFrames(200);
+
+	fadeToBlack();
+	_vdp->zeroVRAM(0, 0x8000);
+
+	// Sunsoft logo
+	_file->offsetFromStart(0x2249a);
+	_file->read(buf, 0x1a * 0x9 * 2);
+	_gfx->loadTilemap(VDP::PlaneA, buf, 3, 8, 0x1a, 0x9);
+
+	size = _file->decompressBytes(0x2266e, buf, sizeof(buf));
+	_vdp->writeVRAM(0, buf, size);
+	loadPalette(0x231a6, palette);
+
+	fadeFromBlack(palette);
+	waitForFrames(300);
+	fadeToBlack();
+	_vdp->zeroVRAM(0, 0x8000);
+
+	//Illusions logo animation
+	size = _file->decompressBytes(0x0287c8, buf, sizeof(buf));
+	_vdp->writeVRAM(0, buf, size);
+
+	_file->decompressBytes(0x28220, buf, sizeof(buf));
+	_gfx->loadTilemap(VDP::PlaneA, buf, 8, 8, 0x14, 0x5);
+	loadPalette(0x2967a, palette);
+
+	fadeFromBlack(palette);
+
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 15; j++) {
+			waitForFrames(2);
+			_gfx->loadTilemap(VDP::PlaneA, buf + j * 200, 8, 8, 0x14, 0x5);
+		}
+	}
+
+	_file->decompressBytes(0x2864c, buf, sizeof(buf));
+	_gfx->loadTilemap(VDP::PlaneA, buf, 4, 5, 0x19, 0xf);
+
+	waitForFrames(200);
 	fadeToBlack();
 	_vdp->zeroVRAM(0, 0x8000);
 }
@@ -227,6 +332,13 @@ void ScoobyEngine::fadeToBlack() {
 			_vdp->writePalette(i, colour);
 		}
 		waitForFrames(1);
+	}
+}
+
+void ScoobyEngine::loadPalette(uint32 offset, uint16 *palette) {
+	_file->offsetFromStart(offset);
+	for (int i = 0; i < 64; i++) {
+		palette[i] = _file->readUint16();
 	}
 }
 

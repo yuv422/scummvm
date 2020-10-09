@@ -64,6 +64,10 @@ private:
 
 	uint32 _nextUpdatetime;
 
+	uint16 _DAT_00ff07f8;
+	int16 _SHORT_00ff07fa;
+	uint8 _DAT_00ff09eb_flags;
+
 public:
 	ScoobyEngine(OSystem *syst, const ADGameDescription *desc);
 	~ScoobyEngine() override;
@@ -86,6 +90,8 @@ private:
 
 	void setupInitialVdpRegisters();
 	void introSequence();
+
+	void loadPalette(uint32 offset, uint16 *palette);
 };
 
 }

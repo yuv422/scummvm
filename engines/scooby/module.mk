@@ -4,6 +4,7 @@ MODULE_OBJS := \
     detection.o \
     file.o \
     gfx.o \
+    md/vdp.o \
     scooby.o
 
 # This module can be built as a plugin

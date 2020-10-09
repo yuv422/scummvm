@@ -53,4 +53,20 @@ void Gfx::updateScreen() {
 	g_system->updateScreen();
 }
 
+void Gfx::loadTilemap(VDP::PlaneType planeType, byte *tilemapData, uint16 x, uint16 y, uint16 w, uint16 h) {
+	uint32 address = _vdp->getNameTableAddress(planeType);
+	uint16 pitch = _vdp->getPlaneWidth(planeType) * 2;
+	uint32 destAddress = address + (y * pitch) + (x * 2);
+
+	loadTilemap(destAddress, tilemapData, w, h, pitch);
+}
+
+void Gfx::loadTilemap(uint16 destAddress, byte *tilemapData, uint16 w, uint16 h, uint16 pitch) {
+	for (int row = 0; row < h; row++) {
+		_vdp->writeVRAM(destAddress, tilemapData, w * 2);
+		destAddress += pitch;
+		tilemapData += (w * 2);
+	}
+}
+
 } // End of namespace Scooby

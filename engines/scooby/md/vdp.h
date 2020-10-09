@@ -46,6 +46,12 @@ namespace Scooby {
 class VDP {
 //    friend bool loadstate(const char *fn);
 //    friend void savestate(const char *fn);
+public:
+	enum PlaneType {
+		PlaneA,
+		PlaneB,
+		Window
+	};
 
 private:
 	uint8_t VRAM[0x10000];
@@ -118,14 +124,19 @@ public:
 
 	int irq_acked(int level);
 
-	void zeroVRAM(uint16 destAddress, uint16 length);
+	void zeroVRAM(uint16 destAddress, uint16 lengthInWords);
 
 	void writeVRAM(uint16 destAddress, byte *srcBuf, uint16 length);
 	void writeCRAM(uint16 destAddress, byte *srcBuf, uint16 length);
 	void writeVSRAM(uint16 destAddress, byte *srcBuf, uint16 length);
 
+	void writeVRAMWord(uint16 destAddress, uint16 word);
+
 	void writePalette(uint16 paletteIndex, uint16 colour);
 	uint16 readPaletteRecord(uint16 paletteIndex);
+
+	int getNameTableAddress(PlaneType planeType);
+	int getPlaneWidth(PlaneType planeType);
 private:
 	//Gfx methods
 

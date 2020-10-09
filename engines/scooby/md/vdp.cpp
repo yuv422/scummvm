@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <assert.h>
+#include "common/endian.h"
 #include "common/debug.h"
 #include "vdp.h"
 #include "mem.h"
@@ -1121,14 +1122,36 @@ void VDP::writePalette(uint16 paletteIndex, uint16 colour) {
 	CRAM[paletteIndex] = colour;
 }
 
-void VDP::zeroVRAM(uint16 destAddress, uint16 length) {
-	assert(destAddress + length <= sizeof(VRAM));
-	memset(VRAM + destAddress, 0, length);
+void VDP::zeroVRAM(uint16 destAddress, uint16 lengthInWords) {
+	assert(destAddress + lengthInWords * 2 <= sizeof(VRAM));
+	memset(VRAM + destAddress, 0, lengthInWords * 2);
 }
 
 uint16 VDP::readPaletteRecord(uint16 paletteIndex) {
 	assert(paletteIndex < 64);
 	return CRAM[paletteIndex];
+}
+
+int VDP::getNameTableAddress(VDP::PlaneType planeType) {
+	switch(planeType) {
+	case PlaneA : return get_nametable_A();
+	case PlaneB : return get_nametable_B();
+	case Window : return get_nametable_W();
+	default : break;
+	}
+	return 0;
+}
+
+int VDP::getPlaneWidth(VDP::PlaneType planeType) {
+	if (planeType == PlaneA || planeType == PlaneB) {
+		return 	(BITS(regs[16], 0, 2) + 1) * 32;
+	}
+	return (screen_width() == 320 ? 128 : 64);
+}
+
+void VDP::writeVRAMWord(uint16 destAddress, uint16 word) {
+	assert(destAddress + 2 <= sizeof(VRAM));
+	WRITE_BE_INT16(VRAM + destAddress, word);
 }
 
 } //End of namespace Scooby

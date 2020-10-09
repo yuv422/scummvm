@@ -20,31 +20,12 @@
  *
  */
 
-#ifndef SCOOBY_GFX_H
-#define SCOOBY_GFX_H
+#ifndef SCOOBY_OFFSETS_H
+#define SCOOBY_OFFSETS_H
 
-#include "scooby/md/vdp.h"
-#include "graphics/surface.h"
+enum {
 
-namespace Scooby {
+} Offsets;
 
-class Gfx {
-private:
-	Graphics::PixelFormat _pixelFormat;
-	Graphics::Surface *_backSurface;
-	VDP *_vdp;
-public:
-	Gfx(VDP *vdp);
 
-	void drawFrame();
-
-	void loadTilemap(VDP::PlaneType planeType, byte *tilemapData, uint16 x, uint16 y, uint16 w, uint16 h);
-	void loadTilemap(uint16 destAddress, byte *tilemapData, uint16 w, uint16 h, uint16 pitch);
-
-private:
-	void updateScreen();
-};
-
-} // End of namespace Scooby
-
-#endif //SCOOBY_GFX_H
+#endif //SCOOBY_OFFSETS_H
