@@ -28,6 +28,7 @@
 #include "graphics/thumbnail.h"
 #include "common/error.h"
 #include "scooby/scooby.h"
+#include "scooby/offsets.h"
 
 namespace Scooby {
 
@@ -57,7 +58,7 @@ Common::Error ScoobyEngine::run() {
 		loadGameState(ConfMan.getInt("save_slot"));
 	} else {
 		introSequence();
-		// Main menu
+		mainMenu();
 	}
 
 	if (!shouldQuit()) {
@@ -141,24 +142,16 @@ void ScoobyEngine::introSequence() {
 	byte buf[0x8000];
 	uint16 palette[64];
 
-	_file->offsetFromStart(0x23226);
+	_file->offsetFromStart(data_SegaLogoTilemap);
 	_file->read(buf, 48 * 2);
 
 	_gfx->loadTilemap(VDP::PlaneA, buf, 10, 11, 0xc, 4);
 
-//	byte *ptr = buf;
-//	uint16 destAddress = 0xc594;
-//	for (int i = 0; i < 4; i++) {
-//		_vdp->writeVRAM(destAddress, ptr, 0xc * 2);
-//		destAddress += 0x80;
-//		ptr += (0xc * 2);
-//	}
-
-	uint16 size = _file->decompressBytes(0x23286, buf, sizeof(buf));
+	uint16 size = _file->decompressBytes(data_SegaLogoTiles_packed, buf, sizeof(buf));
 	debug("Size: %d", size);
 	_vdp->writeVRAM(0, buf, size);
 
-	loadPalette(0x236a0, palette);
+	loadPalette(data_SegaLogoPalette, palette);
 
 	fadeFromBlack(palette);
 
@@ -187,15 +180,15 @@ void ScoobyEngine::introSequence() {
 	_vdp->control_port_w(0x8c81);
 
 	// Scooby title
-	_file->offsetFromStart(0x278e0);
+	_file->offsetFromStart(data_ScoobyLogoTilemap);
 	_file->read(buf, 0x28 * 0x1c * 2);
 	_gfx->loadTilemap(VDP::PlaneA, buf, 0, 0, 0x28, 0x1c);
 
-	_file->offsetFromStart(0x23720);
+	_file->offsetFromStart(data_ScoobyLogoTiles);
 	_file->read(buf, 0x20e0 * 2);
 	_vdp->writeVRAM(0, buf, 0x20e0 * 2);
 
-	loadPalette(0x281a0, palette);
+	loadPalette(data_ScoobyLogoPalette, palette);
 
 	fadeFromBlack(palette);
 
@@ -213,18 +206,18 @@ void ScoobyEngine::introSequence() {
 	_DAT_00ff07f8 = 0;
 
 	// Acclaim logo
-	_file->offsetFromStart(0x219c0);
+	_file->offsetFromStart(data_AcclaimLogoBgTilemap);
 	_file->read(buf, 0x20 * 0x6 * 2);
 	_gfx->loadTilemap(VDP::PlaneA, buf, 0, 9, 0x20, 0x6);
 
-	_file->offsetFromStart(0x21b40);
+	_file->offsetFromStart(data_AcclaimLogoFgTilemap);
 	_file->read(buf, 0x180 * 2);
 	_vdp->writeVRAM(0xe480, buf, 0x180 * 2);
 
-	size = _file->decompressBytes(0x21e40, buf, sizeof(buf));
+	size = _file->decompressBytes(data_AcclaimLogoTiles, buf, sizeof(buf));
 	_vdp->writeVRAM(0, buf, size);
 
-	loadPalette(0x2241a, palette);
+	loadPalette(data_AcclaimLogoPalette, palette);
 
 	_SHORT_00ff07fa = -0x100;
 	_vdp->writeVRAMWord(0xdc00, 0);
@@ -246,13 +239,13 @@ void ScoobyEngine::introSequence() {
 	_vdp->zeroVRAM(0, 0x8000);
 
 	// Sunsoft logo
-	_file->offsetFromStart(0x2249a);
+	_file->offsetFromStart(data_SunSoftLogoTilemap);
 	_file->read(buf, 0x1a * 0x9 * 2);
 	_gfx->loadTilemap(VDP::PlaneA, buf, 3, 8, 0x1a, 0x9);
 
-	size = _file->decompressBytes(0x2266e, buf, sizeof(buf));
+	size = _file->decompressBytes(data_SunSoftLogoTiles, buf, sizeof(buf));
 	_vdp->writeVRAM(0, buf, size);
-	loadPalette(0x231a6, palette);
+	loadPalette(data_SunSoftLogoPalette, palette);
 
 	fadeFromBlack(palette);
 	waitForFrames(300);
@@ -260,12 +253,12 @@ void ScoobyEngine::introSequence() {
 	_vdp->zeroVRAM(0, 0x8000);
 
 	//Illusions logo animation
-	size = _file->decompressBytes(0x0287c8, buf, sizeof(buf));
+	size = _file->decompressBytes(data_IllusionsLogoTiles, buf, sizeof(buf));
 	_vdp->writeVRAM(0, buf, size);
 
-	_file->decompressBytes(0x28220, buf, sizeof(buf));
+	_file->decompressBytes(data_IllusionsLogoAnimTilemap, buf, sizeof(buf));
 	_gfx->loadTilemap(VDP::PlaneA, buf, 8, 8, 0x14, 0x5);
-	loadPalette(0x2967a, palette);
+	loadPalette(data_IllusionsLogoPalette, palette);
 
 	fadeFromBlack(palette);
 
@@ -276,7 +269,7 @@ void ScoobyEngine::introSequence() {
 		}
 	}
 
-	_file->decompressBytes(0x2864c, buf, sizeof(buf));
+	_file->decompressBytes(data_IllusionsLogoFullTilemap, buf, sizeof(buf));
 	_gfx->loadTilemap(VDP::PlaneA, buf, 4, 5, 0x19, 0xf);
 
 	waitForFrames(200);
@@ -285,7 +278,7 @@ void ScoobyEngine::introSequence() {
 }
 
 void ScoobyEngine::setupInitialVdpRegisters() {
-	_file->offsetFromStart(0x10123);
+	_file->offsetFromStart(data_initialVdpRegisters);
 
 	for (uint16 i = 0; i <= 0x12; i++) {
 		uint16 command = 0x8000u | (uint16)(i << 8u) | _file->readByte();
@@ -294,7 +287,7 @@ void ScoobyEngine::setupInitialVdpRegisters() {
 	}
 }
 
-void ScoobyEngine::fadeFromBlack(uint16 *palette) {
+void ScoobyEngine::fadeFromBlack(const uint16 *palette) {
 	uint16 tempPalette[64];
 	memset(tempPalette, 0, sizeof(tempPalette));
 	_vdp->writeCRAM(0, (byte *)tempPalette, 0x80);
@@ -340,6 +333,49 @@ void ScoobyEngine::loadPalette(uint32 offset, uint16 *palette) {
 	for (int i = 0; i < 64; i++) {
 		palette[i] = _file->readUint16();
 	}
+}
+
+void ScoobyEngine::mainMenu() {
+	byte buf[0x10000];
+	uint16 palette[0x40];
+
+	/* VDP: Window Plane Horizontal Position
+	   Draw window from HP to left edge of screen.
+	   Position: 0x0 (in units of 8 pixels). */
+	_vdp->control_port_w(0x9100);
+	/* VDP: Window Plane Vertical Position
+	   Draw window from VP to top edge of screen.
+	   Position: 0x0 (in units of 8 pixels). */
+	_vdp->control_port_w(0x9200);
+
+//TODO
+
+	_vdp->control_port_w(0x857e);
+//	write_volatile_4(0xc00000,0);
+//	vBlankFunctionPtr = FUN_0000a38c_mainmenu_vblank;
+//	hBlankFunctionPtr = noOp_hblank;
+	/* VDP: Window Plane Horizontal Position
+	   Draw window from HP to left edge of screen.
+	   Position: 0x0 (in units of 8 pixels). */
+	_vdp->control_port_w(0x9100);
+	/* VDP: Window Plane Vertical Position
+	   Draw window from VP to top edge of screen.
+	   Position: 0x0 (in units of 8 pixels). */
+	_vdp->control_port_w(0x9200);
+	/* VDP: Plane Size
+	   Width - 256 pixels (32 cells)
+	   Height - 256 pixels (32 cells) */
+	_vdp->control_port_w(0x9000);
+
+	uint32 size = _file->decompressBytes(0x1155a, buf, sizeof(buf));
+	_vdp->writeVRAM(0, buf, size);
+
+	_file->offsetFromStart(data_MainMenuBackgroundTilemap);
+	_file->read(buf, 0x380 * 2);
+	_vdp->writeVRAM(0xe000, buf, 0x380 * 2);
+
+	loadPalette(0x16cb8, palette);
+	fadeFromBlack(palette);
 }
 
 } // End of namespace Scooby

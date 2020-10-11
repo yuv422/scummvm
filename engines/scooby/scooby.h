@@ -81,7 +81,7 @@ public:
 
 	void waitForFrames(uint16 numFrames);
 
-	void fadeFromBlack(uint16 *palette);
+	void fadeFromBlack(const uint16 *palette);
 	void fadeToBlack();
 private:
 	void gameLoop();
@@ -90,6 +90,7 @@ private:
 
 	void setupInitialVdpRegisters();
 	void introSequence();
+	void mainMenu();
 
 	void loadPalette(uint32 offset, uint16 *palette);
 };
