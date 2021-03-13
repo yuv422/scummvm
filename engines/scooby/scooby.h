@@ -67,6 +67,7 @@ private:
 	uint16 _DAT_00ff07f8;
 	int16 _SHORT_00ff07fa;
 	uint8 _DAT_00ff09eb_flags;
+	uint8 DAT_00ff09ed_flags;
 
 public:
 	ScoobyEngine(OSystem *syst, const ADGameDescription *desc);
@@ -93,6 +94,8 @@ private:
 	void mainMenu();
 
 	void loadPalette(uint32 offset, uint16 *palette);
+
+	void FUN_00009c64(uint8 *src, uint8 *dest);
 };
 
 }

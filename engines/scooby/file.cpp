@@ -145,7 +145,7 @@ uint32 File::decompressBytes(uint32 offset, byte *destBufArg, uint32 dataSize) {
 	debug("decomp size: %u", destBufPtr - destBufArg);
 	debug("src size: %u", pos() - offset); //(byte *)srcBufPtr - (byte *)startSrcBuf);
 
-	printBuf(destBufArg, destBufPtr - destBufArg);
+//	printBuf(destBufArg, destBufPtr - destBufArg);
 	return destBufPtr - destBufArg; //decomp size
 }
 

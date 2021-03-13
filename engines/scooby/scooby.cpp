@@ -41,6 +41,7 @@ Scooby::ScoobyEngine::ScoobyEngine(OSystem *syst, const ADGameDescription *desc)
 	_DAT_00ff07f8 = 0;
 	_SHORT_00ff07fa = 0;
 	_DAT_00ff09eb_flags = 0;
+	DAT_00ff09ed_flags = 0;
 }
 
 ScoobyEngine::~ScoobyEngine() {
@@ -335,6 +336,8 @@ void ScoobyEngine::loadPalette(uint32 offset, uint16 *palette) {
 	}
 }
 
+extern void printBuf(byte *buf, int size);
+
 void ScoobyEngine::mainMenu() {
 	byte buf[0x10000];
 	uint16 palette[0x40];
@@ -370,12 +373,108 @@ void ScoobyEngine::mainMenu() {
 	uint32 size = _file->decompressBytes(0x1155a, buf, sizeof(buf));
 	_vdp->writeVRAM(0, buf, size);
 
+	byte src[0x132];
+	byte dest[0x200];
+	_file->offsetFromStart(0x16d38);
+	_file->read(src, 0x132);
+
+	FUN_00009c64(src, dest);
+
+	printBuf(dest, 512);
+
+	_vdp->writeVRAM(size, dest, 0x200);
+
 	_file->offsetFromStart(data_MainMenuBackgroundTilemap);
 	_file->read(buf, 0x380 * 2);
 	_vdp->writeVRAM(0xe000, buf, 0x380 * 2);
 
+	_file->offsetFromStart(0x85f8);
+	_file->read(buf, 0x34 * 2);
+	_vdp->writeVRAM(0xfc00, buf, 0x34 * 2);
+
 	loadPalette(0x16cb8, palette);
 	fadeFromBlack(palette);
+}
+
+void ScoobyEngine::FUN_00009c64(uint8 *src,uint8 *dest)
+
+{
+	byte bVar1;
+	byte bVar2;
+//	undefined4 in_D0;
+	int16 runLength;
+	ushort uVar4;
+	byte *pbVar5;
+	byte *pbVar6;
+	byte *puVar7;
+	uint32 *endAddress;
+	uint32 expandedSize;
+	uint32 curPos = 0;
+
+	if ((DAT_00ff09ed_flags & 8) != 0) {
+		/* VDP: Mode Register 4
+		   256 pixel (32 cell) wide mode.
+		   Enable shadow/highlight mode.
+		   Progressive mode. */
+		_vdp->control_port_w(0x8c08);
+	}
+	pbVar5 = src + 4;
+//	endAddress = (undefined4 *)(dest + (short)*(undefined4 *)src);
+	expandedSize = READ_BE_UINT32(src);
+	for (uint32 curPos = 0; curPos < expandedSize; ) {
+		while( true ) {
+			pbVar6 = pbVar5 + 1;
+			bVar1 = *pbVar5;
+			runLength = (uint)bVar1;
+			puVar7 = dest;
+			if (-1 < (char)*pbVar5) break;
+			pbVar5 = pbVar5 + 2;
+			bVar2 = *pbVar6;
+			runLength = (ushort)(byte)-bVar1;
+			if (curPos % 2 == 1) { //((short)((short)dest << 0xf) < 0) {
+				puVar7 = dest + 1;
+				*dest = bVar2;
+				curPos++;
+				runLength--;
+			}
+			for (int i = 0; i <= runLength / 4; i++) {
+				memset(puVar7, bVar2, 4);
+				puVar7 += 4;
+				curPos += 4;
+			}
+//			uVar4 = runLength / 4; //._2_2_ >> 2;
+//			do {
+//				puVar7 = puVar7 + 4;
+//				memset(puVar7, bVar2, 4);
+////				*puVar7 = CONCAT22(CONCAT11(bVar2,bVar2),CONCAT11(bVar2,bVar2));
+//				if (false) break;
+//				uVar4 = uVar4 - 1;
+//				puVar7 = puVar7;
+//			} while (uVar4 != 0xffff);
+			dest = (byte *)(puVar7 - (int)(short)((runLength & 3u) ^ 3));
+			if (curPos == expandedSize) {
+				/* VDP: Mode Register 4
+				   256 pixel (32 cell) wide mode.
+				   Progressive mode. */
+				_vdp->control_port_w(0x8c00);
+				return;
+			}
+		}
+		do {
+			pbVar5 = pbVar6 + 1;
+			dest = puVar7 + 1;
+			curPos++;
+			*(byte *)puVar7 = *pbVar6;
+			if (false) break;
+			runLength--;
+			pbVar6 = pbVar5;
+			puVar7 = dest;
+		} while (runLength != -1);
+	}
+	/* VDP: Mode Register 4
+   256 pixel (32 cell) wide mode.
+   Progressive mode. */
+	_vdp->control_port_w(0x8c00);
 }
 
 } // End of namespace Scooby
