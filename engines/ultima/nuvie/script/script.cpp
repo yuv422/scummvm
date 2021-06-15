@@ -24,6 +24,7 @@
 #include "common/lua/lauxlib.h"
 #include "common/lua/lualib.h"
 
+#include "ultima/shared/engine/ultima.h"
 #include "ultima/nuvie/core/nuvie_defs.h"
 #include "ultima/nuvie/conf/configuration.h"
 #include "ultima/nuvie/misc/u6_misc.h"
@@ -1544,6 +1545,13 @@ bool Script::call_is_tile_object(uint16 obj_n) {
 	return (lua_toboolean(L, -1));
 }
 
+Std::string Script::call_i18n(const char *code) {
+    lua_getglobal(L, "i18n");
+	lua_pushstring(L, code);
+    call_function("i18n", 1, 1);
+    return Std::string(lua_tostring(L, -1));
+}
+
 ScriptThread *Script::new_thread(const char *scriptfile) {
 	ScriptThread *t = NULL;
 	lua_State *s;
@@ -2332,7 +2340,7 @@ static int nscript_display_prompt(lua_State *L) {
 
 	bool newline = lua_toboolean(L, 1);
 	if (newline)
-		scroll->display_string("\n");
+		scroll->display_nl();
 	scroll->display_prompt();
 	return 0;
 }
@@ -2396,7 +2404,11 @@ static int nscript_config_get_game_type(lua_State *L) {
  */
 static int nscript_config_get_language(lua_State *L) {
 	Std::string value;
-	Script::get_script()->get_config()->value(config_get_game_key(Script::get_script()->get_config()) + "/language", value, "en");
+	switch (Shared::g_ultima->getLanguage()) {
+	case Common::EN_ANY : value = "en"; break;
+	case Common::DE_DEU : value = "de"; break;
+	default : value = "en"; break;
+	}
 	lua_pushstring(L, value.c_str());
 	return 1;
 }

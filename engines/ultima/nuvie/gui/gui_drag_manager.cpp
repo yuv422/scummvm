@@ -58,7 +58,7 @@ void GUI_DragManager::drop(GUI_DragArea *drag_target, int x, int y) {
 	Game::get_game()->unpause_user();
 	if (is_out_of_range) {
 		MsgScroll *scroll = Game::get_game()->get_scroll();
-		scroll->display_string("Move-");
+		scroll->display_i18n_string("MOVE");
 		scroll->display_string(Game::get_game()->get_obj_manager()->look_obj((Obj *)data)); // getting obj name
 		scroll->message(".\n\nOut of range!\n\n");
 		drag_source->drag_drop_failed(x, y, message, data);

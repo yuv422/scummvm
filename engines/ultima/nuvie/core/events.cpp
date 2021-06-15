@@ -630,40 +630,46 @@ bool Events::perform_talk(Actor *actor) {
 	}
 
 	if (actor->is_in_vehicle()) {
-		scroll->display_string("Not in vehicle.\n");
+		scroll->display_i18n_string("NOT_IN_VEHICLE");
+        scroll->display_nl();
 		return false;
 	}
 	if (id == pc->get_actor_num()) {  // actor is controlled by player
 		// Note: being the player, this should ALWAYS use the real name
 		scroll->display_string(actor->get_name());
-		scroll->display_string("\n");
-		scroll->display_string("Talking to yourself?\n");
+		scroll->display_nl();
+		scroll->display_i18n_string("TALKING_TO_YOURSELF");
+        scroll->display_nl();
 		return false;
 	}
 	if (actor->is_in_party() && !actor->is_onscreen()) {
 		scroll->display_string(actor->get_name());
-		scroll->display_string("\n");
-		scroll->display_string("Not on screen.\n");
+		scroll->display_nl();
+		scroll->display_i18n_string("NOT_ON_SCREEN");
+        scroll->display_nl();
 		return false;
 	}
 	// FIXME: this check and the "no response" messages should be in Converse
 	if (!player->in_party_mode() && !pc->is_avatar()) { //only the avatar can talk in solo mode
 		// always display look-string on failure
 		scroll->display_string(actor->get_name());
-		scroll->display_string("\n");
-		scroll->display_string("Not in solo mode.\n");
+		scroll->display_nl();
+		scroll->display_i18n_string("NOT_IN_SOLO_MODE");
+        scroll->display_nl();
 	} else if (actor->is_sleeping() || actor->is_paralyzed() || actor->get_corpser_flag()
 	           || actor->get_alignment() == ACTOR_ALIGNMENT_EVIL
 	           || actor->get_alignment() == ACTOR_ALIGNMENT_CHAOTIC
 	           || (actor->get_alignment() == ACTOR_ALIGNMENT_NEUTRAL && actor->will_not_talk())) {
 		// always display name or look-string on failure
 		scroll->display_string(actor->get_name());
-		scroll->display_string("\n\nNo response\n");
+		scroll->display_nlnl();
+		scroll->display_i18n_string("NO_RESPONSE");
+		scroll->display_nl();
 	} else if (game->get_converse()->start(actor)) {  // load and begin npc script
 		// try to use real name
 		scroll->display_string(actor->get_name());
-		scroll->display_string("\n");
-		// turn towards eachother
+		scroll->display_nl();
+		// turn towards each other
 		pc->face_actor(actor);
 		if (!actor->is_immobile())
 			actor->face_actor(pc);
@@ -671,8 +677,9 @@ bool Events::perform_talk(Actor *actor) {
 	} else {  // some actor that has no script
 		// always display look-string on failure
 		scroll->display_string(actor_manager->look_actor(actor));
-		scroll->display_string("\n");
-		scroll->display_string("Funny, no response.\n");
+		scroll->display_nl();
+		scroll->display_i18n_string("FUNNY_NO_RESPONSE");
+		scroll->display_nl();
 	}
 	return (false);
 }
@@ -694,7 +701,7 @@ bool Events::talk(Actor *actor) {
 		talking = false;
 
 	if (!talking) {
-//        scroll->display_string("\n");
+//        scroll->display_nl();
 //        scroll->display_prompt();
 		endAction(true);
 	}
@@ -712,7 +719,7 @@ bool Events::talk_start() {
 	if (game->user_paused())
 		return (false);
 	close_gumps();
-	get_target("Talk-");
+	get_target(game->i18n("TALK").c_str());
 	return true;
 }
 
@@ -730,7 +737,7 @@ bool Events::talk(Obj *obj) {
 			endAction();
 			bool status = game->get_script()->call_talk_to_obj(obj);
 			if (status == false) {
-				scroll->display_string("\n");
+				scroll->display_nl();
 				scroll->display_prompt();
 			}
 			return status;
@@ -738,7 +745,7 @@ bool Events::talk(Obj *obj) {
 	}
 	scroll->display_string("nothing!\n");
 	endAction();
-	scroll->display_string("\n");
+	scroll->display_nl();
 	scroll->display_prompt();
 	return (false);
 }
@@ -813,10 +820,11 @@ bool Events::attack() {
 bool Events::get_start() {
 	if (game->user_paused())
 		return false;
+	Common::String getString = game->i18n("GET");
 	if (game->get_script()->call_is_ranged_select(GET))
-		get_target("Get-");
+		get_target(getString.c_str());
 	else
-		get_direction("Get-");
+		get_direction(getString.c_str());
 	return true;
 }
 
@@ -825,10 +833,11 @@ bool Events::push_start() {
 		return false;
 	push_obj = NULL;
 	push_actor = NULL;
+    Common::String moveString = game->i18n("MOVE");
 	if (game->get_script()->call_is_ranged_select(MOVE))
-		get_target("Move-");
+		get_target(moveString.c_str());
 	else
-		get_direction("Move-");
+		get_direction(moveString.c_str());
 	return true;
 }
 
@@ -845,7 +854,7 @@ bool Events::perform_get(Obj *obj, Obj *container_obj, Actor *actor) {
 			actor = player->get_actor();
 
 		if (obj->is_on_map() && map_window->tile_is_black(obj->x, obj->y, obj)) {
-			scroll->display_string("nothing");
+			scroll->display_i18n_string("NOTHING");
 		} else {
 			scroll->display_string(obj_manager->look_obj(obj));
 
@@ -869,13 +878,13 @@ bool Events::perform_get(Obj *obj, Obj *container_obj, Actor *actor) {
 			}
 		}
 	} else
-		scroll->display_string("nothing");
+		scroll->display_i18n_string("NOTHING");
 
 	if (can_perform_get) {
 		// perform GET usecode (can't add to container)
 		if (usecode->has_getcode(obj) && (usecode->get_obj(obj, actor) == false)) {
 			game->get_script()->call_actor_subtract_movement_points(actor, 3);
-			scroll->display_string("\n");
+			scroll->display_nl();
 			scroll->display_prompt();
 			map_window->updateBlacking();
 			return (false); // ???
@@ -884,7 +893,7 @@ bool Events::perform_get(Obj *obj, Obj *container_obj, Actor *actor) {
 		got_object = game->get_script()->call_actor_get_obj(actor, obj, container_obj);
 	}
 
-	scroll->display_string("\n\n");
+	scroll->display_nlnl();
 	scroll->display_prompt();
 	map_window->updateBlacking();
 	return (got_object);
@@ -916,10 +925,11 @@ bool Events::get(MapCoord coord) {
 bool Events::use_start() {
 	if (game->user_paused())
 		return false;
+	const Common::String useString = game->i18n("USE");
 	if (game->get_script()->call_is_ranged_select(USE))
-		get_target("Use-");
+		get_target(useString.c_str());
 	else
-		get_direction("Use-");
+		get_direction(useString.c_str());
 
 	return true;
 }
@@ -945,7 +955,7 @@ bool Events::use(Obj *obj) {
 	bool display_prompt = true;
 
 	scroll->display_string(obj_manager->look_obj(obj));
-	scroll->display_string("\n");
+	scroll->display_nl();
 
 	if (!usecode->has_usecode(obj)) {
 		scroll->display_string("\nNot usable\n");
@@ -980,7 +990,7 @@ bool Events::use(Actor *actor, uint16 x, uint16 y) {
 			scroll->display_string("horse");
 		else
 			scroll->display_string(obj_manager->look_obj(obj));
-		scroll->display_string("\n");
+		scroll->display_nl();
 
 		MapCoord player_loc = player->get_actor()->get_location();
 		MapCoord target = MapCoord(x, y, player_loc.z);
@@ -1047,7 +1057,7 @@ bool Events::use(MapCoord coord) {
 bool Events::look_start() {
 	if (game->user_paused())
 		return (false);
-	get_target("Look-");
+	get_target(game->i18n("LOOK").c_str());
 	return true;
 }
 
@@ -1112,7 +1122,7 @@ bool Events::look(Actor *actor) {
 		scroll->display_string(player->get_party()->get_actor_name(p_id));
 	else
 		scroll->display_string(actor_manager->look_actor(actor, true));
-	scroll->display_string("\n");
+	scroll->display_nl();
 	return (had_portrait);
 }
 
@@ -1173,7 +1183,7 @@ bool Events::lookAtCursor(bool delayed, uint16 x, uint16 y, uint8 z, Obj *obj, A
 		/*   if(game->is_new_style())
 		     new TextEffect(game->get_game_map()->look(x, y, z), MapCoord((x - map_window->get_cur_x())*16,(y-map_window->get_cur_y())*16,z));*/
 		scroll->display_string(game->get_game_map()->look(x, y, z));
-		scroll->display_string("\n");
+		scroll->display_nl();
 	}
 
 	endAction(display_prompt);
@@ -1186,7 +1196,7 @@ bool Events::pushTo(Obj *obj, Actor *actor) {
 	if (obj) {
 		if (game->get_game_type() == NUVIE_GAME_SE || push_obj != obj)
 			scroll->display_string(obj_manager->look_obj(obj));
-		scroll->display_string("\n");
+		scroll->display_nl();
 
 		if (obj_manager->can_store_obj(obj, push_obj)) {
 			if (obj->is_in_inventory()) {
@@ -1214,7 +1224,9 @@ bool Events::pushTo(Obj *obj, Actor *actor) {
 			endAction();
 			return (true);
 		} else {
-			scroll->message("nobody.\n\n");
+			scroll->display_i18n_string("NOBODY");
+			scroll->display_nlnl();
+			scroll->display_prompt();
 			endAction();
 			return false;
 		}
@@ -1267,7 +1279,8 @@ bool Events::pushTo(sint16 rel_x, sint16 rel_y, bool push_from) {
 		return (false);
 
 	if (!push_actor && !push_obj) {
-		scroll->display_string("what?\n\n");
+		scroll->display_i18n_string("WHAT");
+		scroll->display_nlnl();
 		scroll->display_prompt();
 		endAction();
 		return (false);
@@ -1322,7 +1335,7 @@ bool Events::pushTo(sint16 rel_x, sint16 rel_y, bool push_from) {
 	to.y = from.y + pushrel_y;
 	to.z = from.z;
 
-	scroll->display_string(get_direction_name(pushrel_x, pushrel_y));
+	scroll->display_i18n_string(get_direction_i18n_name(pushrel_x, pushrel_y));
 	scroll->display_string(".\n\n");
 
 	if (pushrel_x == 0 && pushrel_y == 0) {
@@ -1514,20 +1527,20 @@ void Events::alt_code_input(const char *in) {
 			am->print_actor(a); //print actor debug info
 			display_portrait(a);
 		}
-		scroll->display_string("\n");
+		scroll->display_nl();
 		active_alt_code = 0;
 		break;
 
 	case 301: // Show Midgame graphics
 		game->get_script()->call_play_midgame_sequence((uint16) strtol(in, NULL, 10));
-		scroll->display_string("\n");
+		scroll->display_nl();
 		active_alt_code = 0;
 		break;
 
 	case 400: // talk to NPC (FIXME: get portrait and inventory too)
 		a_num = (uint8) strtol(in, NULL, 10);
 		if (a_num == 0 || !game->get_converse()->start(a_num)) {
-			scroll->display_string("\n");
+			scroll->display_nl();
 			scroll->display_prompt();
 		}
 		active_alt_code = 0;
@@ -1535,7 +1548,7 @@ void Events::alt_code_input(const char *in) {
 
 	/*        case 214:
 	            alt_code_teleport(in); //teleport player & party to location string
-	            scroll->display_string("\n");
+	            scroll->display_nl();
 	            scroll->display_prompt();
 	            active_alt_code = 0;
 	            break;
@@ -1559,7 +1572,7 @@ void Events::alt_code_input(const char *in) {
 			get_scroll_input(NULL, true, false, false);
 		} else {
 			alt_code_teleport(teleport_string.c_str());
-			scroll->display_string("\n");
+			scroll->display_nl();
 			scroll->display_prompt();
 			teleport_string = "";
 			alt_code_input_num = 0;
@@ -1571,7 +1584,7 @@ void Events::alt_code_input(const char *in) {
 		if (strtol(in, NULL, 10) != 0)
 			alt_code_teleport_menu((uint32) strtol(in, NULL, 10));
 		if (strtol(in, NULL, 10) == 0 || alt_code_input_num > 2) {
-			scroll->display_string("\n");
+			scroll->display_nl();
 			scroll->display_prompt();
 			alt_code_input_num = 0;
 			active_alt_code = 0;
@@ -1581,16 +1594,16 @@ void Events::alt_code_input(const char *in) {
 	case 414: // teleport player & party to NPC location
 		if (actor_exists(a))
 			alt_code_teleport_to_person((uint32) strtol(in, NULL, 10));
-		scroll->display_string("\n\n");
+		scroll->display_nlnl();
 		scroll->display_prompt();
 		active_alt_code = 0;
 		break;
 
 	case 500: // control/watch anyone
 		if (!actor_exists(a)) {
-			scroll->display_string("\n\n");
+			scroll->display_nlnl();
 		} else if (!a->is_alive()) {
-			scroll->display_string("\n");
+			scroll->display_nl();
 			scroll->display_string(a->get_name(true));
 			scroll->display_string(" is dead\n\n");
 		} else {
@@ -1609,7 +1622,7 @@ void Events::alt_code_input(const char *in) {
 					view_manager->get_inventory_view()->set_actor(player->get_actor());
 			}
 			game->get_party()->update_light_sources();
-			scroll->display_string("\n\n");
+			scroll->display_nlnl();
 		}
 		scroll->display_prompt();
 		active_alt_code = 0;
@@ -1619,7 +1632,7 @@ void Events::alt_code_input(const char *in) {
 		if (!actor_exists(a)) {
 			// Do nothing. It already prints a message
 		} else if (a->is_alive()) {
-			scroll->display_string("\n");
+			scroll->display_nl();
 			scroll->display_string(a->get_name(true));
 			scroll->display_string(" is not dead.");
 		} else {
@@ -1636,7 +1649,7 @@ void Events::alt_code_input(const char *in) {
 			if (failed) // No location found. Resurrect anyway.
 				a->resurrect(player->get_actor()->get_location());
 		}
-		scroll->display_string("\n\n");
+		scroll->display_nlnl();
 		scroll->display_prompt();
 		active_alt_code = 0;
 		break;
@@ -1749,7 +1762,7 @@ void Events::alt_code(const char *cs) {
 		//clock->advance_to_next_hour();
 		game->get_script()->call_advance_time(60);
 		scroll->display_string(clock->get_time_string());
-		scroll->display_string("\n");
+		scroll->display_nl();
 		scroll->display_prompt();
 		game->time_changed();
 		active_alt_code = 0;
@@ -1757,7 +1770,7 @@ void Events::alt_code(const char *cs) {
 
 	case 216:
 		scroll->display_string(clock->get_time_string());
-		scroll->display_string("\n");
+		scroll->display_nl();
 		scroll->display_prompt();
 		active_alt_code = 0;
 		break;
@@ -1841,7 +1854,7 @@ void Events::alt_code_infostring() {
 	sprintf(buf, "%02d%02d%02d%03X%03X%x", karma, hour, minute, x, y, z);
 
 	scroll->display_string(buf);
-	scroll->display_string("\n");
+	scroll->display_nl();
 	new PeerEffect((x - x % 8) - 18, (y - y % 8) - 18, z); // wrap to chunk boundary, and center
 	// in 11x11 MapWindow
 }
@@ -1886,7 +1899,7 @@ void Events::alt_code_teleport_menu(uint32 selection) {
 		}
 	} else if (alt_code_input_num == 1) { // selected category, select location
 		category = selection;
-		scroll->display_string("\n");
+		scroll->display_nl();
 		if (game->get_game_type() == NUVIE_GAME_U6) {
 			switch (selection) {
 			case 1:
@@ -2501,10 +2514,12 @@ void Events::solo_mode(uint32 party_member) {
 	if (!actor || player->is_in_vehicle())
 		return;
 
-	if (player->get_party()->is_in_combat_mode())
-		scroll->display_string("Not in combat mode!\n\n");
-	else if (player->set_solo_mode(actor)) {
-		scroll->display_string("Solo mode\n\n");
+	if (player->get_party()->is_in_combat_mode()) {
+		scroll->display_i18n_string("NOT_IN_COMBAT_MODE");
+        scroll->display_nlnl();
+	} else if (player->set_solo_mode(actor)) {
+		scroll->display_i18n_string("SOLO_MODE");
+        scroll->display_nlnl();
 		player->set_mapwindow_centered(true);
 		actor->set_worktype(0x02); // Player
 		if (in_control_cheat)
@@ -2543,17 +2558,21 @@ bool Events::party_mode() {
 	bool success = false;
 	leader_loc = actor->get_location();
 
-	if (player->get_party()->is_in_combat_mode())
-		scroll->display_string("Not in combat mode!\n");
-	else if (player->get_party()->is_at(leader_loc, 6) || was_in_control_cheat) {
+	if (player->get_party()->is_in_combat_mode()) {
+		scroll->display_i18n_string("NOT_IN_COMBAT_MODE");
+		scroll->display_nl();
+	} else if (player->get_party()->is_at(leader_loc, 6) || was_in_control_cheat) {
 		if (player->set_party_mode(player->get_party()->get_actor(0))) {
 			success = true;
-			scroll->display_string("Party mode\n");
+			scroll->display_i18n_string("PARTY_MODE");
+			scroll->display_nl();
 			player->set_mapwindow_centered(true);
 		}
-	} else
-		scroll->display_string("Not everyone is here.\n");
-	scroll->display_string("\n");
+	} else {
+		scroll->display_i18n_string("NOT_EVERYONE_IS_HERE");
+		scroll->display_nl();
+	}
+	scroll->display_nl();
 	scroll->display_prompt();
 	return success;
 }
@@ -2564,7 +2583,8 @@ bool Events::toggle_combat() {
 	bool combat_mode = !party->is_in_combat_mode();
 
 	if (!player->in_party_mode()) {
-		scroll->display_string("Not in solo mode.\n\n");
+		scroll->display_i18n_string("NOT_IN_SOLO_MODE");
+		scroll->display_nlnl();
 		scroll->display_prompt();
 	} else if (party->is_in_vehicle()) {
 		display_not_aboard_vehicle();
@@ -2575,10 +2595,12 @@ bool Events::toggle_combat() {
 		party->set_in_combat_mode(combat_mode);
 
 	if (party->is_in_combat_mode() == combat_mode) {
-		if (combat_mode)
-			scroll->display_string("Begin combat!\n\n");
-		else {
-			scroll->display_string("Break off combat!\n\n");
+		if (combat_mode) {
+			scroll->display_i18n_string("BEGIN_COMBAT");
+            scroll->display_nlnl();
+		} else {
+			scroll->display_i18n_string("BREAK_OFF_COMBAT");
+            scroll->display_nlnl();
 			player->set_actor(party->get_leader_actor()); // return control to leader
 			player->set_mapwindow_centered(true); // center mapwindow
 		}
@@ -2613,7 +2635,7 @@ bool Events::ready(Obj *obj, Actor *actor) {
 		scroll->display_string("\nToo heavy!\n");
 	// perform READY usecode
 	else if (actor->can_ready_obj(obj) && usecode->has_readycode(obj) && (usecode->ready_obj(obj, actor) == false)) {
-		scroll->display_string("\n");
+		scroll->display_nl();
 		scroll->display_prompt();
 		return (obj->is_readied()); // handled by usecode
 	} else if (obj->is_in_container() && obj->get_actor_holding_obj() != actor
@@ -2625,7 +2647,7 @@ bool Events::ready(Obj *obj, Actor *actor) {
 		else
 			scroll->display_string("\nNo place to put!\n");
 	}
-	scroll->display_string("\n");
+	scroll->display_nl();
 	scroll->display_prompt();
 	return (readied);
 }
@@ -2641,14 +2663,14 @@ bool Events::unready(Obj *obj) {
 
 	// perform unREADY usecode
 	if (usecode->has_readycode(obj) && (usecode->ready_obj(obj, actor) == false)) {
-		scroll->display_string("\n");
+		scroll->display_nl();
 		scroll->display_prompt();
 		return (!obj->is_readied()); // handled by usecode
 	}
 
 	actor->remove_readied_object(obj, false); // already ran usecode so don't run when unequipping
 
-	scroll->display_string("\n");
+	scroll->display_nl();
 	scroll->display_prompt();
 	return (true);
 }
@@ -2662,7 +2684,7 @@ bool Events::drop_start() {
 
 //    get_obj_from_inventory(some actor, "Drop-");
 //    get_obj_from_inventory("Drop-");
-	get_target("Drop-");
+	get_target(game->i18n("DROP").c_str());
 //    moveCursorToInventory(); done in newAction()
 	return true;
 }
@@ -2676,7 +2698,7 @@ bool Events::drop_select(Obj *obj, uint16 qty) {
 
 	drop_obj = obj;
 	scroll->display_string(drop_obj ? obj_manager->look_obj(drop_obj) : "nothing");
-	scroll->display_string("\n");
+	scroll->display_nl();
 	if (drop_from_key)
 		close_gumps();
 	if (drop_obj) {
@@ -2698,7 +2720,7 @@ bool Events::drop_count(uint16 qty) {
 		return (false);
 
 	drop_qty = qty;
-	scroll->display_string("\n");
+	scroll->display_nl();
 
 	if (drop_qty != 0) {
 		if (drop_x == -1)
@@ -2807,22 +2829,24 @@ bool Events::rest() {
 		player->get_party()->rest_sleep(rest_time, rest_guard - 1);
 		return true;
 	}
-	scroll->display_string("Rest");
+	scroll->display_i18n_string("REST");
 
 	string err_str;
 	if (!player->get_party()->can_rest(err_str)) {
 		scroll->display_string(err_str);
-		scroll->display_string("\n");
+		scroll->display_nl();
 		endAction(true);
 		return false;
 	}
 
 	if (player->get_actor()->get_obj_n() == OBJ_U6_SHIP) {
-		scroll->display_string("\n");
+		scroll->display_nl();
 		player->repairShip();
 		endAction(true);
 	} else {
-		scroll->display_string("\nHow many hours? ");
+		scroll->display_nl();
+		scroll->display_i18n_string("HOW_MANY_HOURS");
+		scroll->display_string(" ");
 		get_scroll_input("0123456789");
 	}
 	return true;
@@ -2833,7 +2857,7 @@ bool Events::rest() {
 bool Events::rest_input(uint16 input_) {
 	Party *party = player->get_party();
 	scroll->set_input_mode(false);
-	scroll->display_string("\n");
+	scroll->display_nl();
 	if (rest_time == 0) {
 		rest_time = input_;
 		if (rest_time == 0) {
@@ -2841,7 +2865,8 @@ bool Events::rest_input(uint16 input_) {
 			return false;
 		}
 		if (party->get_party_size() > 1) {
-			scroll->display_string("Who will guard? ");
+			scroll->display_i18n_string("WHO_WILL_GUARD");
+			scroll->display_string(" ");
 			get_target("");
 			get_scroll_input("0123456789", true, true);
 		} else {
@@ -2851,13 +2876,14 @@ bool Events::rest_input(uint16 input_) {
 		rest_guard = input_;
 		if (rest_guard > party->get_party_size())
 			rest_guard = 0;
-		if (rest_guard == 0)
-			scroll->display_string("none\n");
-		else {
+		if (rest_guard == 0) {
+			scroll->display_i18n_string("NONE");
+			scroll->display_nl();
+		} else {
 			scroll->display_string(party->get_actor(rest_guard - 1)->get_name());
-			scroll->display_string("\n");
+			scroll->display_nl();
 		}
-		scroll->display_string("\n");
+		scroll->display_nl();
 		party->rest_gather();
 	}
 	return true;
@@ -2974,7 +3000,7 @@ void Events::multiuse(uint16 wx, uint16 wy) {
 	if (!obj)
 		return;
 	else if (usecode->is_readable(obj)) {
-		scroll->display_string("Look-", MSGSCROLL_NO_MAP_DISPLAY);
+		scroll->display_i18n_string("LOOK", MSGSCROLL_NO_MAP_DISPLAY);
 		set_mode(LOOK_MODE);
 		look(obj);
 		endAction(false); // FIXME: should be in look()
@@ -2983,7 +3009,7 @@ void Events::multiuse(uint16 wx, uint16 wy) {
 	               || obj->obj_n == OBJ_U6_STATUE_OF_MONDAIN
 	               || obj->obj_n == OBJ_U6_STATUE_OF_MINAX
 	               || obj->obj_n == OBJ_U6_STATUE_OF_EXODUS)) {
-		scroll->display_string("Talk-", MSGSCROLL_NO_MAP_DISPLAY);
+		scroll->display_string(game->i18n("TALK").c_str(), MSGSCROLL_NO_MAP_DISPLAY);
 		set_mode(TALK_MODE);
 		talk(obj);
 	} else { // use a real object
@@ -3342,10 +3368,13 @@ void Events::cancelAction() {
 			}
 			if (last_mode == PUSH_MODE) {
 				if (push_obj || push_actor) {
-					if (move_in_inventory)
-						scroll->display_string("nobody.\n");
-					else
-						scroll->display_string("nowhere.\n");
+					if (move_in_inventory) {
+						scroll->display_i18n_string("NOBODY");
+						scroll->display_nl();
+					} else {
+						scroll->display_i18n_string("NOWHERE");
+						scroll->display_nl();
+					}
 					endAction();
 					endAction(true);
 					return;
@@ -3437,7 +3466,7 @@ bool Events::newAction(EventMode new_mode) {
 	switch (new_mode) {
 	case CAST_MODE:
 		/* TODO check if spellbook ready before changing mode */
-		scroll->display_string("Cast-");
+		scroll->display_string(game->i18n("CAST").c_str());
 		if (!magic->start_new_spell()) {
 			mode = MOVE_MODE;
 			scroll->display_prompt();
@@ -3520,7 +3549,7 @@ bool Events::newAction(EventMode new_mode) {
  */
 void Events::endAction(bool prompt) {
 	if (prompt) {
-		scroll->display_string("\n");
+		scroll->display_nl();
 		scroll->display_prompt();
 	}
 
@@ -3722,19 +3751,26 @@ bool Events::can_move_obj_between_actors(Obj *obj,
 				scroll->display_string("\n\nOut of range!");
 		} else
 			scroll->display_string("\n\nBlocked!"); // original said Out of Range!
-	} else
-		scroll->display_string("\n\nnobody.");
+	} else {
+		scroll->display_nlnl();
+		scroll->display_i18n_string("NOBODY");
+	}
 
 	return false;
 }
 
 void Events::display_move_text(Actor *target_actor, Obj *obj) {
-	scroll->display_string("Move-");
+	scroll->display_i18n_string("MOVE");
 	scroll->display_string(obj_manager->look_obj(obj, OBJ_SHOW_PREFIX));
-	if (game->get_game_type() == NUVIE_GAME_MD)
-		scroll->display_string("\nWhere? ");
-	else
-		scroll->display_string(" To ");
+	if (game->get_game_type() == NUVIE_GAME_MD) {
+		scroll->display_nl();
+		scroll->display_i18n_string("WHERE");
+		scroll->display_string(" ");
+	} else {
+		scroll->display_string(" ");
+		scroll->display_i18n_string("TO");
+		scroll->display_string(" ");
+	}
 	scroll->display_string(target_actor->get_name());
 	scroll->display_string(".");
 }
@@ -3766,7 +3802,7 @@ bool Events::select_view_obj(Obj *obj, Actor *actor) {
 		if (usecode->cannot_unready(obj) && ((last_mode == DROP_MODE && drop_obj == NULL)
 		                                     || (last_mode == PUSH_MODE && push_obj == NULL))) {
 			scroll->display_string(obj_manager->look_obj(obj, false));
-			scroll->display_string("\n");
+			scroll->display_nl();
 			usecode->ready_obj(obj, obj->get_actor_holding_obj());
 			endAction(true);
 			set_mode(MOVE_MODE);

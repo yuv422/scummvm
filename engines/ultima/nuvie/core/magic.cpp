@@ -114,7 +114,8 @@ bool Magic::start_new_spell() {
 	spellbook_obj = book_equipped();
 
 	if (Game::get_game()->get_clock()->get_timer(GAMECLOCK_TIMER_U6_STORM) > 0 && !Game::get_game()->has_unlimited_casting()) {
-		event->scroll->display_string("No magic at this time!\n\n");
+		event->scroll->display_i18n_string("NO_MAGIC_AT_THIS_TIME");
+		event->scroll->display_nlnl();
 	} else if (spellbook_obj != NULL) {
 		state = MAGIC_STATE_SELECT_SPELL;
 		clear_cast_buffer();
@@ -122,8 +123,11 @@ bool Magic::start_new_spell() {
 		Game::get_game()->get_view_manager()->set_spell_mode(event->player->get_actor(), spellbook_obj);
 		Game::get_game()->get_view_manager()->get_spell_view()->grab_focus();
 		return true;
-	} else
-		event->scroll->display_string("\nNo spellbook is readied.\n\n");
+	} else {
+		event->scroll->display_nl();
+		event->scroll->display_i18n_string("NO_SPELL_BOOK_IS_READIED");
+		event->scroll->display_nlnl();
+	}
 
 	state = MAGIC_STATE_READY;
 	return false;
@@ -219,7 +223,9 @@ bool Magic::cast() {
 		left = NULL;
 
 	if (right == NULL && left == NULL) {
-		event->scroll->display_string("\nNo spellbook is readied.\n");
+		event->scroll->display_nl();
+		event->scroll->display_i18n_string("NO_SPELL_BOOK_IS_READIED");
+		event->scroll->display_nl();
 		return false;
 	}
 

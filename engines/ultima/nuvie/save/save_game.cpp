@@ -276,8 +276,9 @@ bool SaveGame::load_objlist() {
 
 	map_window->centerMapOnActor(player->get_actor());
 
-	scroll->display_string("\nGame Loaded\n\n");
-
+	scroll->display_nl();
+	scroll->display_i18n_string("GAME_LOADED");
+	scroll->display_nlnl();
 	scroll->init(player->get_name());
 
 	scroll->display_prompt();

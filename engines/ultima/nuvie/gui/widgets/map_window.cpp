@@ -1938,10 +1938,10 @@ bool MapWindow::drag_accept_drop(int x, int y, int message, void *data) {
 			} else
 				return true; //throw on ground
 		}
-		game->get_scroll()->display_string("Move-");
+		game->get_scroll()->display_i18n_string("MOVE");
 		game->get_scroll()->display_string(obj_manager->look_obj(obj)); // getting obj name
 		game->get_scroll()->display_string("\nto ");
-		game->get_scroll()->display_string(get_direction_name(x - obj->x ,  y - obj->y));
+		game->get_scroll()->display_i18n_string(get_direction_i18n_name(x - obj->x, y - obj->y));
 		game->get_scroll()->message(".\n\nCan't reach it\n\n");
 	}
 
@@ -1982,7 +1982,7 @@ void MapWindow::drag_perform_drop(int x, int y, int message, void *data) {
 			}
 			CanDropOrMoveMsg can_drop; // so we can skip quantity prompt
 			if ((can_drop = can_drop_or_move_obj(x, y, actor_manager->get_player(), obj)) != MSG_SUCCESS) {
-				game->get_scroll()->display_string("Drop-");
+				game->get_scroll()->display_i18n_string("DROP");
 				game->get_scroll()->display_string(obj_manager->look_obj(obj));
 				game->get_scroll()->display_string("\n\nlocation:\n\n");
 				display_can_drop_or_move_msg(can_drop, "");
@@ -2080,7 +2080,7 @@ GUI_status MapWindow::MouseDelayed(int x, int y, Shared::MouseButton button) {
 		look_actor = NULL;
 		return (GUI_PASS);
 	}
-	game->get_scroll()->display_string("Look-");
+	game->get_scroll()->display_i18n_string("LOOK");
 	event->set_mode(LOOK_MODE);
 	event->lookAtCursor(true, original_obj_loc.x, original_obj_loc.y, original_obj_loc.z, look_obj, look_actor);
 	look_obj = NULL;

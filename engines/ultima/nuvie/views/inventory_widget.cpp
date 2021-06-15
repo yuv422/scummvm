@@ -524,7 +524,7 @@ bool InventoryWidget::drag_accept_drop(int x, int y, int message, void *data) {
 		if (obj->get_actor_holding_obj() == actor)
 			src_actor = actor;
 		else if (!obj->is_in_inventory() && actor == Game::get_game()->get_player()->get_actor()) {
-			Game::get_game()->get_scroll()->display_string("Get-");
+			Game::get_game()->get_scroll()->display_i18n_string("GET");
 			Game::get_game()->get_scroll()->display_string(obj_manager->look_obj(obj, OBJ_SHOW_PREFIX));
 		} else
 			Game::get_game()->get_event()->display_move_text(actor, obj);

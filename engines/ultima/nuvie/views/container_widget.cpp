@@ -371,7 +371,7 @@ bool ContainerWidget::drag_accept_drop(int x, int y, int message, void *data) {
 			container_owner = actor;
 		if (!obj->is_in_inventory()) {
 			if (container_owner) {
-				Game::get_game()->get_scroll()->display_string("Get-");
+				Game::get_game()->get_scroll()->display_i18n_string("GET");
 				Game::get_game()->get_scroll()->display_string(obj_manager->look_obj(obj, OBJ_SHOW_PREFIX));
 				if (Game::get_game()->get_script()->call_actor_get_obj(container_owner, obj) == false) {
 					Game::get_game()->get_scroll()->message("\n\n");

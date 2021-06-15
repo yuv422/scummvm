@@ -389,7 +389,7 @@ void Converse::stop() {
 
 
 		system_scroll->set_autobreak(false);
-		system_scroll->display_string("\n");
+		system_scroll->display_nl();
 		system_scroll->display_prompt();
 
 		if (scroll != system_scroll) { //if using an alternate scroll eg wou fullmap scroll.

@@ -712,7 +712,7 @@ void DropEffect::hit_target() {
 	// prompt, as we MUST unpause_user() in ThrowObjectEffect::hit_target, and
 	// that would be redundant and may not unpause everything if wait mode was
 	// already cancelled... so just prompt
-	game->get_scroll()->display_string("\n");
+	game->get_scroll()->display_nl();
 	game->get_scroll()->display_prompt();
 
 	game->get_map_window()->updateBlacking();
@@ -1709,7 +1709,7 @@ void PeerEffect::delete_self() {
 		// but it has to be here if no object was set. (until we have another
 		// way to tell caller effect is complete, and return to player)
 	{
-		game->get_scroll()->display_string("\n");
+		game->get_scroll()->display_nl();
 		game->get_scroll()->display_prompt();
 	}
 	Effect::delete_self();

@@ -471,7 +471,7 @@ void ActionUseItem(int const *params) {
 	if (!obj && !EVENT->using_control_cheat())
 		obj =  PARTY->get_obj(obj_n, qual, match_qual, frame_n, match_frame_n);
 	if (obj) {
-		GAME->get_scroll()->display_string("Use-", MSGSCROLL_NO_MAP_DISPLAY);
+		GAME->get_scroll()->display_i18n_string("USE", MSGSCROLL_NO_MAP_DISPLAY);
 		EVENT->set_mode(USE_MODE);
 		EVENT->use(obj);
 	}

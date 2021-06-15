@@ -669,7 +669,7 @@ bool Player::attack_select_weapon_at_location(sint8 location, bool add_newline, 
 		if (use_attack_text == false)
 			return true;
 		if (add_newline)
-			scroll->display_string("\n");
+			scroll->display_nl();
 		if (game_type == NUVIE_GAME_U6 && actor->obj_n == OBJ_U6_SHIP)
 			scroll->display_string("Attack with ship cannons-");
 		else
@@ -685,7 +685,7 @@ bool Player::attack_select_weapon_at_location(sint8 location, bool add_newline, 
 		if (use_attack_text == false)
 			return true;
 		if (add_newline)
-			scroll->display_string("\n");
+			scroll->display_nl();
 		scroll->display_fmt_string("Attack with %s-", obj_manager->get_obj_name(weapon->obj_n));
 		return true;
 	}
@@ -726,7 +726,7 @@ void Player::update_player(Actor *next_player) {
 
 	if (!scroll->can_display_prompt() && same_actor)
 		return;
-	scroll->display_string("\n");
+	scroll->display_nl();
 	scroll->display_prompt();
 }
 

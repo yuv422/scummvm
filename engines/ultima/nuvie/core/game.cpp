@@ -717,6 +717,9 @@ Std::string Game::get_data_file_path(Std::string datafile) {
 
 	return path;
 }
+Std::string Game::i18n(const char *code) {
+	return script->call_i18n(code);
+}
 
 uint getRandom(uint maxVal) {
 	return g_engine->getRandomNumber(maxVal);

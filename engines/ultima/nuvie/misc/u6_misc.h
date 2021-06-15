@@ -66,8 +66,8 @@ sint8 get_original_dir_code(uint8 nuvie_dir_code);
 uint8 get_direction_code(sint16 rel_x, sint16 rel_y);
 uint8 get_reverse_direction(uint8 dir);
 void get_relative_dir(uint8 dir, sint16 *rel_x, sint16 *rel_y);
-const char *get_direction_name(uint8 dir);
-const char *get_direction_name(sint16 rel_x, sint16 rel_y);
+const char *get_direction_i18n_name(uint8 dir);
+const char *get_direction_i18n_name(sint16 rel_x, sint16 rel_y);
 int str_bsearch(const char *str[], int max, const char *value);
 void stringToLower(Std::string &str);
 /* Is point x,y within rect?

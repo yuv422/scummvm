@@ -491,7 +491,7 @@ void DollWidget::drag_perform_drop(int x, int y, int message, void *data) {
 		bool can_equip = true;
 		if (!obj->is_in_inventory()) { // get
 			// event->newAction(GET_MODE);
-			Game::get_game()->get_scroll()->display_string("Get-");
+			Game::get_game()->get_scroll()->display_i18n_string("GET");
 			can_equip = Game::get_game()->get_event()->perform_get(obj, NULL, actor);
 //       if(!can_equip)
 //       {

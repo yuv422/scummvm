@@ -544,7 +544,7 @@ bool U6UseCode::use_passthrough(Obj *obj, UseCodeEvent ev) {
 		obj_manager->move(obj, new_x, new_y, obj->z);
 		obj->frame_n = new_frame_n;
 		if (print) {
-			scroll->display_string("\n");
+			scroll->display_nl();
 			scroll->display_string(action_string);
 			scroll->display_string(" the passthrough.\n");
 		}
@@ -728,7 +728,7 @@ bool U6UseCode::use_rune(Obj *obj, UseCodeEvent ev) {
 
 		return (false);
 	} else if (ev == USE_EVENT_MESSAGE && items.string_ref) {
-		scroll->display_string("\n");
+		scroll->display_nl();
 
 		char *mantra = new char[items.string_ref->size() + 1];
 		strcpy(mantra, items.string_ref->c_str());
@@ -756,7 +756,7 @@ bool U6UseCode::use_rune(Obj *obj, UseCodeEvent ev) {
 		} else
 			scroll->display_string("\nWrong mantra!\n");
 
-		scroll->display_string("\n");
+		scroll->display_nl();
 		scroll->display_prompt();
 		delete[] mantra;
 	}
@@ -1233,7 +1233,8 @@ bool U6UseCode::use_shovel(Obj *obj, UseCodeEvent ev) {
 	MapCoord from, dig_at, ladder;
 
 	if (ev == USE_EVENT_INPUT_CANCEL) {
-		scroll->display_string("nowhere.\n");
+		scroll->display_i18n_string("NOWHERE");
+		scroll->display_nl();
 		return true;
 	}
 
@@ -1243,14 +1244,15 @@ bool U6UseCode::use_shovel(Obj *obj, UseCodeEvent ev) {
 			return (true);
 		}
 		if (items.actor_ref == NULL) { // happens when you use on a widget
-			scroll->display_string("nowhere.\n");
+			scroll->display_i18n_string("NOWHERE");
+			scroll->display_nl();
 			return true;
 		}
 		Actor *parent = obj->get_actor_holding_obj();
 		from = parent->get_location();
 
 //        game->get_event()->useselect_mode(obj, "Direction: ");
-		game->get_event()->get_direction(from, "Direction: ");
+		game->get_event()->get_direction(from, game->i18n("DIRECTION").c_str());
 		if (game->get_map_window()->get_interface() == INTERFACE_NORMAL)
 			game->get_event()->do_not_show_target_cursor = true;
 		game->get_event()->request_input(this, obj);
@@ -1267,7 +1269,7 @@ bool U6UseCode::use_shovel(Obj *obj, UseCodeEvent ev) {
 		dig_at.sy = (dig_at.sy == 0) ? 0 : (dig_at.sy < 0) ? -1 : 1;
 	}
 
-	scroll->display_string(get_direction_name(dig_at.x, dig_at.y));
+	scroll->display_i18n_string(get_direction_i18n_name(dig_at.x, dig_at.y));
 	if (dig_at.sx == 0 && dig_at.sy == 0) {
 		scroll->display_string(".\n");
 		return (true); // display prompt
@@ -1371,7 +1373,7 @@ bool U6UseCode::use_fountain(Obj *obj, UseCodeEvent ev) {
 		assert(wish_actor);
 		return (false);
 	} else if (ev == USE_EVENT_MESSAGE && items.string_ref) {
-		scroll->display_string("\n");
+		scroll->display_nl();
 		if (!get_wish) { // answered with Y/N
 			// Y:
 			if (*items.string_ref == "y" || *items.string_ref == "Y") {
@@ -1381,7 +1383,7 @@ bool U6UseCode::use_fountain(Obj *obj, UseCodeEvent ev) {
 				scroll->request_input(this, obj);
 				get_wish = true;
 			} else { // N: won't wish
-				scroll->display_string("\n");
+				scroll->display_nl();
 				scroll->display_prompt();
 			}
 		} else { // answered with wish
@@ -1474,7 +1476,7 @@ bool U6UseCode::use_crystal_ball(Obj *obj, UseCodeEvent ev) {
 		actor = items.actor_ref;
 		if ((int)NUVIE_RAND() % 30 < (45 - actor->get_intelligence()) / 2) { //use crystal ball saving roll.
 			game->get_script()->call_actor_hit(actor, (NUVIE_RAND() % 10) + 1, SCRIPT_DISPLAY_HIT_MSG);
-			scroll->display_string("\n");
+			scroll->display_nl();
 			scroll->display_prompt();
 			return false;
 		}
@@ -1489,22 +1491,22 @@ bool U6UseCode::use_crystal_ball(Obj *obj, UseCodeEvent ev) {
 		if (mode == GET_LAT) {
 			sint16 lat = parseLatLongString(LAT, items.string_ref);
 			if (lat > 80 || lat < -44) {
-				scroll->display_string("\n\n");
+				scroll->display_nlnl();
 				scroll->display_prompt();
 				return false;
 			}
 
 			loc.y = lat * 8 + 360;
-			scroll->display_string("\n");
+			scroll->display_nl();
 			scroll->display_string("  longitude=");
 			scroll->set_input_mode(true);
 			scroll->request_input(this, obj);
 			mode = GET_LON;
 		} else if (mode == GET_LON) {
-			scroll->display_string("\n");
+			scroll->display_nl();
 			sint16 lon = parseLatLongString(LON, items.string_ref);
 			if (lon > 88 || lon < -37) {
-				scroll->display_string("\n\n");
+				scroll->display_nlnl();
 				scroll->display_prompt();
 				return false;
 			}
@@ -1564,7 +1566,7 @@ bool U6UseCode::play_instrument(Obj *obj, UseCodeEvent ev) {
 bool U6UseCode::use_firedevice_message(Obj *obj, bool lit) {
 	if (items.actor_ref != player->get_actor())
 		return true;
-	scroll->display_string("\n");
+	scroll->display_nl();
 	scroll->display_string(obj_manager->get_obj_name(obj));
 	if (lit)
 		scroll->display_string(" is lit.\n");
@@ -1603,13 +1605,14 @@ bool U6UseCode::use_potion(Obj *obj, UseCodeEvent ev) {
 			game->get_event()->get_target(items.actor_ref->get_location(), "On whom: ");
 			game->get_event()->request_input(this, obj);
 		} else if (!items.actor2_ref) { // no selection
-			scroll->display_string("nobody\n");
+			scroll->display_i18n_string("NOBODY");
+			scroll->display_nl();
 			return (true);
 		} else { // use potion
 			sint8 party_num = party->get_member_num(items.actor2_ref);
 			scroll->display_string(party_num >= 0 ? party->get_actor_name(party_num)
 			                       : am->look_actor(items.actor2_ref));
-			scroll->display_string("\n");
+			scroll->display_nl();
 
 			if (party_num < 0) // can't force potions on non-party members
 				scroll->display_string("No effect\n");
@@ -1704,7 +1707,7 @@ bool U6UseCode::use_key(Obj *obj, UseCodeEvent ev) {
 				return true;
 
 			scroll->display_string(obj_manager->get_obj_name(door_obj));
-			scroll->display_string("\n");
+			scroll->display_nl();
 
 			if (!is_door(door_obj) && !is_chest(door_obj)) {
 				scroll->display_string("No effect\n");
@@ -1943,7 +1946,7 @@ bool U6UseCode::use_balloon_plans(Obj *obj, UseCodeEvent ev) {
 	if (ev != USE_EVENT_USE)
 		return (false);
 
-	scroll->display_string("\n");
+	scroll->display_nl();
 
 //make sure the party is carrying the required parts.
 
@@ -2408,7 +2411,7 @@ bool U6UseCode::look_sign(Obj *obj, UseCodeEvent ev) {
 		                && !game->get_map_window()->can_get_obj(player->get_actor(), obj));
 		if ((obj->quality == 0 && obj->obj_n != OBJ_U6_BOOK) || (!obj->is_in_inventory()
 		        && (obj->obj_n == OBJ_U6_BOOK || obj->obj_n == OBJ_U6_SCROLL) && (too_far || blocked))) {
-			scroll->display_string("\n");
+			scroll->display_nl();
 			return true; // display prompt
 		}
 		// read
@@ -2483,7 +2486,7 @@ bool U6UseCode::look_clock(Obj *obj, UseCodeEvent ev) {
 	if (ev == USE_EVENT_LOOK && items.actor_ref == player->get_actor()) {
 		scroll->display_string("\nThe time is ");
 		scroll->display_string(clock->get_time_string());
-		scroll->display_string("\n");
+		scroll->display_nl();
 	}
 	return (true);
 }
@@ -2501,7 +2504,7 @@ bool U6UseCode::look_mirror(Obj *obj, UseCodeEvent ev) {
 			scroll->display_string("\nYou can see yourself!");
 			game->get_event()->display_portrait(items.actor_ref);
 		}
-		scroll->display_string("\n");
+		scroll->display_nl();
 		return (true);
 	}
 	return (false);
@@ -2677,7 +2680,7 @@ bool U6UseCode::use_cannon(Obj *obj, UseCodeEvent ev) {
 		return (false);
 	} else if (ev == USE_EVENT_MESSAGE) {
 		if (*items.msg_ref == MESG_EFFECT_COMPLETE) {
-			scroll->display_string("\n");
+			scroll->display_nl();
 			scroll->display_prompt();
 		}
 		return (true);
@@ -2726,7 +2729,7 @@ bool U6UseCode::use_spellbook(Obj *obj, UseCodeEvent ev) {
 
 		}
 	} else if (ev == USE_EVENT_LOOK) {
-		scroll->display_string("\n");
+		scroll->display_nl();
 		/* TODO open spellbook for reading */
 
 	}
@@ -2811,7 +2814,7 @@ bool U6UseCode::torch(Obj *obj, UseCodeEvent ev) {
 		obj->qty = 1;
 		obj_manager->remove_obj_from_map(obj); // add to inventory and USE
 		items.actor_ref->inventory_add_object(obj); // will unstack in USE
-		scroll->display_string("\n");
+		scroll->display_nl();
 		torch(obj, USE_EVENT_USE);
 		return (false); // ready or not, handled by usecode
 	} else if (ev == USE_EVENT_DROP) {
@@ -2895,7 +2898,7 @@ bool U6UseCode::process_effects(Obj *container_obj, Actor *actor) {
 bool U6UseCode::use_peer_gem(Obj *obj, UseCodeEvent ev) {
 	if (ev == USE_EVENT_MESSAGE && *items.msg_ref == MESG_EFFECT_COMPLETE) {
 		destroy_obj(obj, 1);
-		scroll->display_string("\n");
+		scroll->display_nl();
 		scroll->display_prompt();
 		return true;
 	}
@@ -2965,7 +2968,7 @@ bool U6UseCode::amulet_of_submission(Obj *obj, UseCodeEvent ev) {
 /* Use: Learn Gargish! */
 bool U6UseCode::gargish_vocabulary(Obj *obj, UseCodeEvent ev) {
 	if (ev == USE_EVENT_USE) {
-		scroll->display_string("\n");
+		scroll->display_nl();
 		scroll->display_string("You study the scroll!\n");
 		player->set_gargish_flag(true);
 	}

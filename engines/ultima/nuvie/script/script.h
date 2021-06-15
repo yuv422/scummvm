@@ -183,6 +183,7 @@ public:
 
 	uint16 call_get_tile_to_object_mapping(uint16 tile_n);
 	bool call_is_tile_object(uint16 obj_n);
+	Std::string call_i18n(const char *code);
 
 	ScriptThread *new_thread(const char *scriptfile);
 	ScriptThread *new_thread_from_string(const char *script);

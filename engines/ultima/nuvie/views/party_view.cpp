@@ -231,7 +231,7 @@ bool PartyView::drag_accept_drop(int x, int y, int message, void *data) {
 				return true;
 			}
 		}
-		scroll->display_string("\n\n");
+		scroll->display_nlnl();
 		scroll->display_prompt();
 	}
 
@@ -254,7 +254,7 @@ void PartyView::drag_perform_drop(int x, int y, int message, void *data) {
 			obj_manager->moveto_inventory(obj, actor);
 		}
 		MsgScroll *scroll = Game::get_game()->get_scroll();
-		scroll->display_string("\n\n");
+		scroll->display_nlnl();
 		scroll->display_prompt();
 
 		Redraw();

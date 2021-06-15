@@ -327,35 +327,35 @@ bool subtract_rect(Common::Rect *rect1, Common::Rect *rect2, Common::Rect *sub_r
 	return (true);
 }
 
-const char *get_direction_name(uint8 dir) {
+const char *get_direction_i18n_name(uint8 dir) {
 	switch (dir) {
 	case NUVIE_DIR_N:
-		return ("north");
+		return ("NORTH");
 	case NUVIE_DIR_NE:
-		return ("Northeast");
+		return ("NORTHEAST");
 	case NUVIE_DIR_E:
-		return ("East");
+		return ("EAST");
 	case NUVIE_DIR_SE:
-		return ("Southeast");
+		return ("SOUTHEAST");
 	case NUVIE_DIR_S:
-		return ("South");
+		return ("SOUTH");
 	case NUVIE_DIR_SW:
-		return ("Southwest");
+		return ("SOUTHWEST");
 	case NUVIE_DIR_W:
-		return ("West");
+		return ("WEST");
 	case NUVIE_DIR_NW:
-		return ("Northwest");
+		return ("NORTHWEST");
 	default:
 		break;
 	}
 
-	return ("nowhere");
+	return ("NOWHERE");
 }
 
 /* Returns name of relative direction. 0,0 prints "nowhere".
  */
-const char *get_direction_name(sint16 rel_x, sint16 rel_y) {
-	return get_direction_name(get_direction_code(rel_x, rel_y));
+const char *get_direction_i18n_name(sint16 rel_x, sint16 rel_y) {
+	return get_direction_i18n_name(get_direction_code(rel_x, rel_y));
 }
 
 /* Gets the nuvie direction code from the original u6 direction code. */

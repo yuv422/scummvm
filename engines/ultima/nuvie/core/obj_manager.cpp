@@ -1100,7 +1100,7 @@ bool ObjManager::obj_is_damaging(Obj *obj, Actor *actor) {
 			scroll->display_string("\n\nNot possible\n");
 			Game::get_game()->get_script()->call_actor_tile_dmg(actor, tile->tile_num);
 			actor->display_condition(); // indicate that object hurt the player
-			scroll->display_string("\n");
+			scroll->display_nl();
 			scroll->display_prompt();
 		}
 		return true;

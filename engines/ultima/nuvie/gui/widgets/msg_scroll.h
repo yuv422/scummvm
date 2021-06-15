@@ -241,6 +241,13 @@ public:
 	void display_string(Std::string s, uint16 length, uint8 lang_num);
 	void display_string(Std::string s, bool include_on_map_window = true);
 	void display_string(Std::string s, uint8 color, bool include_on_map_window);
+	void display_i18n_string(const Std::string& code, bool include_on_map_window = true);
+	void display_nl() {
+		display_nl();
+	}
+	void display_nlnl() {
+		display_nlnl();
+	}
 	void display_fmt_string(const char *format, ...);
 	void message(const char *string) {
 		display_string(string);

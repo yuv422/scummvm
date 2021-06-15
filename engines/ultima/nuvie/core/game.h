@@ -414,6 +414,8 @@ public:
 	KeyBinder *get_keybinder()        {
 		return (keybinder);
 	}
+
+	Std::string i18n(const char *code);
 protected:
 	void init_converse();
 	void init_converse_gump_settings();

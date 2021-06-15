@@ -358,6 +358,10 @@ void MsgScroll::display_string(Std::string s, bool include_on_map_window) {
 	display_string(s, font, include_on_map_window);
 }
 
+void MsgScroll::display_i18n_string(const Std::string& code, bool include_on_map_window) {
+    display_string(Game::get_game()->i18n(code.c_str()), font, include_on_map_window);
+}
+
 void MsgScroll::display_string(Std::string s, uint8 color, bool include_on_map_window) {
 	display_string(s, font, color, include_on_map_window);
 }

@@ -330,7 +330,9 @@ Common::Error NuvieEngine::saveGameState(int slot, const Common::String &desc, b
 
 			// Display that the game was saved
 			MsgScroll *scroll = Game::get_game()->get_scroll();
-			scroll->display_string("\nGame Saved\n\n");
+			scroll->display_nl();
+            scroll->display_i18n_string("GAME_SAVED");
+            scroll->display_nlnl();
 			scroll->display_prompt();
 		}
 
