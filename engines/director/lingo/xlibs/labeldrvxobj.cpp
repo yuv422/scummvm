@@ -43,9 +43,9 @@
 namespace Director {
 
 const char *LabelDrvXObj::xlibName = "LabelDrv";
-const char *LabelDrvXObj::fileNames[] = {
-	"LabelDrv",
-	nullptr
+const XlibFileDesc LabelDrvXObj::fileNames[] = {
+	{ "LabelDrv",	nullptr },
+	{ nullptr,		nullptr },
 };
 
 static MethodProto xlibMethods[] = {
@@ -55,7 +55,7 @@ static MethodProto xlibMethods[] = {
 	{ nullptr, nullptr, 0, 0, 0 }
 };
 
-void LabelDrvXObj::open(int type) {
+void LabelDrvXObj::open(ObjectType type, const Common::Path &path) {
 	if (type == kXObj) {
 		LabelDrvXObject::initMethods(xlibMethods);
 		LabelDrvXObject *xobj = new LabelDrvXObject(kXObj);
@@ -63,7 +63,7 @@ void LabelDrvXObj::open(int type) {
 	}
 }
 
-void LabelDrvXObj::close(int type) {
+void LabelDrvXObj::close(ObjectType type) {
 	if (type == kXObj) {
 		LabelDrvXObject::cleanupMethods();
 		g_lingo->_globalvars[xlibName] = Datum();

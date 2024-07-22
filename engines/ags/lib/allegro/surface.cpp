@@ -125,7 +125,7 @@ BITMAP::DrawInnerArgs::DrawInnerArgs(BITMAP *_dstBitmap, const BITMAP *srcBitmap
 	srcArea.clip(Common::Rect(0, 0, srcBitmap->w, srcBitmap->h));
 	if (srcArea.isEmpty())
 		return;
-	
+
 	if (!doScale) {
 		// Ensure the src rect is constrained to the source bitmap
 		dstRect.setWidth(srcArea.width());
@@ -171,10 +171,35 @@ void BITMAP::draw(const BITMAP *srcBitmap, const Common::Rect &srcRect,
                   int dstX, int dstY, bool horizFlip, bool vertFlip,
                   bool skipTrans, int srcAlpha, int tintRed, int tintGreen,
                   int tintBlue) {
+
+	// A restricted number of 8bit games (e.g. Snow Problem) contain (leftover?) 32bit resources.
+	// We can ignore these to prevent conversion on load (and triggering the assertion)
+	if (format.bytesPerPixel == 1 && srcBitmap->format.bytesPerPixel != 1) {
+		warning("Attempt to draw >1BPP surface onto 1BPP surface, ignoring");
+		return;
+	}
+
 	assert(format.bytesPerPixel == 2 || format.bytesPerPixel == 4 ||
 	       (format.bytesPerPixel == 1 && srcBitmap->format.bytesPerPixel == 1));
 
-	auto args = DrawInnerArgs(this, srcBitmap, srcRect, Common::Rect(dstX, dstY, dstX+1, dstY+1), skipTrans, srcAlpha, horizFlip, vertFlip, tintRed, tintGreen, tintBlue, false);
+	Graphics::ManagedSurface flipped;
+	if (horizFlip || vertFlip) {
+		// Horizontal flipping produces errors in the optimized paths, while vertical
+		// may result in crashes. For now, we pre-flip to a temporary surface
+		Graphics::ManagedSurface cropped(const_cast<BITMAP *>(srcBitmap)->getSurface(), srcRect);
+		flipped.copyFrom(cropped);
+
+		if (horizFlip) {
+			flipped.surfacePtr()->flipHorizontal(flipped.getBounds());
+		}
+
+		if (vertFlip) {
+			flipped.surfacePtr()->flipVertical(flipped.getBounds());
+		}
+	}
+	BITMAP temp(&flipped);
+
+	auto args = DrawInnerArgs(this, (horizFlip || vertFlip) ? &temp : srcBitmap, (horizFlip || vertFlip) ? flipped.getBounds() : srcRect, Common::Rect(dstX, dstY, dstX + 1, dstY + 1), skipTrans, srcAlpha, false, false, tintRed, tintGreen, tintBlue, false);
 	if (!args.shouldDraw) return;
 	if (!args.sameFormat && args.src.format.bytesPerPixel == 1) {
 		if (format.bytesPerPixel == 4)
@@ -217,25 +242,35 @@ void BITMAP::stretchDraw(const BITMAP *srcBitmap, const Common::Rect &srcRect,
 			drawInnerGeneric<2, 1, true>(args);
 		return;
 	}
+
+	// Stretching at the same time as blitting produces errors when
+	// using the optimized paths; for now, we pre-stretch to a temporary surface
+	Graphics::ManagedSurface cropped(const_cast<BITMAP *>(srcBitmap)->getSurface(), srcRect);
+	// We need to use Surface::scale, since ManagedSurface _always_ respects the source alpha, and thus skips transparent pixels
+	Graphics::ManagedSurface *stretched = cropped.scale(dstRect.width(), dstRect.height());
+	BITMAP temp(stretched);
+	auto optimizedArgs = DrawInnerArgs(this, &temp, stretched->getBounds(), dstRect, skipTrans, srcAlpha, false, false, -1, -1, -1, false);
+
 #ifdef SCUMMVM_NEON
 	if (_G(simd_flags) & AGS3::Globals::SIMD_NEON) {
-		drawNEON<true>(args);
-		return;
-	}
+		drawNEON<false>(optimizedArgs);
+	} else
 #endif
 #ifdef SCUMMVM_AVX2
 	if (_G(simd_flags) & AGS3::Globals::SIMD_AVX2) {
-		drawAVX2<true>(args);
-		return;
-	}
+		drawAVX2<false>(optimizedArgs);
+	} else
 #endif
 #ifdef SCUMMVM_SSE2
 	if (_G(simd_flags) & AGS3::Globals::SIMD_SSE2) {
-		drawSSE2<true>(args);
-		return;
-	}
+		drawSSE2<false>(optimizedArgs);
+	} else
 #endif
-	drawGeneric<true>(args);
+	{
+		drawGeneric<true>(optimizedArgs);
+	}
+
+	delete stretched;
 }
 void BITMAP::blendPixel(uint8 aSrc, uint8 rSrc, uint8 gSrc, uint8 bSrc, uint8 &aDest, uint8 &rDest, uint8 &gDest, uint8 &bDest, uint32 alpha, bool useTint, byte *destVal) const {
 	switch (_G(_blender_mode)) {

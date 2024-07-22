@@ -82,7 +82,7 @@ enum UCSegments {
 UCMachine *UCMachine::_ucMachine = nullptr;
 
 UCMachine::UCMachine(Intrinsic *iset, unsigned int icount) {
-	debug(MM_INFO, "Creating UCMachine...");
+	debug(1, "Creating UCMachine...");
 
 	_ucMachine = this;
 
@@ -114,7 +114,7 @@ UCMachine::UCMachine(Intrinsic *iset, unsigned int icount) {
 
 
 UCMachine::~UCMachine() {
-	debug(MM_INFO, "Destroying UCMachine...");
+	debug(1, "Destroying UCMachine...");
 	_ucMachine = nullptr;
 
 	delete _globals;
@@ -124,7 +124,7 @@ UCMachine::~UCMachine() {
 }
 
 void UCMachine::reset() {
-	debug(MM_INFO, "Resetting UCMachine");
+	debug(1, "Resetting UCMachine");
 
 	// clear _globals
 	_globals->setSize(0x1000);
@@ -281,7 +281,7 @@ void UCMachine::execProcess(UCProcess *p) {
 			// push sign-extended 8 bit xx onto the stack as 16 bit
 			ui16a = cs->readSByte();
 			p->_stack.push2(ui16a);
-			TRACE_OP("%s\tpush byte\t%04Xh", op_info, ui16a);
+			TRACE_OP("%s\tpush sbyte\t%04Xh", op_info, ui16a);
 			break;
 
 		case 0x0B:
@@ -1235,7 +1235,7 @@ void UCMachine::execProcess(UCProcess *p) {
 			if (GAME_IS_U8) {
 				assert(_globals->getEntries(ui16a, ui16b) == (ui32a & ((1 << ui16b) - 1)));
 			} else {
-				assert(_globals->getEntries(ui16a, ui16b) == ui32a);
+				assert(_globals->getEntries(ui16a, ui16b) == (ui32a & ((1 << (ui16b * 8)) - 1)));
 		    }
 
 			TRACE_OP("%s\tpop\t\tglobal [%04X %02X] = %02X", op_info, ui16a, ui16b, ui32a);
@@ -1471,7 +1471,7 @@ void UCMachine::execProcess(UCProcess *p) {
 				// skip over class name and null terminator
 				name[x] = cs->readByte();
 			}
-			TRACE_OP("%s\tdebug\tline number %d\t\"%s\"", op_info, opcode, ui16a, name);
+			TRACE_OP("%s\tdebug\tline number %d\t\"%s\"", op_info, ui16a, name);
 			debug(10, "name: \"%s\"", name); // Ensures that name variable is used when TRACE_OP is empty
 			break;
 		}
@@ -1731,11 +1731,10 @@ void UCMachine::execProcess(UCProcess *p) {
 				const uint16 range = GAME_IS_CRUSADER ? ui16b * 2 : ui16b;
 
 				if (item) {
-					int32 ix, iy, iz;
-					item->getLocationAbsolute(ix, iy, iz);
+					Point3 pt = item->getLocationAbsolute();
 					world->getCurrentMap()->areaSearch(itemlist, script,
 					                                   scriptsize, nullptr,
-					                                   range, recurse, ix, iy);
+					                                   range, recurse, pt.x, pt.y);
 				} else {
 					// return error or return empty list?
 					warning("Invalid item %u passed to area search", ui16a);

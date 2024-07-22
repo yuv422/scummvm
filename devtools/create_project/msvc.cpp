@@ -64,6 +64,7 @@ std::string MSVCProvider::getLibraryFromFeature(const char *feature, const Build
 		{       "gif", "gif.lib",                   nullptr,         nullptr                                           },
 		{      "faad", "faad.lib",                  nullptr,         nullptr                                           },
 		{    "mikmod", "mikmod.lib",                nullptr,         nullptr                                           },
+		{   "openmpt", "openmpt.lib",               nullptr,         nullptr                                           },
 		{     "mpeg2", "mpeg2.lib",                 nullptr,         nullptr                                           },
 		{ "theoradec", "theora.lib",                nullptr,         nullptr                                           },
 		{       "vpx", "vpx.lib",                   nullptr,         nullptr                                           },
@@ -186,7 +187,7 @@ void MSVCProvider::createWorkspace(const BuildSetup &setup) {
 
 	for (std::list<MSVC_Architecture>::const_iterator arch = _archs.begin(); arch != _archs.end(); ++arch) {
 		solution << "\t\tDebug|" << getMSVCConfigName(*arch) << " = Debug|" << getMSVCConfigName(*arch) << "\n"
-		         << "\t\tAnalysis|" << getMSVCConfigName(*arch) << " = Analysis|" << getMSVCConfigName(*arch) << "\n"
+		         << "\t\tASan|" << getMSVCConfigName(*arch) << " = ASan|" << getMSVCConfigName(*arch) << "\n"
 		         << "\t\tLLVM|" << getMSVCConfigName(*arch) << " = LLVM|" << getMSVCConfigName(*arch) << "\n"
 		         << "\t\tRelease|" << getMSVCConfigName(*arch) << " = Release|" << getMSVCConfigName(*arch) << "\n";
 	}
@@ -198,8 +199,8 @@ void MSVCProvider::createWorkspace(const BuildSetup &setup) {
 		for (std::list<MSVC_Architecture>::const_iterator arch = _archs.begin(); arch != _archs.end(); ++arch) {
 			solution << "\t\t{" << i->second << "}.Debug|" << getMSVCConfigName(*arch) << ".ActiveCfg = Debug|" << getMSVCConfigName(*arch) << "\n"
 			         << "\t\t{" << i->second << "}.Debug|" << getMSVCConfigName(*arch) << ".Build.0 = Debug|" << getMSVCConfigName(*arch) << "\n"
-			         << "\t\t{" << i->second << "}.Analysis|" << getMSVCConfigName(*arch) << ".ActiveCfg = Analysis|" << getMSVCConfigName(*arch) << "\n"
-			         << "\t\t{" << i->second << "}.Analysis|" << getMSVCConfigName(*arch) << ".Build.0 = Analysis|" << getMSVCConfigName(*arch) << "\n"
+			         << "\t\t{" << i->second << "}.ASan|" << getMSVCConfigName(*arch) << ".ActiveCfg = ASan|" << getMSVCConfigName(*arch) << "\n"
+			         << "\t\t{" << i->second << "}.ASan|" << getMSVCConfigName(*arch) << ".Build.0 = ASan|" << getMSVCConfigName(*arch) << "\n"
 			         << "\t\t{" << i->second << "}.LLVM|" << getMSVCConfigName(*arch) << ".ActiveCfg = LLVM|" << getMSVCConfigName(*arch) << "\n"
 			         << "\t\t{" << i->second << "}.LLVM|" << getMSVCConfigName(*arch) << ".Build.0 = LLVM|" << getMSVCConfigName(*arch) << "\n"
 			         << "\t\t{" << i->second << "}.Release|" << getMSVCConfigName(*arch) << ".ActiveCfg = Release|" << getMSVCConfigName(*arch) << "\n"
@@ -219,11 +220,11 @@ void MSVCProvider::createOtherBuildFiles(const BuildSetup &setup) {
 	createGlobalProp(setup);
 
 	// Create the configuration property files (for Debug and Release with 32 and 64bits versions)
-	// Note: we use the debug properties for the analysis configuration
+	// Note: we use the debug properties for the asan configuration
 	for (std::list<MSVC_Architecture>::const_iterator arch = _archs.begin(); arch != _archs.end(); ++arch) {
 		createBuildProp(setup, true, *arch, "Release");
 		createBuildProp(setup, false, *arch, "Debug");
-		createBuildProp(setup, false, *arch, "Analysis");
+		createBuildProp(setup, false, *arch, "ASan");
 		createBuildProp(setup, false, *arch, "LLVM");
 	}
 }

@@ -22,32 +22,56 @@
 #include "backends/mixer/atari/atari-mixer.h"
 
 #include <math.h>
-#include <mint/cookie.h>
 #include <mint/falcon.h>
 #include <mint/osbind.h>
 #include <mint/ostruct.h>
+#include <usound.h>	// https://github.com/mikrosk/usound
 
 #include "common/config-manager.h"
 #include "common/debug.h"
 
 #define DEFAULT_OUTPUT_RATE 24585
+#define DEFAULT_OUTPUT_CHANNELS 2
+#define DEFAULT_SAMPLES 2048	// 83ms
 
 void AtariAudioShutdown() {
-	Sndstatus(SND_RESET);
-	Soundcmd(ADDERIN, ADCIN);	// restore key click
-	Unlocksnd();
+	Jdisint(MFP_TIMERA);
+	AtariSoundSetupDeinitXbios();
+}
+
+static volatile bool muted;
+static volatile bool endOfPlayback;
+static void __attribute__((interrupt)) timerA(void)
+{
+	if (endOfPlayback && !muted) {
+		*((volatile unsigned char *)0xFFFF8901L) &= 0xFC;	// disable playback/repeat (and triggers another interrupt)
+		muted = true;
+	}
+
+	endOfPlayback = true;
+
+	*((volatile byte *)0xFFFFFA0FL) &= ~(1<<5);	// clear in service bit
 }
 
 AtariMixerManager::AtariMixerManager() : MixerManager() {
 	debug("AtariMixerManager()");
 
-	_audioSuspended = true;
+	suspendAudio();
 
 	ConfMan.registerDefault("output_rate", DEFAULT_OUTPUT_RATE);
-
 	_outputRate = ConfMan.getInt("output_rate");
 	if (_outputRate <= 0)
 		_outputRate = DEFAULT_OUTPUT_RATE;
+
+	ConfMan.registerDefault("output_channels", DEFAULT_OUTPUT_CHANNELS);
+	_outputChannels = ConfMan.getInt("output_channels");
+	if (_outputChannels <= 0 || _outputChannels > 2)
+		_outputChannels = DEFAULT_OUTPUT_CHANNELS;
+
+	ConfMan.registerDefault("audio_buffer_size", DEFAULT_SAMPLES);
+	_samples = ConfMan.getInt("audio_buffer_size");
+	if (_samples <= 0)
+		_samples = DEFAULT_SAMPLES;
 
 	g_system->getEventManager()->getEventDispatcher()->registerObserver(this, 10, false);
 }
@@ -63,198 +87,76 @@ AtariMixerManager::~AtariMixerManager() {
 	_atariSampleBuffer = _atariPhysicalSampleBuffer = _atariLogicalSampleBuffer = nullptr;
 
 	delete[] _samplesBuf;
+	_samplesBuf = nullptr;
 }
 
 void AtariMixerManager::init() {
-    long cookie, stfa = 0;
-	bool useDevconnectReturnValue = Getcookie(C__SND, &cookie) == C_FOUND && (cookie & SND_EXT) != 0;
+	AudioSpec desired, obtained;
 
-	int clk;
+	desired.frequency = _outputRate;
+	desired.channels = _outputChannels;
+	desired.format = AudioFormatSigned16MSB;
+	desired.samples = _samples;
 
-	if (Locksnd() < 0)
-		error("Sound system is locked");
-
-	// try XBIOS APIs which do not set SND_EXT in _SND
-    useDevconnectReturnValue |= (Getcookie(C_STFA, &stfa) == C_FOUND);	// STFA
-	useDevconnectReturnValue |= (Getcookie(C_McSn, &cookie) == C_FOUND);	// X-SOUND, MacSound
-
-    bool forceSoundCmd = false;
-    if (stfa) {
-        // see http://removers.free.fr/softs/stfa.php#STFA
-        struct STFA_control {
-            uint16 sound_enable;
-            uint16 sound_control;
-            uint16 sound_output;
-            uint32 sound_start;
-            uint32 sound_current;
-            uint32 sound_end;
-            uint16 version;
-            uint32 old_vbl;
-            uint32 old_timerA;
-            uint32 old_mfp_status;
-            uint32 stfa_vbl;
-            uint32 drivers_list;
-            uint32 play_stop;
-            uint16 timer_a_setting;
-            uint32 set_frequency;
-            uint16 frequency_treshold;
-            uint32 custom_freq_table;
-            int16 stfa_on_off;
-            uint32 new_drivers_list;
-            uint32 old_bit_2_of_cookie_snd;
-            uint32 it;
-        } __attribute__((packed));
-
-        STFA_control *stfaControl = (STFA_control *)stfa;
-        if (stfaControl->version < 0x0200) {
-            error("Your STFA version is too old, please upgrade to at least 2.00");
-        }
-        if (stfaControl->stfa_on_off == -1) {
-            // emulating 16-bit playback, force TT frequencies
-            enum {
-                MCH_ST = 0,
-                MCH_STE,
-                MCH_TT,
-                MCH_FALCON,
-                MCH_CLONE,
-                MCH_ARANYM
-            };
-
-            long mch = MCH_ST<<16;
-            Getcookie(C__MCH, &mch);
-            mch >>= 16;
-
-            if (mch == MCH_TT) {
-                debug("Forcing STE/TT compatible frequency");
-                forceSoundCmd = true;
-            }
-        }
-    }
-
-	// reset connection matrix (and other settings)
-	Sndstatus(SND_RESET);
-
-	int diff50, diff33, diff25, diff20, diff16, diff12, diff10, diff8, diff6;
-	diff50 = abs(49170 - (int)_outputRate);
-	diff33 = abs(32780 - (int)_outputRate);
-	diff25 = abs(24585 - (int)_outputRate);
-	diff20 = abs(19668 - (int)_outputRate);
-	diff16 = abs(16390 - (int)_outputRate);
-	diff12 = abs(12292 - (int)_outputRate);
-	diff10 = abs(9834  - (int)_outputRate);
-	diff8  = abs(8195  - (int)_outputRate);
-
-	if (diff50 < diff33) {
-		_outputRate = 49170;
-		clk = CLK50K;
-	} else if (diff33 < diff25) {
-		_outputRate = 32780;
-		clk = CLK33K;
-	} else if (diff25 < diff20) {
-		_outputRate = 24585;
-		clk = CLK25K;
-	} else if (diff20 < diff16) {
-		_outputRate = 19668;
-		clk = CLK20K;
-	} else if (diff16 < diff12) {
-		_outputRate = 16390;
-		clk = CLK16K;
-	} else if (diff12 < diff10) {
-		_outputRate = 12292;
-		clk = CLK12K;
-	} else if (diff10 < diff8) {
-		_outputRate = 9834;
-		clk = CLK10K;
-	} else {
-		_outputRate = 8195;
-		clk = CLK8K;
+	if (!AtariSoundSetupInitXbios(&desired, &obtained)) {
+		error("Sound system is not available");
 	}
 
-	// first try to use Devconnect() with a Falcon prescaler
-    if (forceSoundCmd || Devconnect(DMAPLAY, DAC, CLK25M, clk, NO_SHAKE) != 0) {
-		// the return value is broken on Falcon
-		if (useDevconnectReturnValue) {
-			if (Devconnect(DMAPLAY, DAC, CLK25M, CLKOLD, NO_SHAKE) == 0) {
-				// calculate compatible prescaler
-				diff50 = abs(50066 - (int)_outputRate);
-				diff25 = abs(25033 - (int)_outputRate);
-				diff12 = abs(12517 - (int)_outputRate);
-				diff6  = abs(6258  - (int)_outputRate);
-
-				if (diff50 < diff25) {
-					_outputRate = 50066;
-					clk = PRE160;
-				} else if (diff25 < diff12) {
-					_outputRate = 25033;
-					clk = PRE320;
-				} else if (diff12 < diff6) {
-					_outputRate = 12517;
-					clk = PRE640;
-				} else {
-					_outputRate = 6258;
-					clk = PRE1280;
-				}
-
-				Soundcmd(SETPRESCALE, clk);
-			} else {
-				error("Devconnect() failed");
-			}
-		}
+	if (obtained.format != AudioFormatSigned8 && obtained.format != AudioFormatSigned16MSB) {
+		error("Sound system currently supports only 8/16-bit signed big endian samples");
 	}
+
+	// don't use the recommended number of samples
+	obtained.samples = desired.samples;
+	obtained.size = obtained.size * desired.samples / obtained.samples;
+
+	_outputRate = obtained.frequency;
+	_outputChannels = obtained.channels;
+	_samples = obtained.samples;
+	_downsample = (obtained.format == AudioFormatSigned8);
 
 	ConfMan.setInt("output_rate", _outputRate);
-	debug("setting %d Hz mixing frequency", _outputRate);
+	ConfMan.setInt("output_channels", _outputChannels);
+	ConfMan.setInt("audio_buffer_size", _samples);
 
-	_samples = 8192;
-	while (_samples * 16 > _outputRate * 2)
-		_samples >>= 1;
-
-	ConfMan.registerDefault("audio_buffer_size", (int)_samples);
-
-	int samples = ConfMan.getInt("audio_buffer_size");
-	if (samples > 0)
-		_samples = samples;
-
-	ConfMan.setInt("audio_buffer_size", (int)_samples);
+	debug("setting %d Hz mixing frequency (%d-bit, %s)",
+		  _outputRate, obtained.format == AudioFormatSigned8 ? 8 : 16, _outputChannels == 1 ? "mono" : "stereo");
 	debug("sample buffer size: %d", _samples);
 
 	ConfMan.flushToDisk();
 
-	_atariSampleBufferSize = _samples * 4;
-
-	_atariSampleBuffer = (byte*)Mxalloc(_atariSampleBufferSize * 2, MX_STRAM);
+	_atariSampleBuffer = (byte*)Mxalloc(obtained.size * 2, MX_STRAM);
 	if (!_atariSampleBuffer)
 		error("Failed to allocate memory in ST RAM");
 
 	_atariPhysicalSampleBuffer = _atariSampleBuffer;
-	_atariLogicalSampleBuffer = _atariSampleBuffer + _atariSampleBufferSize;
+	_atariLogicalSampleBuffer = _atariSampleBuffer + obtained.size;
 
-	Setmode(MODE_STEREO16);
-	Soundcmd(ADDERIN, MATIN);
-	Setbuffer(SR_PLAY, _atariSampleBuffer, _atariSampleBuffer + 2 * _atariSampleBufferSize);
+	Setinterrupt(SI_TIMERA, SI_PLAY);
+	Xbtimer(XB_TIMERA, 1<<3, 1, timerA);	// event count mode, count to '1'
+	Jenabint(MFP_TIMERA);
 
-	_samplesBuf = new uint8[_samples * 4];
+	_samplesBuf = new uint8[_samples * _outputChannels * 2];	// always 16-bit
 
-	_mixer = new Audio::MixerImpl(_outputRate, _samples);
+	_mixer = new Audio::MixerImpl(_outputRate, _outputChannels == 2, _samples);
 	_mixer->setReady(true);
 
-	_audioSuspended = false;
+	resumeAudio();
 }
 
 void AtariMixerManager::suspendAudio() {
 	debug("suspendAudio");
 
-	stopPlayback(kPlaybackStopped);
-
+	Buffoper(0x00);
+	muted = true;
 	_audioSuspended = true;
 }
 
 int AtariMixerManager::resumeAudio() {
 	debug("resumeAudio");
 
-	update();
-
 	_audioSuspended = false;
+	update();
 	return 0;
 }
 
@@ -262,26 +164,17 @@ bool AtariMixerManager::notifyEvent(const Common::Event &event) {
 	switch (event.type) {
 	case Common::EVENT_QUIT:
 	case Common::EVENT_RETURN_TO_LAUNCHER:
-		stopPlayback(kPlaybackStopped);
-		debug("silencing the mixer");
+		if (!muted) {
+			Buffoper(0x00);
+			muted = true;
+			debug("silencing the mixer");
+		}
 		return false;
 	default:
-		[[fallthrough]];
+		break;
 	}
 
 	return false;
-}
-
-void AtariMixerManager::startPlayback(PlaybackState playbackState) {
-	Buffoper(SB_PLA_ENA | SB_PLA_RPT);
-	_playbackState = playbackState;
-	debug("playback started");
-}
-
-void AtariMixerManager::stopPlayback(PlaybackState playbackState) {
-	Buffoper(0x00);
-	_playbackState = playbackState;
-	debug("playback stopped");
 }
 
 void AtariMixerManager::update() {
@@ -291,45 +184,67 @@ void AtariMixerManager::update() {
 
 	assert(_mixer);
 
-	uint32 processed = 0;
-	if (_playbackState == kPlaybackStopped) {
-		// playback stopped means that we are not playing anything (DMA
-		// pointer is not updating) but the mixer may have something available
-		processed = _mixer->mixCallback(_samplesBuf, _samples * 4);
+	int processed = -1;
 
-		if (processed > 0) {
-			memcpy(_atariPhysicalSampleBuffer, _samplesBuf, processed * 4);
-			startPlayback(kPlayingFromPhysicalBuffer);
-		}
-	} else {
-		SndBufPtr sPtr;
-		if (Buffptr(&sPtr) != 0) {
-			warning("Buffptr() failed");
-			return;
+	if (muted || endOfPlayback) {
+		endOfPlayback = false;
+		processed = _mixer->mixCallback(_samplesBuf, _samples * _outputChannels * 2);
+	}
+
+	if (processed > 0) {
+		byte* tmp = _atariPhysicalSampleBuffer;
+		_atariPhysicalSampleBuffer = _atariLogicalSampleBuffer;
+		_atariLogicalSampleBuffer = tmp;
+
+		if (_downsample) {
+			// use the trick with move.b (a7)+,dx which skips two bytes at once
+			// basically supplying move.w (src)+,dx; asr.w #8,dx; move.b dx,(dst)+
+			__asm__ volatile(
+				"	move.l	%%a7,%%d0\n"
+				"	move.l	%0,%%a7\n"
+				"	moveq	#0x0f,%%d1\n"
+				"	and.l	%2,%%d1\n"
+				"	neg.l	%%d1\n"
+				"	lsr.l	#4,%2\n"
+				"	jmp		(2f,%%pc,%%d1.l*2)\n"
+				"1:	move.b	(%%a7)+,(%1)+\n"
+				"	move.b	(%%a7)+,(%1)+\n"
+				"	move.b	(%%a7)+,(%1)+\n"
+				"	move.b	(%%a7)+,(%1)+\n"
+				"	move.b	(%%a7)+,(%1)+\n"
+				"	move.b	(%%a7)+,(%1)+\n"
+				"	move.b	(%%a7)+,(%1)+\n"
+				"	move.b	(%%a7)+,(%1)+\n"
+				"	move.b	(%%a7)+,(%1)+\n"
+				"	move.b	(%%a7)+,(%1)+\n"
+				"	move.b	(%%a7)+,(%1)+\n"
+				"	move.b	(%%a7)+,(%1)+\n"
+				"	move.b	(%%a7)+,(%1)+\n"
+				"	move.b	(%%a7)+,(%1)+\n"
+				"	move.b	(%%a7)+,(%1)+\n"
+				"	move.b	(%%a7)+,(%1)+\n"
+				"2:	dbra	%2,1b\n"
+				"	move.l	%%d0,%%a7\n"
+				: // outputs
+				: "g"(_samplesBuf), "a"(_atariPhysicalSampleBuffer), "d"(processed * _outputChannels * 2/2) // inputs
+				: "d0", "d1", "cc" AND_MEMORY
+				);
+			memset(_atariPhysicalSampleBuffer + processed * _outputChannels * 2/2, 0, (_samples - processed) * _outputChannels * 2/2);
+			Setbuffer(SR_PLAY, _atariPhysicalSampleBuffer, _atariPhysicalSampleBuffer + _samples * _outputChannels * 2/2);
+		} else {
+			memcpy(_atariPhysicalSampleBuffer, _samplesBuf, processed * _outputChannels * 2);
+			memset(_atariPhysicalSampleBuffer + processed * _outputChannels * 2, 0, (_samples - processed) * _outputChannels * 2);
+			Setbuffer(SR_PLAY, _atariPhysicalSampleBuffer, _atariPhysicalSampleBuffer + _samples * _outputChannels * 2);
 		}
 
-		byte *buf = nullptr;
-
-		if (_playbackState == kPlayingFromPhysicalBuffer) {
-			if ((byte*)sPtr.play < _atariLogicalSampleBuffer) {
-				buf = _atariLogicalSampleBuffer;
-				_playbackState = kPlayingFromLogicalBuffer;
-			}
-		} else if (_playbackState == kPlayingFromLogicalBuffer) {
-			if ((byte*)sPtr.play >= _atariLogicalSampleBuffer) {
-				buf = _atariPhysicalSampleBuffer;
-				_playbackState = kPlayingFromPhysicalBuffer;
-			}
+		if (muted) {
+			Buffoper(SB_PLA_ENA | SB_PLA_RPT);
+			endOfPlayback = true;
+			muted = false;
 		}
-
-		if (buf) {
-			processed = _mixer->mixCallback(_samplesBuf, _samples * 4);
-			if (processed > 0) {
-				memcpy(buf, _samplesBuf, processed * 4);
-			} else {
-				stopPlayback(kPlaybackStopped);
-			}
-		}
+	} else if (processed == 0 && !muted) {
+		Buffoper(0x00);
+		muted = true;
 	}
 
 	if (processed > 0 && processed != _samples) {

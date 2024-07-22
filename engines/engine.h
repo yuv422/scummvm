@@ -233,9 +233,13 @@ private:
 	 * Optional debugger for the engine.
 	 */
 	GUI::Debugger *_debugger;
+
+	/**
+	 * Flag for whether the quitGame method has been called
+	 */
+	static bool _quitRequested;
+
 public:
-
-
 	/**
 	 * Engine features.
 	 *
@@ -444,8 +448,10 @@ public:
 
 	/**
 	 * Indicate whether a game state can be loaded.
+	 *
+	 * @param msg        Optional pointer to message explaining why it is disabled
 	 */
-	virtual bool canLoadGameStateCurrently();
+	virtual bool canLoadGameStateCurrently(Common::U32String *msg = nullptr);
 
 	/**
 	 * Save a game state.
@@ -470,8 +476,10 @@ public:
 
 	/**
 	 * Indicate whether a game state can be saved.
+	 *
+	 * @param msg        Optional pointer to message explaining why it is disabled
 	 */
-	virtual bool canSaveGameStateCurrently();
+	virtual bool canSaveGameStateCurrently(Common::U32String *msg = nullptr);
 
 	/**
 	 * Show the ScummVM save dialog, allowing users to save their game.
@@ -509,11 +517,6 @@ public:
 	 * This can mean either quitting ScummVM altogether, or returning to the launcher.
 	 */
 	static bool shouldQuit();
-
-	/**
-	 * Return the MetaEngineDetection instance used by this engine.
-	 */
-	static MetaEngineDetection &getMetaEngineDetection();
 
 	/**
 	 * Return the MetaEngine instance used by this engine.

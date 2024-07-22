@@ -26,6 +26,7 @@
 #include "common/config-manager.h"
 #include "backends/platform/ios7/ios7_gamepad_controller.h"
 #include "backends/platform/ios7/ios7_video.h"
+#include "backends/platform/ios7/ios7_app_delegate.h"
 #include <GameController/GameController.h>
 
 @implementation GamepadController {
@@ -33,9 +34,23 @@
 #if TARGET_OS_IOS
 #ifdef __IPHONE_15_0
 	API_AVAILABLE(ios(15.0))
-	GCVirtualController *_virtualController;
+	GCVirtualController *_virtualControllerThumbstick;
 	API_AVAILABLE(ios(15.0))
-	GCVirtualControllerConfiguration *_config;
+	GCVirtualController *_virtualControllerMiniThumbstick;
+	API_AVAILABLE(ios(15.0))
+	GCVirtualController *_virtualControllerDpad;
+	API_AVAILABLE(ios(15.0))
+	GCVirtualController *_virtualControllerMiniDpad;
+	API_AVAILABLE(ios(15.0))
+	GCVirtualController *_currentController;
+	API_AVAILABLE(ios(15.0))
+	GCVirtualControllerConfiguration *_configDpad;
+	API_AVAILABLE(ios(15.0))
+	GCVirtualControllerConfiguration *_configMiniDpad;
+	API_AVAILABLE(ios(15.0))
+	GCVirtualControllerConfiguration *_configThumbstick;
+	API_AVAILABLE(ios(15.0))
+	GCVirtualControllerConfiguration *_configMiniThumbstick;
 #endif
 #endif
 	int _currentDpadXValue;
@@ -57,9 +72,38 @@
 #ifdef __IPHONE_15_0
 	if (@available(iOS 15.0, *)) {
 		// Configure a simple game controller with dPad and A and B buttons
-		_config = [[GCVirtualControllerConfiguration alloc] init];
-		_config.elements = [[NSSet alloc] initWithObjects:GCInputDirectionPad, GCInputButtonA, GCInputButtonB, GCInputButtonX, GCInputButtonY, nil];
-		_virtualController = [[GCVirtualController alloc] initWithConfiguration:_config];
+		_configDpad = [[GCVirtualControllerConfiguration alloc] init];
+		_configMiniDpad = [[GCVirtualControllerConfiguration alloc] init];
+		_configThumbstick = [[GCVirtualControllerConfiguration alloc] init];
+		_configMiniThumbstick = [[GCVirtualControllerConfiguration alloc] init];
+
+		NSArray<NSString *> *_commonElements = [[NSArray alloc] initWithObjects: GCInputButtonA, GCInputButtonB, GCInputButtonX, GCInputButtonY, nil];
+		NSArray<NSString *> *_additionalElements = [[NSArray alloc] initWithObjects: GCInputRightThumbstick, GCInputLeftShoulder, GCInputRightShoulder, nil];
+
+		NSMutableSet<NSString *> *_fullSetElementsThumbstick = [[NSMutableSet alloc] initWithObjects: GCInputLeftThumbstick, nil];
+		[_fullSetElementsThumbstick addObjectsFromArray:_commonElements];
+		[_fullSetElementsThumbstick addObjectsFromArray:_additionalElements];
+	
+		NSMutableSet<NSString *> *_miniSetElementsThumbstick = [[NSMutableSet alloc] initWithObjects:GCInputLeftThumbstick,  nil];
+		[_miniSetElementsThumbstick addObjectsFromArray:_commonElements];
+
+		NSMutableSet<NSString *> *_fullSetElementsDpad = [[NSMutableSet alloc] initWithObjects: GCInputDirectionalDpad, nil];
+		[_fullSetElementsDpad addObjectsFromArray:_commonElements];
+		[_fullSetElementsDpad addObjectsFromArray:_additionalElements];
+
+		NSMutableSet<NSString *> *_miniSetElementsDpad = [[NSMutableSet alloc] initWithObjects:GCInputDirectionalDpad,  nil];
+		[_miniSetElementsDpad addObjectsFromArray:_commonElements];
+
+		_configThumbstick.elements = _fullSetElementsThumbstick;
+		_configMiniThumbstick.elements = _miniSetElementsThumbstick;
+		_configDpad.elements = _fullSetElementsDpad;
+		_configMiniDpad.elements = _miniSetElementsDpad;
+
+		_virtualControllerThumbstick = [[GCVirtualController alloc] initWithConfiguration:_configThumbstick];
+		_virtualControllerMiniThumbstick = [[GCVirtualController alloc] initWithConfiguration:_configMiniThumbstick];
+		_virtualControllerDpad = [[GCVirtualController alloc] initWithConfiguration:_configDpad];
+		_virtualControllerMiniDpad = [[GCVirtualController alloc] initWithConfiguration:_configMiniDpad];
+		_currentController = _virtualControllerThumbstick;
 	}
 #endif
 #endif
@@ -76,18 +120,37 @@
 //     - LayoutContainerView
 //       - ContainerView
 // iPads have an additional layer under the ContainerView
+#if TARGET_OS_IOS
 - (BOOL)setGCControllerViewProperties:(NSArray<UIView*>*)subviews {
 	BOOL stop = NO;
 	for (UIView *view in subviews) {
 		if ([[view classForCoder] isEqual:NSClassFromString(@"GCControllerView")]) {
-			// Set the virtual controller frame to full screen.
-			// Else buttons can be placed partly out of the frame
-			// due to the iPhoneView frame is adjusted according
-			// to the safe area insets.
-			// Also set the frame alpha to the user specified value
+			// Set the frame alpha to the user specified value
 			// to make the virtual controller more transparent
-			view.alpha = ((float)ConfMan.getInt("onscreen_control_opacity") / 10.0);
-			view.frame = [[UIScreen mainScreen] bounds];
+			view.alpha = ((float)ConfMan.getInt("gamepad_controller_opacity") / 10.0);
+
+			// Since the iOS7 view controller frame is adjusted for the safe area, the same
+			// has to be done for the gamepad controller view. One could think that subviews
+			// would adjust automatically but it seems that the gamepad controller buttons
+			// can be positioned outside the device screen if not adjusting manually.
+			if (@available(iOS 11.0, *)) {
+				UIEdgeInsets insets = [[[UIApplication sharedApplication] keyWindow] safeAreaInsets];
+				UIInterfaceOrientation orientation = [iOS7AppDelegate currentOrientation];
+
+				// Set anchor point to lower right corner
+				view.layer.anchorPoint = CGPointMake(1, 1);
+
+				// Specify the position of the view layer from the anchor point
+				if (orientation == UIInterfaceOrientationLandscapeLeft) {
+					view.layer.position = CGPointMake(view.frame.size.width, view.layer.position.y);
+				} else if (orientation == UIInterfaceOrientationLandscapeRight) {
+					// When a device with e.g. a sensor bar is rotated so the sensor bar
+					// is to the left, we can adjust the anchor point a bit more to the left
+					// to make the left thumb buttons be at the same distance from the screen
+					// border.
+					view.layer.position = CGPointMake(view.frame.size.width - insets.left, view.layer.position.y);
+				}
+			}
 			stop = YES;
 		} else {
 			// Keep drilling
@@ -99,18 +162,35 @@
 	}
 	return stop;
 }
+#endif
 
 - (void)virtualController:(bool)connect {
 #if TARGET_OS_IOS
 #ifdef __IPHONE_15_0
 	if (@available(iOS 15.0, *)) {
+		GCVirtualController *controller;
+		switch (ConfMan.getInt("gamepad_controller_directional_input")) {
+		case kDirectionalInputThumbstick:
+			controller = ConfMan.getBool("gamepad_controller_minimal_layout") ? _virtualControllerMiniThumbstick : _virtualControllerThumbstick;
+			break;
+		case kDirectionalInputDpad:
+		default:
+			controller = ConfMan.getBool("gamepad_controller_minimal_layout") ? _virtualControllerMiniDpad : _virtualControllerDpad;
+			break;
+		}
+
+		if (_currentController != controller) {
+			[_currentController disconnect];
+		}
+
 		if (connect) {
-			[_virtualController connectWithReplyHandler:^(NSError * _Nullable error) {
+			[controller connectWithReplyHandler:^(NSError * _Nullable error) {
 				[self setGCControllerViewProperties:[[[UIApplication sharedApplication] keyWindow] subviews]];
 			}];
+			_currentController = controller;
 		}
 		else {
-			[_virtualController disconnect];
+			[_currentController disconnect];
 			[self setIsConnected:NO];
 		}
 	}

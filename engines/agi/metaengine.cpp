@@ -83,14 +83,6 @@ void AgiBase::initFeatures() {
 	_gameFeatures = _gameDescription->features;
 }
 
-void AgiBase::setFeature(uint32 feature) {
-	_gameFeatures |= feature;
-}
-
-void AgiBase::setVersion(uint16 version) {
-	_gameVersion = version;
-}
-
 void AgiBase::initVersion() {
 	_gameVersion = _gameDescription->version;
 }
@@ -190,7 +182,7 @@ static const ADExtraGuiOptionsMap optionsList[] = {
 
 using namespace Agi;
 
-class AgiMetaEngine : public AdvancedMetaEngine {
+class AgiMetaEngine : public AdvancedMetaEngine<Agi::AGIGameDescription> {
 public:
 	const char *getName() const override {
 		return "agi";
@@ -200,7 +192,7 @@ public:
 		return optionsList;
 	}
 
-	Common::Error createInstance(OSystem *syst, Engine **engine, const ADGameDescription *desc) const override;
+	Common::Error createInstance(OSystem *syst, Engine **engine, const Agi::AGIGameDescription *gd) const override;
 
 	SaveStateList listSaves(const char *target) const override;
 	int getMaximumSaveSlot() const override;
@@ -222,9 +214,7 @@ bool AgiMetaEngine::hasFeature(MetaEngineFeature f) const {
 		(f == kSimpleSavesNames);
 }
 
-Common::Error AgiMetaEngine::createInstance(OSystem *syst, Engine **engine, const ADGameDescription *desc) const {
-	const Agi::AGIGameDescription *gd = (const Agi::AGIGameDescription *)desc;
-
+Common::Error AgiMetaEngine::createInstance(OSystem *syst, Engine **engine, const Agi::AGIGameDescription *gd) const {
 	switch (gd->gameType) {
 	case Agi::GType_PreAGI:
 		switch (gd->gameID) {
@@ -399,7 +389,7 @@ SaveStateDescriptor AgiMetaEngine::querySaveMetaInfos(const char *target, int sl
 
 namespace Agi {
 
-bool AgiBase::canLoadGameStateCurrently() {
+bool AgiBase::canLoadGameStateCurrently(Common::U32String *msg) {
 	if (!(getGameType() == GType_PreAGI)) {
 		if (getFlag(VM_FLAG_MENUS_ACCESSIBLE)) {
 			if (!_noSaveLoadAllowed) {
@@ -414,10 +404,14 @@ bool AgiBase::canLoadGameStateCurrently() {
 			}
 		}
 	}
+
+	if (msg)
+		*msg = _("This game does not support loading");
+
 	return false;
 }
 
-bool AgiBase::canSaveGameStateCurrently() {
+bool AgiBase::canSaveGameStateCurrently(Common::U32String *msg) {
 	if (getGameID() == GID_BC) // Technically in Black Cauldron we may save anytime
 		return true;
 
@@ -432,24 +426,11 @@ bool AgiBase::canSaveGameStateCurrently() {
 			}
 		}
 	}
+
+	if (msg)
+		*msg = _("This game does not support saving");
+
 	return false;
-}
-
-int AgiEngine::agiDetectGame() {
-	int ec = errOK;
-
-	assert(_gameDescription != nullptr);
-
-	if (getVersion() <= 0x2001) {
-		_loader = new AgiLoader_v1(this);
-	} else if (getVersion() <= 0x2999) {
-		_loader = new AgiLoader_v2(this);
-	} else {
-		_loader = new AgiLoader_v3(this);
-	}
-	ec = _loader->detectGame();
-
-	return ec;
 }
 
 } // End of namespace Agi

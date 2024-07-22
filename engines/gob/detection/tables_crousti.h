@@ -17,6 +17,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ *
+ * This file is dual-licensed.
+ * In addition to the GPLv3 license mentioned above, this code is also
+ * licensed under LGPL 2.1. See LICENSES/COPYING.LGPL file for the
+ * full text of the license.
+ *
  */
 
 /* Detection tables for Croustibat. */
@@ -27,7 +33,7 @@
 // -- DOS VGA Floppy --
 
 {
-	{
+	{ // Supplied by DrMcCoy
 		"crousti",
 		"v1.01",
 		AD_ENTRY1s("intro.stk", "63fd795818fa72c32b903bbd99e18ea1", 851926),
@@ -36,7 +42,6 @@
 		ADGF_NO_FLAGS,
 		GUIO2(GUIO_NOSUBTITLES, GUIO_NOSPEECH)
 	},
-	kGameTypeCrousti,
 	kFeaturesAdLib,
 	0, 0, 0
 },
@@ -50,7 +55,6 @@
 		ADGF_NO_FLAGS,
 		GUIO2(GUIO_NOSUBTITLES, GUIO_NOSPEECH)
 	},
-	kGameTypeCrousti,
 	kFeaturesAdLib,
 	0, 0, 0
 },
@@ -64,7 +68,6 @@
 		ADGF_NO_FLAGS,
 		GUIO2(GUIO_NOSUBTITLES, GUIO_NOSPEECH)
 	},
-	kGameTypeCrousti,
 	kFeaturesAdLib,
 	0, 0, 0
 },

@@ -30,6 +30,7 @@
 #include "gui/widgets/popup.h"
 
 #include "sci/detection.h"
+#include "sci/detection_internal.h"
 #include "sci/dialogs.h"
 #include "sci/graphics/helpers_detection_enums.h"
 #include "sci/sci.h"
@@ -137,6 +138,7 @@ static const PlainGameDescriptor s_sciGameTitles[] = {
 	{"hoyle5",          "Hoyle Classic Games"},
 	{"hoyle5bridge",    "Hoyle Bridge"},
 	{"hoyle5children",  "Hoyle Children's Collection"},
+	{"hoyle5school",    "Hoyle School House Math"},
 	{"hoyle5solitaire", "Hoyle Solitaire"},
 	{"chest",           "Inside the Chest"},	// aka Behind the Developer's Shield
 	{"gk2",             "The Beast Within: A Gabriel Knight Mystery"},
@@ -165,7 +167,7 @@ static const PlainGameDescriptor s_sciGameTitles[] = {
 
 namespace Sci {
 
-static const char *directoryGlobs[] = {
+static const char *const directoryGlobs[] = {
 	"avi",
 	"english",
 	"french",
@@ -177,9 +179,9 @@ static const char *directoryGlobs[] = {
 	nullptr
 };
 
-class SciMetaEngineDetection : public AdvancedMetaEngineDetection {
+class SciMetaEngineDetection : public AdvancedMetaEngineDetection<ADGameDescription> {
 public:
-	SciMetaEngineDetection() : AdvancedMetaEngineDetection(Sci::SciGameDescriptions, sizeof(ADGameDescription), s_sciGameTitles) {
+	SciMetaEngineDetection() : AdvancedMetaEngineDetection(Sci::SciGameDescriptions, s_sciGameTitles) {
 		_maxScanDepth = 3;
 		_directoryGlobs = directoryGlobs;
 		// Use SCI fallback detection results instead of the partial matches found by
@@ -212,11 +214,29 @@ public:
 		return "Sierra's Creative Interpreter (C) Sierra Online";
 	}
 
+	DetectedGames detectGames(const Common::FSList &fslist, uint32 skipADFlags, bool skipIncomplete) override;
+
 	ADDetectedGame fallbackDetect(const FileMap &allFiles, const Common::FSList &fslist, ADDetectedGameExtraInfo **extra) const override;
 
 private:
-	void addFileToDetectedGame(const Common::String &name, const FileMap &allFiles, MD5Properties md5Prop, ADDetectedGame &game) const;
+	void addFileToDetectedGame(const Common::Path &name, const FileMap &allFiles, MD5Properties md5Prop, ADDetectedGame &game) const;
 };
+
+DetectedGames SciMetaEngineDetection::detectGames(const Common::FSList &fslist, uint32 skipADFlags, bool skipIncomplete) {
+	DetectedGames games = AdvancedMetaEngineDetection::detectGames(fslist, skipADFlags, skipIncomplete);
+
+	for (DetectedGame &game : games) {
+		const GameIdStrToEnum *g = s_gameIdStrToEnum;
+		for (; g->gameidStr; ++g) {
+			if (game.gameId.equals(g->gameidStr))
+				break;
+		}
+		game.setGUIOptions(customizeGuiOptions(fslist.begin()->getParent().getPath(), parseGameGUIOptions(game.getGUIOptions()), g->version));
+		game.appendGUIOptions(getGameGUIOptionsDescriptionLanguage(game.language));
+	}
+
+	return games;
+}
 
 ADDetectedGame SciMetaEngineDetection::fallbackDetect(const FileMap &allFiles, const Common::FSList &fslist, ADDetectedGameExtraInfo **extra) const {
 	/**
@@ -231,12 +251,7 @@ ADDetectedGame SciMetaEngineDetection::fallbackDetect(const FileMap &allFiles, c
 		}
 	}
 
-	const Plugin *metaEnginePlugin = EngineMan.findPlugin(getName());
-	if (!metaEnginePlugin) {
-		return ADDetectedGame();
-	}
-
-	const Plugin *enginePlugin = PluginMan.getEngineFromMetaEngine(metaEnginePlugin);
+	const Plugin *enginePlugin = PluginMan.findEnginePlugin(getName());
 	if (!enginePlugin) {
 		static bool warn = true;
 		if (warn) {
@@ -246,7 +261,7 @@ ADDetectedGame SciMetaEngineDetection::fallbackDetect(const FileMap &allFiles, c
 		return ADDetectedGame();
 	}
 
-	ADDetectedGame game = enginePlugin->get<AdvancedMetaEngine>().fallbackDetectExtern(_md5Bytes, allFiles, fslist);
+	ADDetectedGame game = enginePlugin->get<AdvancedMetaEngineBase>().fallbackDetectExtern(_md5Bytes, allFiles, fslist);
 	if (!game.desc) {
 		return game;
 	}
@@ -264,7 +279,7 @@ ADDetectedGame SciMetaEngineDetection::fallbackDetect(const FileMap &allFiles, c
 		addFileToDetectedGame("resource.map", allFiles, md5Prop, game);
 		for (int i = 0; i <= 11; i++) {
 			Common::String volume = Common::String::format("resource.%03d", i);
-			addFileToDetectedGame(volume, allFiles, md5Prop, game);
+			addFileToDetectedGame(Common::Path(volume, '/'), allFiles, md5Prop, game);
 		}
 
 		// add message and audio volumes.
@@ -276,22 +291,22 @@ ADDetectedGame SciMetaEngineDetection::fallbackDetect(const FileMap &allFiles, c
 		for (int i = 0; i <= 7; i++) {
 			Common::String map = Common::String::format("resmap.%03d", i);
 			Common::String volume = Common::String::format("ressci.%03d", i);
-			addFileToDetectedGame(map, allFiles, md5Prop, game);
-			addFileToDetectedGame(volume, allFiles, md5Prop, game);
+			addFileToDetectedGame(Common::Path(map), allFiles, md5Prop, game);
+			addFileToDetectedGame(Common::Path(volume), allFiles, md5Prop, game);
 		}
 	} else if (allFiles.contains("Data1")) {
 		// add Mac volumes
 		md5Prop = (MD5Properties)(md5Prop | kMD5MacResOrDataFork);
 		for (int i = 1; i <= 13; i++) {
 			Common::String volume = Common::String::format("Data%d", i);
-			addFileToDetectedGame(volume, allFiles, md5Prop, game);
+			addFileToDetectedGame(Common::Path(volume), allFiles, md5Prop, game);
 		}
 	}
 
 	return game;
 }
 
-void SciMetaEngineDetection::addFileToDetectedGame(const Common::String &name, const FileMap &allFiles, MD5Properties md5Prop, ADDetectedGame &game) const {
+void SciMetaEngineDetection::addFileToDetectedGame(const Common::Path &name, const FileMap &allFiles, MD5Properties md5Prop, ADDetectedGame &game) const {
 	FileProperties fileProperties;
 	if (getFileProperties(allFiles, md5Prop, name, fileProperties)) {
 		game.hasUnknownFiles = true;

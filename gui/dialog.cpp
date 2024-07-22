@@ -62,7 +62,7 @@ Dialog::Dialog(const Common::String &name)
 	// resolution change, so widgets will be off screen. This forces it to
 	// recompute
 	//
-	// Fixes bug #2892: "HE: When 3x graphics are choosen, F5 crashes game"
+	// Fixes bug #2892: "HE: When 3x graphics are chosen, F5 crashes game"
 	// and bug #2903: "SCUMM: F5 crashes game (640x480)"
 	g_gui.checkScreenChange();
 
@@ -372,6 +372,11 @@ void Dialog::handleTickle() {
 
 	if (_tickleWidget && _tickleWidget->getFlags() & WIDGET_WANT_TICKLE)
 		_tickleWidget->handleTickle();
+}
+
+void Dialog::handleOtherEvent(const Common::Event &evt) {
+	if (_focusedWidget)
+		_focusedWidget->handleOtherEvent(evt);
 }
 
 void Dialog::handleCommand(CommandSender *sender, uint32 cmd, uint32 data) {

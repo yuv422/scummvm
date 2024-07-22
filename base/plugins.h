@@ -55,7 +55,7 @@ enum PluginType {
 #define PLUGIN_TYPE_DETECTION_VERSION 1
 #define PLUGIN_TYPE_SCALER_VERSION 1
 
-extern int pluginTypeVersions[PLUGIN_TYPE_MAX];
+extern const int pluginTypeVersions[PLUGIN_TYPE_MAX];
 
 
 // Plugin linking
@@ -85,7 +85,8 @@ extern int pluginTypeVersions[PLUGIN_TYPE_MAX];
  * @see REGISTER_PLUGIN_DYNAMIC
  */
 #define REGISTER_PLUGIN_STATIC(ID,TYPE,PLUGINCLASS) \
-	PluginType g_##ID##_type = TYPE; \
+	extern const PluginType g_##ID##_type; \
+	const PluginType g_##ID##_type = TYPE; \
 	PluginObject *g_##ID##_getObject() { \
 		return new PLUGINCLASS(); \
 	} \
@@ -178,7 +179,7 @@ public:
 	 * plugins that have files (ie. not static). It doesn't require the plugin
 	 * object to be loaded into memory, unlike getName()
 	 **/
-	virtual const char *getFileName() const { return 0; }
+	virtual Common::Path getFileName() const { return Common::Path(); }
 };
 
 class StaticPlugin : public Plugin {
@@ -291,12 +292,12 @@ protected:
 
 	bool tryLoadPlugin(Plugin *plugin);
 	void addToPluginsInMemList(Plugin *plugin);
-	const Plugin *findEnginePlugin(const Common::String &engineId);
 	const Plugin *findLoadedPlugin(const Common::String &engineId);
 
 	static PluginManager *_instance;
 	PluginManager();
 
+	void unloadAllPlugins();
 public:
 	virtual ~PluginManager();
 
@@ -306,28 +307,13 @@ public:
 	void addPluginProvider(PluginProvider *pp);
 
 	/**
-	 * A method which takes in a plugin of type ENGINE,
-	 * and returns the appropriate & matching METAENGINE.
-	 * It uses the Engine plugin's getName method, which is an identifier,
-	 * and then tries to matches it with each plugin present in memory.
+	 * A method which finds the METAENGINE plugin for the provided engineId
 	 *
-	 * @param plugin A plugin of type ENGINE.
+	 * @param engineId The engine ID
 	 *
 	 * @return A plugin of type METAENGINE.
 	 */
-	const Plugin *getMetaEngineFromEngine(const Plugin *plugin);
-
-	/**
-	 * A method which takes in a plugin of type METAENGINE,
-	 * and returns the appropriate & matching ENGINE.
-	 * It uses the MetaEngine's getEngineID to reconstruct the name
-	 * of engine plugin, and then tries to matches it with each plugin in memory.
-	 *
-	 * @param A plugin of type METAENGINE.
-	 *
-	 * @return A plugin of type ENGINE.
-	 */
-	const Plugin *getEngineFromMetaEngine(const Plugin *plugin);
+	const Plugin *findEnginePlugin(const Common::String &engineId);
 
 	// Functions used by the uncached PluginManager
 	virtual void init()	{}
@@ -341,7 +327,6 @@ public:
 	// Functions used only by the cached PluginManager
 	virtual void loadAllPlugins();
 	virtual void loadAllPluginsOfType(PluginType type);
-	void unloadAllPlugins();
 
 	void unloadPluginsExcept(PluginType type, const Plugin *plugin, bool deletePlugin = true);
 
@@ -362,9 +347,10 @@ protected:
 	bool _isDetectionLoaded;
 
 	PluginManagerUncached() : _isDetectionLoaded(false), _detectionPlugin(nullptr) {}
-	bool loadPluginByFileName(const Common::String &filename);
+	bool loadPluginByFileName(const Common::Path &filename);
 
 public:
+	virtual ~PluginManagerUncached();
 	void init() override;
 	void loadFirstPlugin() override;
 	bool loadNextPlugin() override;

@@ -24,6 +24,7 @@
 #include "backends/networking/enet/source/enet.h"
 #include "backends/networking/enet/socket.h"
 #include "common/debug.h"
+#include "common/textconsole.h"
 
 namespace Networking {
 
@@ -37,7 +38,7 @@ Socket::~Socket() {
 	enet_socket_destroy(_socket);
 }
 
-bool Socket::send(Common::String address, int port, const char *data) {
+bool Socket::send(const Common::String &address, int port, const char *data) {
 	ENetAddress enetAddress;
 	if (address == "255.255.255.255") {
 		enetAddress.host = ENET_HOST_BROADCAST;
@@ -69,7 +70,7 @@ bool Socket::receive() {
 
 	int receivedLength = enet_socket_receive(_socket, &_address, &buffer, 1);
 	if (receivedLength < 0) {
-		warning("ENet: An error has occured when receiving data from socket");
+		warning("ENet: An error has occurred when receiving data from socket");
 		return false;
 	}
 

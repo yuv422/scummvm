@@ -1,16 +1,132 @@
 Umfangreichere Informationen über die Änderungen des aktuellen Codes findest Du unter:
         https://github.com/scummvm/scummvm/commits/
 
-#### 2.8.0 (XXXX-XX-XX)
+#### 2.9.0 (XX.XX.XXXX)
+
+ Neue Spiele:
+   - Unterstützung für Orion Burger hinzugefügt.
+
+ Allgemein:
+   - Fehler bei der Erkennung der GLSL-Version auf einigen OpenGL ES2-Plattformen behoben.
+   - libopenmpt wurde als neue, optionale Abhängigkeit zur Sound-Behandlung hinzugefügt. 
+
+ MM:
+   - Unterstützung für MT32/LAPC-1 für die Xeen-Engine hinzugefügt.
+   - Fehler in Xeen behoben, der dafür sorgt, dass einige Sound-Effekte abrupt beendet werden.
+
+ TsAGE:
+   - Unterstützung für russische Fan-Übersetzung hinzugefügt.
+
+
+#### 2.8.1 (31.03.2024)
+
+ Allgemein:
+   - Fehler bei der Erkennung der GLSL-Version auf einigen OpenGL ES2-Plattformen behoben.
+   - Es wird nun nicht mehr versucht, Shader unter alten OpenGL-Versionen zu nutzen.
+
+ AGI:
+   - Absturz in Space Quest 1 Version 1.0X behoben.
+   - Nachrichten-Boxen in Mixed-Up Mother Goose korrigiert.
+   - Grafik-Darstellung in der Amiga-Version von Miged-Up Mother Goose korrigiert.
+   - Die Uhrzeit und die beiden höchsten Geschwindigkeitsstufen funktionieren nun auch in Gold Rush korrekt.
+   - Fehler behoben, der dafür sorgt, dass die Atari ST-Version von Manhunter 1 nicht startet.
+   - Fehler behoben, der dafür sorgt, dass die CoCo3-Version von Leisure Suit Larry 1 nicht startet.
+   - Fehler behoben, der dafür sorgt, dass die CoCo3-Version einiger inoffizieller Ports nicht starten.
+   - Amiga-Menüs in Space Quest 1, Manhunter 1 und Manhunter 2 korrigiert.
+   - Fehler bei der Darstellung von Graham in King's Quest 1 korrigiert.
+   - Fehler behoben, der dafür sorgt, dass Alexander in King's Quest 3 auf Treppen stecken bleibt.
+   - Fehler behoben, der dafür sorgt, dass Larry in Leisure Suit Larry 1 nicht zum Ladendieb wird.
+   - Fehler bei der Darstellung der Enten-Familie in Donald Duck's Playground behoben.
+   - "Phil's Quest: The Search for Tolbaga" kann jetzt ohne direkten Tod gespielt werden.
+   - Die Buttons im Fan-Spiel "DG: The AGIMouse Adventure" frieren jetzt nicht mehr ein.
+   - Nicht erkannte Wörter im Fan-Spiel "V - The Graphical Adventure" korrigiert.
+   - Erkennung der Macintosh-Version von Mixed-Up Mother Goose korrigiert.
+
+ AGS:
+   - Die Erkennungs-Datenbank wurde aktualisiert.
+   - Charaktere von Sierra-Spielen können nun einfacher in QfG2 AGDI importiert werden.
+   - Grafikfehler in Unavowed und Heroine's Quest behoben.
+   - Schrift-Darstellung in Kathy Rain korrigiert.
+   - Absturz in Alum korrigiert.
+   - Absturz am Beginn von Falcon City behoben.
+
+ SWORD2:
+   - Absturz behoben, der dann auftritt, wenn das Spiel beendet wird, während es pausiert ist.
+
+ MM:
+   - Engine ist jetzt aktiviert, sodass MM1 und Xeen kompiliert werden kann.
+   - Unterstützung für MT32/LAPC-1 für die Xeen-Engine hinzugefügt.
+   - Fehler in Xeen behoben, der dafür sorgt, dass einige Sound-Effekte abrupt beendet werden.
+
+ mTropolis:
+   - Absturz in Muppet Treasure Island auf einigen Plattformen behoben.
+   - Das Juwelen-Puzzle in Muppet Treasure Island wird jetzt korrekt randomisiert.
+
+ NANCY:
+   - Telefon-Hinweise in Secrets Can Kill korrigiert.
+   - Abstürze und Grafikfehler auf ARM-Geräten im Labyrinth-Minispiel in
+     Message in a Haunted Mansion korrigiert.
+   - Die "M"-Taste auf der Tastatur funktioniert in Message in a Haunted Mansion jetzt korrekt.
+   - Allgemeine Tastenkürzel werden jetzt im Engine-Tastenkürzel-Menü angezeigt.
+   - Das virtuelle Keyboard wird im Lade-/Speicher-Menü korrekt ausgelöst.
+
+ SCUMM:
+   - Grafikfehler (und teilweise auch Abstürze) in den Mac-Versionen von Loom und
+     Indiana Jones and the Last Crusade bei der Verwendung von Menü-Tastenkürzeln behoben.
+   - Die originalen Lade- und Speicher-Bildschirme in den Mac-Versionen von Indiana Jones
+     and the last Crusade können nun korrekt aktiviert und deaktiviert werden.
+
+ TWINE:
+   - Leitern können nun wieder korrekt genutzt werden.
+   - Fehler beim Zoomen in Szenen korrigiert.
+   - Animationsfehler nach der Nutzung der Holomap korrigiert.
+
+ Ultima:
+   - Die Minimap funktioniert in Ultima VIII jetzt korrekt.
+   - Fehler bei der Nutzung von Büchern in Ultima VIII behoben.
+   - Fehler bei der Text-Darstellung von Plaketten in Ultima VIII behoben.
+   - Ultima VIII stürzt nicht mehr ab, wenn Items an den Rand des Bildschirms gezogen werden.
+   - In Ultima VIII springt der Charakter nicht mehr unerwartet, wenn die linke Maustaste geklickt wird.
+   - Kamera im Shrine of the Anicent Ones in Ultima VIII korrigiert.
+   - Ungültige Item-Ablage innerhalb von Containern in Ultima VIII korrigiert.
+   - Nie endender Lava-Sound in Ultima VIII korrigiert.
+
+ V-Cruise:
+   - Absturz in Reah: Face the Unknown und Schizm: Mysterious Journey behoben, der auftritt,
+     wenn die Musik stummgeschaltet ist.
+
+ Android-Portierung:
+   - Absturz in der eingebauten Hilfe korrigiert, der bei der Nutzung des deutschen Sprachpaketes auftritt.
+
+ Atari-Portierung:
+   - Absturz beim Beenden von ScummVM korrigiert.
+   - Spielablauf in BBVS (und möglicherweise anderen Spielen) durch die Verwendung präziserer Mathematik verbessert.
+
+ macOS-Portierung:
+   - Fehler behoben, der dazu geführt hat, dass in einigen Mac-Spielen die Ressourcen nicht korrekt geladen werden.
+   - Das Programm-Icon wurde an moderne Standards angepasst.
+
+
+#### 2.8.0 "Mysteries, Mammoths, and Muppets" (30.12.2023)
 
  Neue Spiele:
    - Unterstützung für die macOS-Versionen von Syberia und Syberia II hinzugefügt.
-   - Unterstützung für The Vampire Diaries und Nancy Drew: Secrets Can Kill hinzugefügt.
+   - Unterstützung für The Vampire Diaries, Nancy Drew: Secrets Can Kill,
+     Nancy Drew: Stay Tuned for Danger, Nancy Drew: Message in a Haunted Mansion,
+     Nancy Drew: Treasure in the Royal Tower und Nancy Drew: The Final Scene hinzugefügt.
    - Unterstützung für Reah: Face the Unknown und Schizm: Mysterious Journey hinzugefügt.
    - Unterstützung für Might and Magic Book One hinzugefügt.
    - Unterstützung für Muppet Tresure Island hinzugefügt.
    - Unterstützung für Primordia, Shardlight und Technobabylon hinzugefügt.
+   - Unterstützung für The Excavation of Hob's Barrow, Strangeland und Whispers
+     of a Machine hinzugefügt.
+   - Unterstützung für AGS-Spiele von Stranga und Cloak and Dagger hinzugefügt.
    - Unterstützung für Adibou 1 (Adi Jr.) hinzugefügt.
+   - Unterstützung für Dark Side hinzugefügt.
+   - Unterstützung für Kingdom: The Far Reaches hinzugefügt.
+   - Unterstützung für Escape From Hell hinzugefügt.
+   - Unterstützung für Wrath of the Gods, Gadget: Invention, Travel and Adventure,
+     The Dark Eye und 4 weitere Director-Titel hinzugefügt.
 
  Neue Plattformen:
    - Vollständig erneute Portierung für libretro hinzugefügt.
@@ -20,15 +136,31 @@ Umfangreichere Informationen über die Änderungen des aktuellen Codes findest D
    - libvpx wurde als neue, optionale Abhängigkeit hinzugefügt. 
    - libmikmod wurde als neue, optionale Abhängigkeit hinzugefügt.
    - Unterstützung für PC98-Font-ROMs hinzugefügt.
+   - libsonivox wurde als neue, optionale Abhängigkeit zur Unterstützung von EAS
+     (Embedded Audio Synthesis) hinzugefügt.
+   - Unterstützung für YUV442 und YUV444 im Theora-Decoder hinzugefügt.
+   - Spezielle CPU-Routinen zum Grafik-Blitting zu ManagedSurface hinzugefügt.
+   - Unterstützung für General MIDI ist jetzt standardmäßig aktiviert.
 
  AGS:
-   - Code-Basis mit dem offiziellen AGS-Code in Version 3.6.0.48 synchronisiert.
+   - Code-Basis mit dem offiziellen AGS-Code in Version 3.6.0.53 synchronisiert.
+   - Beschleunigung der Grafik-Manipulation auf moderner Hardware mit CPU-spezifischem Code.
+   - Unterstützung für frühes Font-Rendering hinzugefügt, die dem originalen Interpreter entspricht.
+   - Unterstützung für die Wiedergabe von transcodierten Videos hinzugefügt, die nicht unterstützte
+     Codecs ersetzen können.
+   - Die Wiedergabe von MOD-Audio-Tracks ist jetzt vollständig.
+   - Fehler behoben, der dazu führt, dass die Hintergrundmusik nicht in allen Fällen korrekt wiederholt wird.
+   - Einige Fehler in diversen Spielen (z.B. Strangeland, Chronicle of Innsmouth) korrigiert.
+   - Mehrere Updates der Spiel-Erkennungs-Tabellen.
 
  Asylum:
    - Unterstützung für die chinesische Version von Sanitarium hinzugefügt.
 
  Dragons:
    - Die Copyright-Hinweise und das Hauptmenü werden nun korrekt übersetzt.
+
+ Freescape:
+   - Die Kollisions- und Projektil-Erkennung wurde mittels sweepAABB verbessert.
 
  GrimE:
    - Unterstützung für die chinesische Version von Grim Fandango hinzugefügt.
@@ -39,15 +171,60 @@ Umfangreichere Informationen über die Änderungen des aktuellen Codes findest D
    - Unterstützung für die französische Amiga-Version von Kyra1 und die tschechische DOS-Fan-Übersetzung hinzugefügt.
    - Spielsteuerung und Menüdarstellung für alle Plattformen verbessert.
    - Unterstützung für die chinesische Version von EOB2 hinzugefügt.
+   - Unterstützung für die PC-98-Version von EAB2 hinzugefügt.
+
+ Mohawk:
+   - Die Genauigkeit der Code-Erzeugung für die Domes wurde erheblich verbessert und entspricht nun dem Original.
+
+ Private:
+   - Unterstützung für die japanische Windows-Version hinzugefügt.
 
  SCUMM:
    - Unterstützung für die entpackten RuSCUMM-Patches für russische Übersetzungen hinzugefügt.
+   - Der offizielle Roland MT-32-Patch für Monkey Island 1 kann nun auf allen EGA-Versionen
+     und nicht nur der englischen Version angewendet werden.
+   - Der Sound-Code für alle Spiele von Humongous Entertainment wurde komplett überarbeitet.
+   - Originalgetreue Nachbildung der Macintosh-Oberfläche für Indiana Jones and the Last Crusade und Loom.
+   - Korrektur der Charakter-Animation bei Richtungswechseln in Full Throttle, The Dig und The Curse of Monkey Island.
+   - In Loom kann über Strg+D nun eine Liste der bekannten Melodien angezeigt werden.
+   - Fehlerhafte Kanji-Zeichen in der japanischen SegaCD-Version von Monkey Island 1 korrigiert.
+     Die Schrift-Darstellung ist nun pixelgetreu.
+   - Unterstützung für die Macintosh- und DOS/V-Versionen von Indiana Jones and the Fate of Atlantis,
+     die von MicroMouse vertrieben wurden, hinzugefügt.
+   - Unterstützung für Netzwerk-Multiplayer-Spiele für Backyard Football, Backyard Baseball 2001 und
+     Backyard Football 2002 hinzugefügt.
+
 
  Sherlock:
    - Unterstützung für die chinesische Version von Serrated Scalpel hinzugefügt.
+   - Fehlende Daten zu Spielständen hinzugefügt, ohne die das Spiel nicht gewonnen werden kann.
+
+ Sword1:
+   - Überarbeitung des Palettenüberblendungssystems und der Spieltimer, um sie an die
+     die ursprünglichen DOS-Version anzupassen.
+   - Der gesamte Menü-Code wurde neu geschrieben, damit er dem Original entspricht. Dies umfasst
+     die Wiederherstellung der Geschwindigkeitseinstellung.
+   - Wiederherstellung der korrekten Schriftarten und Menütexte für alle russischen Versionen des Spiels.
+   - Die Audio-Engine wurde so umgeschrieben, dass sie mit dem Original übereinstimmt. Komprimierte Dateien werden
+     weiterhin unterstützt.
+   - Die Untertitel-Routine für die PSX-Version wurde an das Original angepasst.
+   - Georges Ruhe-Animation wurde wiederhergestellt.
+   - Pausenfunktionalität wiederhergestellt: Drücke "P"!
+   - Wiederhergestellte Debug-Befehle: CTRL-G zum Umschalten der Anzeige von begehbaren Rastern auf dem Bildschirm,
+     CTRL-T zum Anzeigen von Debug-Informationen, SHIFT-M zum Anzeigen eines Fadenkreuzes
+     für den Mauszeiger und Georges Position, und die Tasten 1 und 4 zum Umschalten zwischen
+     dem langsamen und dem schnellen Frame-Pacing-Modus.
+   - Die korrekte Schriftart für den Game-Over-Bildschirm wurde wiederhergestellt.
+   - Verschiedene andere kleine Ungenauigkeiten wurden behoben.
+   - Insgesamt sollte sich die PC-Version des Spiels auf ScummVM nicht mehr
+     von der originalen ausführbaren Datei unterscheiden.
+   - Abspann für die PSX-Version implementiert.
 
  Sword2:
    - Unterstützung für die chinesische Übersetzung hinzugefügt.
+
+ Tinsel:
+   - Fehler behoben, der dazu geführt hat, dass keine Tonbänder mehr verfügbar sind.
 
  Twine:
    - Unterstützung für die japanische Übersetzung hinzugefügt.
@@ -62,6 +239,10 @@ Umfangreichere Informationen über die Änderungen des aktuellen Codes findest D
    - Absturz in Ultima VI behoben, der auftritt, wenn Wände betrachtet werden.
    - Verschiedene Fehler korrigiert, die zu Abstürzen geführt haben.
    - Die Genauigkeit des Verhaltens von Gegnern und Projektilen wurde verbessert.
+   - Mehrere Probleme mit der Darstellung in Ultima VIII korrigiert.
+   - Unterstützung für die spanische Fan-Übersetzung von Ultima VIII hinzugefügt.
+   - Unterstützung für Spielstand-Dateien von Pentagram hinzugefüt.
+   - Konfigurierbare Doppelklick-Zeit für Ultima VIII hinzugefügt.
 
  Voyeur:
    - Unterstützung für die deutsche Fan-Übersetzung hinzugefügt.
@@ -71,8 +252,12 @@ Umfangreichere Informationen über die Änderungen des aktuellen Codes findest D
    - Neue Engine-Option hinzugefügt, mit der die Gesundheits-Edelsteine durch
      eine HP/SP-Leiste ersetzt werden können.
 
+ RiscOS-Version:
+   - Doppeltes Buffering wird jetzt im Vollbildmodus genutzt, wenn V-Sync aktiviert ist.
+   - Unterstützung für Hardware-Farbpaletten hinzugefügt.
 
-#### 2.7.1 (2023-XX-XX)
+
+#### 2.7.1 (31.07.2023)
 
  Allgemein:
   - Die Wiedergabe-Geschwindigkeit von Theora-Videos wurde korrigiert.
@@ -642,7 +827,7 @@ Umfangreichere Informationen über die Änderungen des aktuellen Codes findest D
    - Fehler beim Öffnen der Karte in Rose Tattoo behoben.
    - Der Klang der Klingelschnur in Serrated Scalpel wird nun korrekt abgespielt.
    - Das Inventar wird nun korrekt aktualisiert, wenn in Serrated Scalpel die Uhr untersucht wird.
-   - Nebel-Overlay von Kleopatras Nadel in Rose Tatoo korrigiert.Fix fog overlay at Cleopatra's Needle in Rose Tattoo.
+   - Nebel-Overlay von Kleopatras Nadel in Rose Tattoo korrigiert.Fix fog overlay at Cleopatra's Needle in Rose Tattoo.
    - Grafikfehler in Serrated Scalpel behoben, der auftritt, wenn Gegenstände untersucht werden, während das Inventar geöffnet ist.
    - Die Geschwindigkeit des Darts-Spiel in Serrated Scalpel ist nun näher am Original-Spiel.
    - Absturz behoben, der auftritt, wenn der Cursor an das Ende einer Zeichenkette im Speichern-Dialog von Rose Tattoo bewegt wird.

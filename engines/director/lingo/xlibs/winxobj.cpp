@@ -45,14 +45,13 @@
 namespace Director {
 
 const char *RearWindowXObj::xlibName = "RearWindow";
-const char *RearWindowXObj::fileNames[] = {
-	"Backdrop",
-	"RearWindow",
-	"RearWindow.Xobj",
-	"RearWindow XObj",
-	"RW.XOB",
-	"winXObj",
-	nullptr
+const XlibFileDesc RearWindowXObj::fileNames[] = {
+	{ "RearWindow",			nullptr },
+	{ "RearWindow.Xobj",	nullptr },
+	{ "RearWindow XObj",	nullptr },
+	{ "RW.XOB",				nullptr },
+	{ "winXObj",			nullptr },
+	{ nullptr,				nullptr },
 };
 
 /*
@@ -247,7 +246,7 @@ static MethodProto xlibMethods[] = {
 	{ nullptr, nullptr, 0, 0, 0 }
 };
 
-void RearWindowXObj::open(int type) {
+void RearWindowXObj::open(ObjectType type, const Common::Path &path) {
 	if (type == kXObj) {
 		RearWindowXObject::initMethods(xlibMethods);
 		RearWindowXObject *xobj = new RearWindowXObject(kXObj);
@@ -255,7 +254,7 @@ void RearWindowXObj::open(int type) {
 	}
 }
 
-void RearWindowXObj::close(int type) {
+void RearWindowXObj::close(ObjectType type) {
 	if (type == kXObj) {
 		RearWindowXObject::cleanupMethods();
 		g_lingo->_globalvars[xlibName] = Datum();
@@ -263,7 +262,7 @@ void RearWindowXObj::close(int type) {
 }
 
 
-RearWindowXObject::RearWindowXObject(ObjectType ObjectType) :Object<RearWindowXObject>("RearWindowXObj") {
+RearWindowXObject::RearWindowXObject(ObjectType ObjectType) :Object<RearWindowXObject>("RearWindow") {
 	_objType = ObjectType;
 }
 

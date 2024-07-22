@@ -40,7 +40,7 @@ namespace State {
 
 class SaveDialog : public State, public Common::Singleton<SaveDialog> {
 public:
-	SaveDialog() : _state(kInit), _yesButton(nullptr), _noButton(nullptr), _cancelButton(nullptr), _selected(-1) {}
+	SaveDialog() : _state(kInit), _yesButton(nullptr), _noButton(nullptr), _cancelButton(nullptr), _selected(-1), _dialogData(nullptr) {}
 	virtual ~SaveDialog();
 
 	// State API
@@ -65,7 +65,7 @@ private:
 	UI::Button *_noButton;
 	UI::Button *_cancelButton;
 
-	const SDLG *_dialogData;
+	const SDLG::Dialog *_dialogData;
 };
 
 } // End of namespace State

@@ -44,7 +44,8 @@ class SkyMetaEngine : public MetaEngine {
 
 	bool hasFeature(MetaEngineFeature f) const override;
 
-	Common::Error createInstance(OSystem *syst, Engine **engine) override;
+	Common::Error createInstance(OSystem *syst, Engine **engine,
+	                             const DetectedGame &gameDescriptor, const void *metaEngineDescriptor) override;
 
 	const ExtraGuiOptions getExtraGuiOptions(const Common::String &target) const override;
 
@@ -144,7 +145,8 @@ Common::KeymapArray SkyMetaEngine::initKeymaps(const char *target) const {
 	return keymaps;
 }
 
-Common::Error SkyMetaEngine::createInstance(OSystem *syst, Engine **engine) {
+Common::Error SkyMetaEngine::createInstance(OSystem *syst, Engine **engine,
+	const DetectedGame &gameDescriptor, const void *metaEngineDescriptor) {
 	assert(engine);
 	*engine = new Sky::SkyEngine(syst);
 	return Common::kNoError;
@@ -386,13 +388,13 @@ Common::Error SkyEngine::saveGameState(int slot, const Common::String &desc, boo
 	return Common::kNoError;
 }
 
-bool SkyEngine::canLoadGameStateCurrently() {
+bool SkyEngine::canLoadGameStateCurrently(Common::U32String *msg) {
 	return _systemVars->pastIntro
 	    && _skyControl->loadSaveAllowed()
 	    && !_skyControl->isControlPanelOpen();
 }
 
-bool SkyEngine::canSaveGameStateCurrently() {
+bool SkyEngine::canSaveGameStateCurrently(Common::U32String *msg) {
 	return _systemVars->pastIntro
 	    && _skyControl->loadSaveAllowed()
 	    && !_skyControl->isControlPanelOpen();

@@ -26,6 +26,8 @@
  * considered part of the same process.
  */
 
+#include "graphics/paletteman.h"
+
 #include "immortal/immortal.h"
 
 namespace Immortal {
@@ -643,6 +645,8 @@ void ImmortalEngine::loadSprites() {
 			initDataSprite(file, &d, n / 2, centerXY[s * 2], centerXY[(s * 2) + 1]);
 			_dataSprites[s] = d;
 		}
+
+		delete file;
 	}
 }
 
@@ -713,7 +717,7 @@ Common::SeekableReadStream *ImmortalEngine::loadIFF(Common::String fileName) {
 	 */
 
 	Common::File f;
-	if (!f.open(fileName)) {
+	if (!f.open(Common::Path(fileName))) {
 		debug("*surprised pikachu face*");
 		return nullptr;
 	}

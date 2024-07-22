@@ -65,9 +65,9 @@
 namespace Director {
 
 const char *Ednox::xlibName = "Ednox";
-const char *Ednox::fileNames[] = {
-	"Ednox",
-	0
+const XlibFileDesc Ednox::fileNames[] = {
+	{ "Ednox",	nullptr },
+	{ nullptr,	nullptr },
 };
 
 static MethodProto xlibMethods[] = {
@@ -95,7 +95,7 @@ static MethodProto xlibMethods[] = {
 	{ nullptr, nullptr, 0, 0, 0 }
 };
 
-void Ednox::open(int type) {
+void Ednox::open(ObjectType type, const Common::Path &path) {
 	if (type == kXObj) {
 		EdnoxObject::initMethods(xlibMethods);
 		EdnoxObject *xobj = new EdnoxObject(kXObj);
@@ -103,7 +103,7 @@ void Ednox::open(int type) {
 	}
 }
 
-void Ednox::close(int type) {
+void Ednox::close(ObjectType type) {
 	if (type == kXObj) {
 		EdnoxObject::cleanupMethods();
 		g_lingo->_globalvars[xlibName] = Datum();

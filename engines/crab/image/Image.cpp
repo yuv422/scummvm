@@ -67,7 +67,7 @@ bool Image::load(Graphics::ManagedSurface *surface) {
 	return true;
 }
 
-bool Image::load(const Common::String &path) {
+bool Image::load(const Common::Path &path) {
 	// Get rid of preexisting texture
 	deleteImage();
 
@@ -76,14 +76,14 @@ bool Image::load(const Common::String &path) {
 	ImageDecoder decoder;
 
 	if (fileOpen(path, &file) && decoder.loadStream(file)) {
-		_texture = new Graphics::ManagedSurface(decoder.getSurface()->w, decoder.getSurface()->h, *g_engine->_format);
-		_texture->blitFrom(decoder.getSurface());
+		_texture = new Graphics::ManagedSurface();
+		_texture->convertFrom(*decoder.getSurface(), *g_engine->_format);
 		_w = _texture->w;
 		_h = _texture->h;
 
 		file.close();
 
-		debugC(kDebugFilePath, "Image::load() Image Texture(%s): w: %d h: %d", path.c_str(), _w, _h);
+		debugC(kDebugFilePath, "Image::load() Image Texture(%s): w: %d h: %d", path.toString(Common::Path::kNativeSeparator).c_str(), _w, _h);
 	}
 
 	return _texture != nullptr;
@@ -207,23 +207,27 @@ void Image::draw(const int &x, const int &y, Rect *clip, const TextureFlipType &
 	case FLIP_D:
 		s.surfacePtr()->flipHorizontal(Common::Rect(s.w, s.h));
 		rotated_surf = rotate(s, kImageRotateBy270);
-		s.copyFrom(rotated_surf);
+		s.copyFrom(*rotated_surf);
+		delete rotated_surf;
 		break;
 
 	case FLIP_DX:
 		rotated_surf = rotate(s, kImageRotateBy90);
-		s.copyFrom(rotated_surf);
+		s.copyFrom(*rotated_surf);
+		delete rotated_surf;
 		break;
 
 	case FLIP_DY:
 		rotated_surf = rotate(s, kImageRotateBy270);
-		s.copyFrom(rotated_surf);
+		s.copyFrom(*rotated_surf);
+		delete rotated_surf;
 		break;
 
 	case FLIP_XYD:
 		s.surfacePtr()->flipVertical(Common::Rect(s.w, s.h));
 		rotated_surf = rotate(s, kImageRotateBy270);
-		s.copyFrom(rotated_surf);
+		s.copyFrom(*rotated_surf);
+		delete rotated_surf;
 		break;
 
 	default:

@@ -33,7 +33,7 @@
 #include "engines/wintermute/base/gfx/base_image.h"
 #include "engines/wintermute/platform_osystem.h"
 
-#include "graphics/transparent_surface.h"
+#include "graphics/managed_surface.h"
 #include "graphics/transform_tools.h"
 #include "graphics/pixelformat.h"
 #include "graphics/surface.h"
@@ -71,39 +71,6 @@ BaseSurfaceOSystem::~BaseSurfaceOSystem() {
 	_gameRef->addMem(-_width * _height * 4);
 	BaseRenderOSystem *renderer = static_cast<BaseRenderOSystem *>(_gameRef->_renderer);
 	renderer->invalidateTicketsFromSurface(this);
-}
-
-Graphics::AlphaType hasTransparencyType(const Graphics::Surface *surf) {
-	if (surf->format.bytesPerPixel != 4) {
-		warning("hasTransparencyType:: non 32 bpp surface passed as argument");
-		return Graphics::ALPHA_OPAQUE;
-	}
-	uint8 r, g, b, a;
-	bool seenAlpha = false;
-	bool seenFullAlpha = false;
-	for (int i = 0; i < surf->h; i++) {
-		if (seenFullAlpha) {
-			break;
-		}
-		for (int j = 0; j < surf->w; j++) {
-			uint32 pix = *(const uint32 *)surf->getBasePtr(j, i);
-			surf->format.colorToARGB(pix, a, r, g, b);
-			if (a != 255) {
-				seenAlpha = true;
-				if (a != 0) {
-					seenFullAlpha = true;
-					break;
-				}
-			}
-		}
-	}
-	if (seenFullAlpha) {
-		return Graphics::ALPHA_FULL;
-	} else if (seenAlpha) {
-		return Graphics::ALPHA_BINARY;
-	} else {
-		return Graphics::ALPHA_OPAQUE;
-	}
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -188,7 +155,7 @@ bool BaseSurfaceOSystem::finishLoad() {
 		_surface->applyColorKey(_ckRed, _ckGreen, _ckBlue, replaceAlpha);
 	}
 
-	_alphaType = hasTransparencyType(_surface);
+	_alphaType = _surface->detectAlpha();
 	_valid = true;
 
 	_gameRef->addMem(_width * _height * 4);

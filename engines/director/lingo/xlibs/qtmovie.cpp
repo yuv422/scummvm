@@ -40,9 +40,9 @@
 namespace Director {
 
 const char *QTMovie::xlibName = "QTMovie";
-const char *QTMovie::fileNames[] = {
-	"QTMovie",
-	nullptr
+const XlibFileDesc QTMovie::fileNames[] = {
+	{ "QTMovie",	nullptr },
+	{ nullptr,		nullptr },
 };
 
 static BuiltinProto builtins[] = {
@@ -50,11 +50,11 @@ static BuiltinProto builtins[] = {
 	{ nullptr, nullptr, 0, 0, 0, VOIDSYM }
 };
 
-void QTMovie::open(int type) {
+void QTMovie::open(ObjectType type, const Common::Path &path) {
 	g_lingo->initBuiltIns(builtins);
 }
 
-void QTMovie::close(int type) {
+void QTMovie::close(ObjectType type) {
 	g_lingo->cleanupBuiltIns(builtins);
 }
 

@@ -34,11 +34,6 @@
 namespace Nancy {
 namespace Action {
 
-void Unimplemented::execute() {
-	debugC(Nancy::kDebugActionRecord, "Unimplemented Action Record type %s", getRecordTypeName().c_str());
-	_isDone = true;
-}
-
 void PaletteThisScene::readData(Common::SeekableReadStream &stream) {
 	_paletteID = stream.readByte();
 	_unknownEnum = stream.readByte();
@@ -79,13 +74,25 @@ void LightningOn::readData(Common::SeekableReadStream &stream) {
 }
 
 void SpecialEffect::readData(Common::SeekableReadStream &stream) {
-	_type = stream.readByte();
-	_fadeToBlackTime = stream.readUint16LE();
-	_frameTime = stream.readUint16LE();
+	if (g_nancy->getGameType() <= kGameTypeNancy6) {
+		_type = stream.readByte();
+		_fadeToBlackTime = stream.readUint16LE();
+		_frameTime = stream.readUint16LE();
+	} else {
+		_type = stream.readByte();
+		_totalTime = stream.readUint16LE();
+		_fadeToBlackTime = stream.readUint16LE();
+		readRect(stream, _rect);
+	}
 }
 
 void SpecialEffect::execute() {
-	NancySceneState.specialEffect(_type, _fadeToBlackTime, _frameTime);
+	if (g_nancy->getGameType() <= kGameTypeNancy6) {
+		NancySceneState.specialEffect(_type, _fadeToBlackTime, _frameTime);
+	} else {
+		NancySceneState.specialEffect(_type, _totalTime, _fadeToBlackTime, _rect);
+	}
+
 	_isDone = true;
 }
 
@@ -95,26 +102,34 @@ void LightningOn::execute() {
 }
 
 void TextBoxWrite::readData(Common::SeekableReadStream &stream) {
-	uint16 size = stream.readUint16LE();
+	int16 size = stream.readSint16LE();
 
 	if (size > 10000) {
 		error("Action Record atTextboxWrite has too many text box chars: %d", size);
 	}
 
-	char *buf = new char[size];
-	stream.read(buf, size);
-	buf[size - 1] = '\0';
+	if (size == -1) {
+		Common::String stringID;
+		readFilename(stream, stringID);
 
-	UI::Textbox::assembleTextLine(buf, _text, size);
+		const CVTX *autotext = (const CVTX *)g_nancy->getEngineData("AUTOTEXT");
+		assert(autotext);
 
-	delete[] buf;
+		_text = autotext->texts[stringID];
+	} else {
+		char *buf = new char[size];
+		stream.read(buf, size);
+		buf[size - 1] = '\0';
+
+		assembleTextLine(buf, _text, size);
+
+		delete[] buf;
+	}
 }
 
 void TextBoxWrite::execute() {
 	auto &tb = NancySceneState.getTextbox();
 	tb.clear();
-	const TBOX *textboxData = (const TBOX *)g_nancy->getEngineData("TBOX");
-	tb.overrideFontID(textboxData->defaultFontID);
 	tb.addTextLine(_text);
 	tb.setVisible(true);
 	finishExecution();
@@ -175,55 +190,15 @@ void StopTimer::execute() {
 	_isDone = true;
 }
 
-void EventFlags::readData(Common::SeekableReadStream &stream) {
-	_flags.readData(stream);
+void GotoMenu::readData(Common::SeekableReadStream &stream) {
+	stream.skip(1);
 }
 
-void EventFlags::execute() {
-	_flags.execute();
+void GotoMenu::execute() {
+	//NancySceneState.setDestroyOnExit();
+	g_nancy->setState(NancyState::kMainMenu);
+
 	_isDone = true;
-}
-
-void EventFlagsMultiHS::readData(Common::SeekableReadStream &stream) {
-	EventFlags::readData(stream);
-
-	if (_isCursor) {
-		_hoverCursor = (CursorManager::CursorType)stream.readUint16LE();
-	}
-
-	uint16 numHotspots = stream.readUint16LE();
-
-	_hotspots.reserve(numHotspots);
-	for (uint16 i = 0; i < numHotspots; ++i) {
-		_hotspots.push_back(HotspotDescription());
-		HotspotDescription &newDesc = _hotspots[i];
-		newDesc.readData(stream);
-	}
-}
-
-void EventFlagsMultiHS::execute() {
-	switch (_state) {
-	case kBegin:
-		// turn main rendering on
-		_state = kRun;
-		// fall through
-	case kRun:
-		_hasHotspot = false;
-
-		for (uint i = 0; i < _hotspots.size(); ++i) {
-			if (_hotspots[i].frameID == NancySceneState.getSceneInfo().frameID) {
-				_hasHotspot = true;
-				_hotspot = _hotspots[i].coords;
-			}
-		}
-
-		break;
-	case kActionTrigger:
-		_hasHotspot = false;
-		EventFlags::execute();
-		finishExecution();
-		break;
-	}
 }
 
 void LoseGame::readData(Common::SeekableReadStream &stream) {
@@ -268,136 +243,15 @@ void WinGame::readData(Common::SeekableReadStream &stream) {
 }
 
 void WinGame::execute() {
+	// Set ConfMan value that will stay persistent across future playthroughs.
+	// Default value in original is StillWorkingOnIt, but we just don't set it instead.
+	ConfMan.set("PlayerWonTheGame", "AcedTheGame", ConfMan.getActiveDomainName());
+	ConfMan.flushToDisk();
+
 	g_nancy->_sound->stopAndUnloadSceneSpecificSounds();
 	NancySceneState.setDestroyOnExit();
 	g_nancy->setState(NancyState::kCredits, NancyState::kMainMenu);
 
-	_isDone = true;
-}
-
-void AddInventoryNoHS::readData(Common::SeekableReadStream &stream) {
-	_itemID = stream.readUint16LE();
-}
-
-void AddInventoryNoHS::execute() {
-	if (NancySceneState.hasItem(_itemID) == g_nancy->_false) {
-		NancySceneState.addItemToInventory(_itemID);
-	}
-
-	_isDone = true;
-}
-
-void RemoveInventoryNoHS::readData(Common::SeekableReadStream &stream) {
-	_itemID = stream.readUint16LE();
-}
-
-void RemoveInventoryNoHS::execute() {
-	if (NancySceneState.hasItem(_itemID) == g_nancy->_true) {
-		NancySceneState.removeItemFromInventory(_itemID, false);
-	}
-
-	_isDone = true;
-}
-
-void DifficultyLevel::readData(Common::SeekableReadStream &stream) {
-	_difficulty = stream.readUint16LE();
-	_flag.label = stream.readSint16LE();
-	_flag.flag = stream.readUint16LE();
-}
-
-void DifficultyLevel::execute() {
-	NancySceneState.setDifficulty(_difficulty);
-	NancySceneState.setEventFlag(_flag);
-	_isDone = true;
-}
-
-void ShowInventoryItem::init() {
-	g_nancy->_resource->loadImage(_imageName, _fullSurface);
-
-	_drawSurface.create(_fullSurface, _bitmaps[0].src);
-
-	RenderObject::init();
-}
-
-void ShowInventoryItem::readData(Common::SeekableReadStream &stream) {
-	GameType gameType = g_nancy->getGameType();
-	_objectID = stream.readUint16LE();
-	readFilename(stream, _imageName);
-
-	uint16 numFrames = stream.readUint16LE();
-	if (gameType >= kGameTypeNancy3) {
-		stream.skip(2);
-	}
-
-	_bitmaps.resize(numFrames);
-	for (uint i = 0; i < numFrames; ++i) {
-		if (gameType <= kGameTypeNancy2) {
-			_bitmaps[i].readData(stream);
-		} else {
-			_bitmaps[i].frameID = i;
-			readRect(stream, _bitmaps[i].src);
-			readRect(stream, _bitmaps[i].dest);
-		}
-	}
-}
-
-void ShowInventoryItem::execute() {
-	switch (_state) {
-	case kBegin:
-		init();
-		registerGraphics();
-		_state = kRun;
-		// fall through
-	case kRun: {
-		int newFrame = -1;
-
-		for (uint i = 0; i < _bitmaps.size(); ++i) {
-			if (_bitmaps[i].frameID == NancySceneState.getSceneInfo().frameID) {
-				newFrame = i;
-				break;
-			}
-		}
-
-		if (newFrame != _drawnFrameID) {
-			_drawnFrameID = newFrame;
-
-			if (newFrame != -1) {
-				_hasHotspot = true;
-				_hotspot = _bitmaps[newFrame].dest;
-				_drawSurface.create(_fullSurface, _bitmaps[newFrame].src);
-				_screenPosition = _bitmaps[newFrame].dest;
-				setVisible(true);
-			} else {
-				_hasHotspot = false;
-				setVisible(false);
-			}
-		}
-
-		break;
-	}
-	case kActionTrigger:
-		g_nancy->_sound->playSound("BUOK");
-		NancySceneState.addItemToInventory(_objectID);
-		setVisible(false);
-		_hasHotspot = false;
-		finishExecution();
-		break;
-	}
-}
-
-void InventorySoundOverride::readData(Common::SeekableReadStream &stream) {
-	_command = stream.readByte();
-	_itemID = stream.readUint16LE();
-	stream.skip(2);
-	char buf[61];
-	stream.read(buf, 60);
-	buf[60] = '\0';
-	_caption = buf;
-	_sound.readNormal(stream);
-}
-
-void InventorySoundOverride::execute() {
-	NancySceneState.installInventorySoundOverride(_command, _sound, _caption, _itemID);
 	_isDone = true;
 }
 

@@ -38,6 +38,7 @@
 #include "freescape/objects/entrance.h"
 #include "freescape/objects/geometricobject.h"
 #include "freescape/objects/sensor.h"
+#include "freescape/sound.h"
 
 namespace Common {
 class RandomSource;
@@ -47,7 +48,7 @@ namespace Freescape {
 
 class Renderer;
 
-#define FREESCAPE_DATA_BUNDLE Common::String("freescape.dat")
+#define FREESCAPE_DATA_BUNDLE "freescape.dat"
 
 enum CameraMovement {
 	kForwardMovement,
@@ -67,10 +68,12 @@ enum {
 	kFreescapeDebugMedia = 1 << 4,
 };
 
-struct soundFx {
-	int size;
-	int sampleRate;
-	byte *data;
+enum GameStateControl {
+	kFreescapeGameStateStart,
+	kFreescapeGameStatePlaying,
+	kFreescapeGameStateDemo,
+	kFreescapeGameStateEnd,
+	kFreescapeGameStateRestart,
 };
 
 struct CGAPaletteEntry {
@@ -78,9 +81,27 @@ struct CGAPaletteEntry {
 	byte *palette;
 };
 
-class SizedPCSpeaker : public Audio::PCSpeaker {
+class EventManagerWrapper {
 public:
-	bool endOfStream() const override { return !isPlaying(); }
+	EventManagerWrapper(Common::EventManager *delegate);
+	// EventManager API
+	bool pollEvent(Common::Event &event);
+	void purgeKeyboardEvents();
+	void purgeMouseEvents();
+	void pushEvent(Common::Event &event);
+	void clearExitEvents();
+
+private:
+	// for continuous events (keyDown)
+	enum {
+		kKeyRepeatInitialDelay = 400,
+		kKeyRepeatSustainDelay = 100
+	};
+
+	Common::EventManager *_delegate;
+
+	Common::KeyState _currentKeyDown;
+	uint32 _keyRepeatTime;
 };
 
 class FreescapeEngine : public Engine {
@@ -90,6 +111,7 @@ public:
 	~FreescapeEngine();
 
 	const ADGameDescription *_gameDescription;
+	GameStateControl _gameStateControl;
 	bool isDemo() const;
 
 	// Game selection
@@ -98,7 +120,8 @@ public:
 	bool isSpaceStationOblivion() { return _targetName.hasPrefix("spacestationoblivion"); }
 	bool isDriller() { return _targetName.hasPrefix("driller") || _targetName.hasPrefix("spacestationoblivion"); }
 	bool isDark() { return _targetName.hasPrefix("darkside"); }
-	bool isEclipse() { return _targetName.hasPrefix("totaleclipse"); }
+	bool isEclipse() { return _targetName.hasPrefix("totaleclipse"); } // This will match Total Eclipse 1 and 2.
+	bool isEclipse2() { return _targetName.hasPrefix("totaleclipse2"); }
 	bool isCastle() { return _targetName.hasPrefix("castle"); }
 	bool isAmiga() { return _gameDescription->platform == Common::kPlatformAmiga; }
 	bool isAtariST() { return _gameDescription->platform == Common::kPlatformAtariST; }
@@ -122,24 +145,29 @@ public:
 	virtual void processBorder();
 	void drawBorder();
 	void drawTitle();
-	void drawBackground();
+	virtual void drawBackground();
+	void clearBackground();
 	virtual void drawUI();
 	virtual void drawInfoMenu();
-	void drawBorderScreenAndWait(Graphics::Surface *surface);
+	void drawBorderScreenAndWait(Graphics::Surface *surface, int maxWait = INT_MAX);
 
 	virtual void drawCrossair(Graphics::Surface *surface);
 	Graphics::ManagedSurface *_border;
 	Graphics::ManagedSurface *_title;
+	Graphics::Surface *_background;
+
 	Texture *_borderTexture;
 	Texture *_titleTexture;
 	Texture *_uiTexture;
+	Texture *_skyTexture;
+
 	Common::Array<Graphics::Surface *>_indicators;
 	Common::HashMap<uint16, Texture *> _borderCGAByArea;
 	Common::HashMap<uint16, byte *> _paletteCGAByArea;
 
 	// Parsing assets
 	uint8 _binaryBits;
-	void loadAssets();
+	virtual void loadAssets();
 	virtual void loadAssetsDemo();
 	virtual void loadAssetsFullGame();
 
@@ -217,8 +245,12 @@ public:
 	int execute8bitBinImageSingleCommand(Common::SeekableReadStream *file, Graphics::ManagedSurface *surface, int row, int pixels, int bit, int count);
 	int execute8bitBinImageMultiCommand(Common::SeekableReadStream *file, Graphics::ManagedSurface *surface, int row, int pixels, int bit, int count);
 
+	void parseAmigaAtariHeader(Common::SeekableReadStream *file);
+	Common::SeekableReadStream *decryptFileAmigaAtari(const Common::Path &packed, const Common::Path &unpacker, uint32 unpackArrayOffset);
+
 	// Areas
 	uint16 _startArea;
+	uint16 _endArea;
 	AreaMap _areaMap;
 	Area *_currentArea;
 	bool _gotoExecuted;
@@ -227,6 +259,7 @@ public:
 	virtual void gotoArea(uint16 areaID, int entranceID);
 	// Entrance
 	uint16 _startEntrance;
+	uint16 _endEntrance;
 	Common::HashMap<int, const struct entrancesTableEntry *> _entranceTable;
 
 	// Input
@@ -236,11 +269,13 @@ public:
 	bool _shootMode;
 	bool _noClipMode;
 	bool _invertY;
-	static Common::Array<Common::Keymap *> initKeymaps(const char *target);
+	virtual void initKeymaps(Common::Keymap *engineKeyMap, const char *target);
+	EventManagerWrapper *_eventManager;
 	void processInput();
 	void resetInput();
 	void generateDemoInput();
 	virtual void pressedKey(const int keycode);
+	virtual void releasedKey(const int keycode);
 	virtual bool onScreenControls(Common::Point mouse);
 	void move(CameraMovement direction, uint8 scale, float deltaTime);
 	void resolveCollisions(Math::Vector3d newPosition);
@@ -248,12 +283,16 @@ public:
 	void changePlayerHeight(int index);
 	void increaseStepSize();
 	void decreaseStepSize();
+	void changeStepSize();
+
+	void changeAngle();
 	void rise();
 	void lower();
 	bool checkFloor(Math::Vector3d currentPosition);
 	bool tryStepUp(Math::Vector3d currentPosition);
 	bool tryStepDown(Math::Vector3d currentPosition);
 	bool _hasFallen;
+	int _maxFallingDistance;
 	int _maxShield;
 	int _maxEnergy;
 
@@ -272,7 +311,7 @@ public:
 	int _angleRotationIndex;
 	Common::Array<float> _angleRotations;
 
-	Math::Vector3d directionToVector(float pitch, float heading);
+	Math::Vector3d directionToVector(float pitch, float heading, bool useTable);
 	void updateCamera();
 
 	// Camera options
@@ -284,7 +323,7 @@ public:
 	Math::Vector3d _position, _rotation, _velocity;
 	Math::Vector3d _lastPosition;
 	int _playerHeightNumber;
-	Common::Array<int> _playerHeights;
+	int _playerHeightMaxNumber;
 	uint16 _playerHeight;
 	uint16 _playerWidth;
 	uint16 _playerDepth;
@@ -299,8 +338,10 @@ public:
 
 	bool runCollisionConditions(Math::Vector3d const lastPosition, Math::Vector3d const newPosition);
 	Math::Vector3d _objExecutingCodeSize;
+	bool _executingGlobalCode;
 	virtual void executeMovementConditions();
 	bool executeObjectConditions(GeometricObject *obj, bool shot, bool collided, bool activated);
+	void executeEntranceConditions(Entrance *entrance);
 	void executeLocalGlobalConditions(bool shot, bool collided, bool timer);
 	void executeCode(FCLInstructionVector &code, bool shot, bool collided, bool timer, bool activated);
 
@@ -343,17 +384,25 @@ public:
 	void stopAllSounds();
 	bool isPlayingSound();
 	void playSound(int index, bool sync);
-	void playWav(const Common::String filename);
-	void playMusic(const Common::String filename);
+	void playWav(const Common::Path &filename);
+	void playMusic(const Common::Path &filename);
 	void queueSoundConst(double hzFreq, int duration);
 	void playSilence(int duration, bool sync);
 	void playSoundConst(double hzFreq, int duration, bool sync);
 	void playSoundSweepIncWL(double hzFreq1, double hzFreq2, double wlStepPerMS, int resolution, bool sync);
-	void playTeleporter(int totalIters, bool sync);
+	uint16 playSoundDOSSpeaker(uint16 startFrequency, soundSpeakerFx *speakerFxInfo);
+	void playSoundDOS(soundSpeakerFx *speakerFxInfo, bool sync);
 
-	void playSoundFx(int index, bool sync);
-	void loadSoundsFx(Common::SeekableReadStream *file, int offset, int number);
+	virtual void playSoundFx(int index, bool sync);
+	virtual void loadSoundsFx(Common::SeekableReadStream *file, int offset, int number);
 	Common::HashMap<uint16, soundFx *> _soundsFx;
+	void loadSpeakerFxDOS(Common::SeekableReadStream *file, int offsetFreq, int offsetDuration);
+	void loadSpeakerFxZX(Common::SeekableReadStream *file, int sfxTable, int sfxData);
+	Common::HashMap<uint16, soundSpeakerFx *> _soundsSpeakerFx;
+
+	void playSoundZX(Common::Array<soundUnitZX> *data);
+	Common::HashMap<uint16, Common::Array<soundUnitZX>*> _soundsSpeakerFxZX;
+	int _nextSoundToPlay = 1;
 
 	// Rendering
 	int _screenW, _screenH;
@@ -363,13 +412,17 @@ public:
 	Common::RenderMode _renderMode;
 	ColorMap _colorMap;
 	int _underFireFrames;
+	int _avoidRenderingFrames;
 	int _shootingFrames;
+	GeometricObject *_delayedShootObject;
 	void drawFrame();
 	void flashScreen(int backgroundColor);
 	uint8 _colorNumber;
 	Math::Vector3d _scaleVector;
 	float _nearClipPlane;
 	float _farClipPlane;
+	float _yminValue;
+	float _ymaxValue;
 
 	// Text messages and Fonts
 	void insertTemporaryMessage(const Common::String message, int deadline);
@@ -378,17 +431,27 @@ public:
 	Common::StringArray _temporaryMessages;
 	Common::Array<int> _temporaryMessageDeadlines;
 	Common::StringArray _messagesList;
+	Common::String _noShieldMessage;
+	Common::String _noEnergyMessage;
+	Common::String _fallenMessage;
+	Common::String _timeoutMessage;
+	Common::String _forceEndGameMessage;
+	Common::String _crushedMessage;
 
 	void loadMessagesFixedSize(Common::SeekableReadStream *file, int offset, int size, int number);
 	virtual void loadMessagesVariableSize(Common::SeekableReadStream *file, int offset, int number);
+	void drawFullscreenMessageAndWait(Common::String message);
+	void drawFullscreenMessage(Common::String message, uint32 front, Graphics::Surface *surface);
 
-	void loadFonts(Common::SeekableReadStream *file, int offset);
+	// Font loading and rendering
+	void loadFonts(Common::SeekableReadStream *file, int offset, Common::BitArray &font);
 	void loadFonts(byte *font, int charNumber);
 	Common::StringArray _currentAreaMessages;
 	Common::StringArray _currentEphymeralMessages;
 	Common::BitArray _font;
 	bool _fontLoaded;
-	void drawStringInSurface(const Common::String &str, int x, int y, uint32 fontColor, uint32 backColor, Graphics::Surface *surface, int offset = 0);
+	virtual void drawStringInSurface(const Common::String &str, int x, int y, uint32 fontColor, uint32 backColor, Graphics::Surface *surface, int offset = 0);
+	virtual void drawStringInSurface(const Common::String &str, int x, int y, uint32 primaryFontColor, uint32 secondaryFontColor, uint32 backColor, Graphics::Surface *surface, int offset = 0);
 	Graphics::Surface *drawStringsInSurface(const Common::Array<Common::String> &lines);
 
 	// Game state
@@ -401,17 +464,20 @@ public:
 	StateVars _gameStateVars;
 	uint32 _gameStateBits;
 	virtual bool checkIfGameEnded();
+	virtual void endGame();
+	bool _endGameKeyPressed;
+	bool _endGamePlayerEndArea;
 	bool _forceEndGame;
 	bool _playerWasCrushed;
 	ObjectArray _sensors;
-	void checkSensors();
+	virtual void checkSensors();
 	virtual void drawSensorShoot(Sensor *sensor);
 	void takeDamageFromSensor();
 
 	bool hasFeature(EngineFeature f) const override;
-	bool canLoadGameStateCurrently() override { return true; }
+	bool canLoadGameStateCurrently(Common::U32String *msg = nullptr) override { return true; }
 	bool canSaveAutosaveCurrently() override { return false; }
-	bool canSaveGameStateCurrently() override { return true; }
+	bool canSaveGameStateCurrently(Common::U32String *msg = nullptr) override { return true; }
 	Common::Error loadGameStream(Common::SeekableReadStream *stream) override;
 	Common::Error saveGameStream(Common::WriteStream *stream, bool isAutosave = false) override;
 	virtual Common::Error saveGameStreamExtended(Common::WriteStream *stream, bool isAutosave = false);
@@ -427,6 +493,7 @@ public:
 	int _initialCountdown;
 	int _countdown;
 	int _ticks;
+	int _ticksFromEnd;
 	int _lastTick;
 	int _lastMinute;
 
@@ -440,209 +507,6 @@ public:
 
 	// Random
 	Common::RandomSource *_rnd;
-};
-
-enum DrillerReleaseFlags {
-		GF_AMIGA_RETAIL = (1 << 0),
-		GF_AMIGA_BUDGET = (1 << 1),
-		GF_ZX_RETAIL = (1 << 2),
-		GF_ZX_BUDGET = (1 << 3),
-		GF_ZX_DISC = (1 << 4),
-		GF_CPC_RETAIL = (1 << 5),
-		GF_CPC_RETAIL2 = (1 << 6),
-		GF_CPC_BUDGET = (1 << 7),
-		GF_CPC_VIRTUALWORLDS = (1 << 8),
-		GF_ATARI_RETAIL = (1 << 9),
-		GF_ATARI_BUDGET = (1 << 10),
-		GF_AMIGA_MAGAZINE_DEMO = (1 << 11),
-		GF_ATARI_MAGAZINE_DEMO = (1 << 12),
-};
-
-class DrillerEngine : public FreescapeEngine {
-public:
-	DrillerEngine(OSystem *syst, const ADGameDescription *gd);
-	~DrillerEngine();
-
-	uint32 _initialJetEnergy;
-	uint32 _initialJetShield;
-
-	uint32 _initialTankEnergy;
-	uint32 _initialTankShield;
-
-	bool _useAutomaticDrilling;
-
-	Common::HashMap<uint16, uint32> _drillStatusByArea;
-	Common::HashMap<uint16, uint32> _drillMaxScoreByArea;
-	Common::HashMap<uint16, uint32> _drillSuccessByArea;
-
-	void initGameState() override;
-	bool checkIfGameEnded() override;
-
-	void gotoArea(uint16 areaID, int entranceID) override;
-
-	void drawInfoMenu() override;
-	void drawSensorShoot(Sensor *sensor) override;
-
-	void pressedKey(const int keycode) override;
-	Common::Error saveGameStreamExtended(Common::WriteStream *stream, bool isAutosave = false) override;
-	Common::Error loadGameStreamExtended(Common::SeekableReadStream *stream) override;
-
-private:
-	bool drillDeployed(Area *area);
-	GeometricObject *_drillBase;
-	Math::Vector3d drillPosition();
-	void addDrill(const Math::Vector3d position, bool gasFound);
-	bool checkDrill(const Math::Vector3d position);
-	void removeDrill(Area *area);
-	void addSkanner(Area *area);
-
-	void loadAssetsFullGame() override;
-	void loadAssetsAtariFullGame() override;
-	void loadAssetsAtariDemo() override;
-	void loadAssetsAmigaFullGame() override;
-	void loadAssetsAmigaDemo() override;
-	void loadAssetsDOSFullGame() override;
-	void loadAssetsDOSDemo() override;
-	void loadAssetsZXFullGame() override;
-	void loadAssetsCPCFullGame() override;
-	void loadAssetsC64FullGame() override;
-
-	void drawDOSUI(Graphics::Surface *surface) override;
-	void drawZXUI(Graphics::Surface *surface) override;
-	void drawCPCUI(Graphics::Surface *surface) override;
-	void drawC64UI(Graphics::Surface *surface) override;
-	void drawAmigaAtariSTUI(Graphics::Surface *surface) override;
-	bool onScreenControls(Common::Point mouse) override;
-	void initAmigaAtari();
-	void initDOS();
-	void initZX();
-	void initCPC();
-	void initC64();
-
-	void updateTimeVariables() override;
-
-	Common::Rect _moveFowardArea;
-	Common::Rect _moveLeftArea;
-	Common::Rect _moveRightArea;
-	Common::Rect _moveBackArea;
-	Common::Rect _moveUpArea;
-	Common::Rect _moveDownArea;
-	Common::Rect _deployDrillArea;
-	Common::Rect _infoScreenArea;
-	Common::Rect _saveGameArea;
-	Common::Rect _loadGameArea;
-
-	Graphics::ManagedSurface *load8bitTitleImage(Common::SeekableReadStream *file, int offset);
-	Graphics::ManagedSurface *load8bitDemoImage(Common::SeekableReadStream *file, int offset);
-
-	uint32 getPixel8bitTitleImage(int index);
-	void renderPixels8bitTitleImage(Graphics::ManagedSurface *surface, int &i, int &j, int pixels);
-
-	Common::SeekableReadStream *decryptFileAtari(const Common::String filename);
-};
-
-struct ECD {
-	uint16 _area;
-	int _id;
-};
-
-class DarkEngine : public FreescapeEngine {
-public:
-	DarkEngine(OSystem *syst, const ADGameDescription *gd);
-
-	uint32 _initialEnergy;
-	uint32 _initialShield;
-	uint32 _jetFuelSeconds;
-	void addSkanner(Area *area);
-
-	void initGameState() override;
-	void borderScreen() override;
-	bool checkIfGameEnded() override;
-
-	void gotoArea(uint16 areaID, int entranceID) override;
-	void pressedKey(const int keycode) override;
-	void executePrint(FCLInstruction &instruction) override;
-
-	void initDOS();
-	void initAmigaAtari();
-	void initZX();
-	void initCPC();
-
-	void loadAssetsDOSFullGame() override;
-	void loadAssetsDOSDemo() override;
-	void loadAssetsAmigaFullGame() override;
-
-	void loadAssetsCPCFullGame() override;
-
-	void loadAssetsZXDemo() override;
-	void loadAssetsZXFullGame() override;
-	void loadMessagesVariableSize(Common::SeekableReadStream *file, int offset, int number) override;
-
-	int _lastTenSeconds;
-	int _lastSecond;
-	void updateTimeVariables() override;
-
-	void drawBinaryClock(Graphics::Surface *surface, int xPosition, int yPosition, uint32 front, uint32 back);
-	void drawIndicator(Graphics::Surface *surface, int xPosition, int yPosition);
-
-	void drawSensorShoot(Sensor *sensor) override;
-	void drawDOSUI(Graphics::Surface *surface) override;
-	void drawZXUI(Graphics::Surface *surface) override;
-	void drawCPCUI(Graphics::Surface *surface) override;
-	void drawAmigaAtariSTUI(Graphics::Surface *surface) override;
-
-
-	void drawInfoMenu() override;
-	void drawFullscreenMessageAndWait(Common::String message);
-	void drawFullscreenMessage(Common::String message, uint32 front, Graphics::Surface *surface);
-
-	Common::Error saveGameStreamExtended(Common::WriteStream *stream, bool isAutosave = false) override;
-	Common::Error loadGameStreamExtended(Common::SeekableReadStream *stream) override;
-
-private:
-	void addECDs(Area *area);
-	void addECD(Area *area, const Math::Vector3d position, int index);
-	void restoreECD(Area &area, int index);
-	bool checkECD(uint16 areaID, int index);
-	bool tryDestroyECD(int index);
-	bool tryDestroyECDFullGame(int index);
-	void addWalls(Area *area);
-	Common::SeekableReadStream *decryptFile(const Common::String filename);
-	Common::HashMap<uint16, bool> _exploredAreas;
-};
-
-class EclipseEngine : public FreescapeEngine {
-public:
-	EclipseEngine(OSystem *syst, const ADGameDescription *gd);
-
-	void gotoArea(uint16 areaID, int entranceID) override;
-
-	void loadAssetsDOSFullGame() override;
-	void drawUI() override;
-
-	Common::Error saveGameStreamExtended(Common::WriteStream *stream, bool isAutosave = false) override;
-	Common::Error loadGameStreamExtended(Common::SeekableReadStream *stream) override;
-};
-
-class CastleEngine : public FreescapeEngine {
-public:
-	CastleEngine(OSystem *syst, const ADGameDescription *gd);
-	~CastleEngine();
-
-	Graphics::ManagedSurface *_option;
-	void initGameState() override;
-	void loadAssetsDOSFullGame() override;
-	void loadAssetsDOSDemo() override;
-	void loadAssetsAmigaDemo() override;
-
-	void drawDOSUI(Graphics::Surface *surface) override;
-
-	void executePrint(FCLInstruction &instruction) override;
-	void gotoArea(uint16 areaID, int entranceID) override;
-	Common::Error saveGameStreamExtended(Common::WriteStream *stream, bool isAutosave = false) override;
-	Common::Error loadGameStreamExtended(Common::SeekableReadStream *stream) override;
-private:
-	Common::SeekableReadStream *decryptFile(const Common::String filename);
 };
 
 extern FreescapeEngine *g_freescape;

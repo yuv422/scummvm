@@ -30,6 +30,7 @@
 #include "sci/sci.h"
 #include "sci/event.h"
 #include "sci/engine/state.h"
+#include "sci/graphics/gfxdrivers.h"
 #include "sci/graphics/palette.h"
 #include "sci/graphics/screen.h"
 #include "sci/graphics/coordadjuster.h"
@@ -103,15 +104,6 @@ void GfxCursor::purgeCache() {
 }
 
 void GfxCursor::kernelSetShape(GuiResourceId resourceId) {
-	Resource *resource;
-	Common::Point hotspot = Common::Point(0, 0);
-	byte colorMapping[4];
-	int16 x, y;
-	byte color;
-	uint16 maskA, maskB;
-	byte *pOut;
-	int16 heightWidth;
-
 	if (resourceId == -1) {
 		// no resourceId given, so we actually hide the cursor
 		kernelHide();
@@ -119,13 +111,15 @@ void GfxCursor::kernelSetShape(GuiResourceId resourceId) {
 	}
 
 	// Load cursor resource...
-	resource = _resMan->findResource(ResourceId(kResourceTypeCursor, resourceId), false);
+	Resource *resource = _resMan->findResource(ResourceId(kResourceTypeCursor, resourceId), false);
 	if (!resource)
 		error("cursor resource %d not found", resourceId);
 	if (resource->size() != SCI_CURSOR_SCI0_RESOURCESIZE)
 		error("cursor resource %d has invalid size", resourceId);
 
-	if (getSciVersion() <= SCI_VERSION_01) {
+	Common::Point hotspot;
+	bool isSci0Cursor = (getSciVersion() <= SCI_VERSION_01);
+	if (isSci0Cursor) {
 		// SCI0 cursors contain hotspot flags, not actual hotspot coordinates.
 		// If bit 0 of resourceData[3] is set, the hotspot should be centered,
 		// otherwise it's in the top left of the mouse cursor.
@@ -136,34 +130,34 @@ void GfxCursor::kernelSetShape(GuiResourceId resourceId) {
 		hotspot.y = resource->getUint16LEAt(2);
 	}
 
-	// Now find out what colors we are supposed to use
-	colorMapping[0] = 0; // Black is hardcoded
-	colorMapping[1] = _screen->getColorWhite(); // White is also hardcoded
+	// SCI0 cursors are black and white and transparent.
+	// SCI1 cursors introduce gray when both masks are set.
+	// These colors are hard-coded in the video driver.
+	byte colorMapping[4];
+	colorMapping[0] = 0; // black
+	colorMapping[1] = _screen->getColorWhite();
 	colorMapping[2] = SCI_CURSOR_SCI0_TRANSPARENCYCOLOR;
-	colorMapping[3] = _palette->matchColor(170, 170, 170) & SCI_PALETTE_MATCH_COLORMASK; // Grey
-	// TODO: Figure out if the grey color is hardcoded
-	// HACK for the magnifier cursor in LB1, fixes its color (bug #5971)
-	if (g_sci->getGameId() == GID_LAURABOW && resourceId == 1)
+	if (isSci0Cursor) {
 		colorMapping[3] = _screen->getColorWhite();
-	// HACK for Longbow cursors, fixes the shade of grey they're using (bug #5983)
-	if (g_sci->getGameId() == GID_LONGBOW)
-		colorMapping[3] = _palette->matchColor(223, 223, 223) & SCI_PALETTE_MATCH_COLORMASK; // Light Grey
+	} else {
+		colorMapping[3] = SCI_CURSOR_SCI1_GRAY;
+	}
 
 	Common::SpanOwner<SciSpan<byte> > rawBitmap;
 	rawBitmap->allocate(SCI_CURSOR_SCI0_HEIGHTWIDTH * SCI_CURSOR_SCI0_HEIGHTWIDTH, resource->name() + " copy");
 
-	pOut = rawBitmap->getUnsafeDataAt(0, SCI_CURSOR_SCI0_HEIGHTWIDTH * SCI_CURSOR_SCI0_HEIGHTWIDTH);
-	for (y = 0; y < SCI_CURSOR_SCI0_HEIGHTWIDTH; y++) {
-		maskA = resource->getUint16LEAt(4 + (y << 1));
-		maskB = resource->getUint16LEAt(4 + 32 + (y << 1));
+	byte *pOut = rawBitmap->getUnsafeDataAt(0, SCI_CURSOR_SCI0_HEIGHTWIDTH * SCI_CURSOR_SCI0_HEIGHTWIDTH);
+	for (int16 y = 0; y < SCI_CURSOR_SCI0_HEIGHTWIDTH; y++) {
+		uint16 maskA = resource->getUint16LEAt(4 + (y << 1));
+		uint16 maskB = resource->getUint16LEAt(4 + 32 + (y << 1));
 
-		for (x = 0; x < SCI_CURSOR_SCI0_HEIGHTWIDTH; x++) {
-			color = (((maskA << x) & 0x8000) | (((maskB << x) >> 1) & 0x4000)) >> 14;
+		for (int16 x = 0; x < SCI_CURSOR_SCI0_HEIGHTWIDTH; x++) {
+			byte color = (((maskA << x) & 0x8000) | (((maskB << x) >> 1) & 0x4000)) >> 14;
 			*pOut++ = colorMapping[color];
 		}
 	}
 
-	heightWidth = SCI_CURSOR_SCI0_HEIGHTWIDTH;
+	int16 heightWidth = SCI_CURSOR_SCI0_HEIGHTWIDTH;
 
 	if (_upscaledHires != GFX_SCREEN_UPSCALED_DISABLED && _upscaledHires != GFX_SCREEN_UPSCALED_480x300) {
 		// Scale cursor by 2x - note: sierra didn't do this, but it looks much better
@@ -182,10 +176,11 @@ void GfxCursor::kernelSetShape(GuiResourceId resourceId) {
 				resourceId, hotspot.x, hotspot.y, heightWidth, heightWidth);
 	}
 
-	CursorMan.replaceCursor(rawBitmap->getUnsafeDataAt(0, heightWidth * heightWidth), heightWidth, heightWidth, hotspot.x, hotspot.y, SCI_CURSOR_SCI0_TRANSPARENCYCOLOR);
+	_screen->gfxDriver()->replaceCursor(rawBitmap->getUnsafeDataAt(0, heightWidth * heightWidth), heightWidth, heightWidth, hotspot.x, hotspot.y, SCI_CURSOR_SCI0_TRANSPARENCYCOLOR);
+
 	if (g_system->getScreenFormat().bytesPerPixel != 1) {
 		byte buf[3*256];
-		g_sci->_gfxScreen->grabPalette(buf, 0, 256);
+		_screen->grabPalette(buf, 0, 256);
 		CursorMan.replaceCursorPalette(buf, 0, 256);
 	}
 
@@ -258,11 +253,11 @@ void GfxCursor::kernelSetView(GuiResourceId viewNum, int loopNum, int celNum, Co
 		_screen->scale2x(rawBitmap, *cursorBitmap, celInfo->width, celInfo->height);
 		CursorMan.replaceCursor(cursorBitmap->getUnsafeDataAt(0, width * height), width, height, cursorHotspot->x, cursorHotspot->y, clearKey);
 	} else {
-		CursorMan.replaceCursor(rawBitmap.getUnsafeDataAt(0, width * height), width, height, cursorHotspot->x, cursorHotspot->y, clearKey);
+		_screen->gfxDriver()->replaceCursor(rawBitmap.getUnsafeDataAt(0, width * height), width, height, cursorHotspot->x, cursorHotspot->y, clearKey);
 	}
 	if (g_system->getScreenFormat().bytesPerPixel != 1) {
 		byte buf[3*256];
-		g_sci->_gfxScreen->grabPalette(buf, 0, 256);
+		_screen->grabPalette(buf, 0, 256);
 		CursorMan.replaceCursorPalette(buf, 0, 256);
 	}
 
@@ -338,7 +333,7 @@ void GfxCursor::setPosition(Common::Point pos) {
 }
 
 Common::Point GfxCursor::getPosition() {
-	Common::Point mousePos = g_system->getEventManager()->getMousePos();
+	Common::Point mousePos = g_sci->_gfxScreen->gfxDriver()->getMousePos();
 
 	if (_upscaledHires)
 		_screen->adjustBackUpscaledCoordinates(mousePos.y, mousePos.x);
@@ -416,10 +411,10 @@ void GfxCursor::refreshPosition() {
 			}
 		}
 
-		CursorMan.replaceCursor(_cursorSurface->getUnsafeDataAt(0, cursorCelInfo->width * cursorCelInfo->height), cursorCelInfo->width, cursorCelInfo->height, cursorHotspot.x, cursorHotspot.y, cursorCelInfo->clearKey);
+		_screen->gfxDriver()->replaceCursor(_cursorSurface->getUnsafeDataAt(0, cursorCelInfo->width * cursorCelInfo->height), cursorCelInfo->width, cursorCelInfo->height, cursorHotspot.x, cursorHotspot.y, cursorCelInfo->clearKey);
 		if (g_system->getScreenFormat().bytesPerPixel != 1) {
 			byte buf[3*256];
-			g_sci->_gfxScreen->grabPalette(buf, 0, 256);
+			_screen->grabPalette(buf, 0, 256);
 			CursorMan.replaceCursorPalette(buf, 0, 256);
 		}
 	}

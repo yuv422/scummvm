@@ -25,6 +25,7 @@
 #include "common/macresman.h"
 #include "common/formats/winexe_pe.h"
 #include "common/unicode-bidi.h"
+#include "common/timer.h"
 
 #include "graphics/primitives.h"
 #include "graphics/font.h"
@@ -33,6 +34,8 @@
 #include "graphics/macgui/macwindowmanager.h"
 #include "graphics/macgui/macwindow.h"
 #include "graphics/macgui/macmenu.h"
+
+#define SCROLL_DELAY 100000
 
 namespace Graphics {
 
@@ -88,7 +91,7 @@ MacMenu::MacMenu(int id, const Common::Rect &bounds, MacWindowManager *wm)
 
 	_type = MacWindowConstants::kWindowMenu;
 
-	_screen.create(bounds.width(), bounds.height(), PixelFormat::createFormatCLUT8());
+	_screen.create(bounds.width(), bounds.height(), _wm->_pixelformat);
 
 	_bbox.left = 0;
 	_bbox.top = 0;
@@ -121,7 +124,12 @@ MacMenu::MacMenu(int id, const Common::Rect &bounds, MacWindowManager *wm)
 	_unicodeccallback = NULL;
 	_cdata = NULL;
 
-	_tempSurface.create(_screen.w, _font->getFontHeight(), PixelFormat::createFormatCLUT8());
+	_scrollTimerActive = false;
+	_scrollDirection = 0;
+
+	_isModal = false;
+
+	_tempSurface.create(_screen.w, _font->getFontHeight(), _wm->_pixelformat);
 }
 
 MacMenu::~MacMenu() {
@@ -898,14 +906,18 @@ int MacMenu::calcSubMenuWidth(MacMenuSubMenu *submenu) {
 		if (!item->text.empty()) {
 			Common::String text(item->text);
 			Common::String acceleratorText(getAcceleratorString(item, "  "));
+
+			const Font *font = getMenuFont(item->style);
+			int width = font->getStringWidth(text);
+
 			if (!acceleratorText.empty()) {
-				text += acceleratorText;
+				width += _font->getStringWidth(acceleratorText);
 			}
 
-			if (item->submenu != nullptr) // If we're drawing triangle
-				text += "  ";
+			if (item->submenu != nullptr) { // If we're drawing triangle
+				width += _font->getStringWidth("  ");
+			}
 
-			int width = _font->getStringWidth(text);
 			if (width > maxWidth) {
 				maxWidth = width;
 			}
@@ -933,8 +945,8 @@ void MacMenu::calcSubMenuBounds(MacMenuSubMenu *submenu, int x, int y) {
 	int x1 = x;
 	int y1 = y;
 	int x2 = x1 + maxWidth + _menuLeftDropdownPadding + _menuRightDropdownPadding - 4;
-
 	int y2 = y1 + submenu->items.size() * _menuDropdownItemHeight + 2;
+	y2 = MIN(y2, y1 + ((_screen.h - y1) / _menuDropdownItemHeight) * _menuDropdownItemHeight + 2);
 
 	submenu->bbox.left = x1;
 	submenu->bbox.top = y1;
@@ -954,15 +966,45 @@ void MacMenu::calcSubMenuBounds(MacMenuSubMenu *submenu, int x, int y) {
 	}
 }
 
+template <typename T>
 static void drawPixelPlain(int x, int y, int color, void *data) {
 	ManagedSurface *surface = (ManagedSurface *)data;
 
 	if (x >= 0 && x < surface->w && y >= 0 && y < surface->h)
-		*((byte *)surface->getBasePtr(x, y)) = (byte)color;
+		*((T *)surface->getBasePtr(x, y)) = (T)color;
 }
 
+template <typename T>
 static void drawFilledRoundRect(ManagedSurface *surface, Common::Rect &rect, int arc, int color) {
-	drawRoundRect(rect, arc, color, true, drawPixelPlain, surface);
+	drawRoundRect(rect, arc, color, true, drawPixelPlain<T>, surface);
+}
+
+template <typename T>
+static void drawMenuPattern(ManagedSurface &srcSurf, ManagedSurface &destSurf, const byte *pattern, int x, int y, int width, uint32 colorKey) {
+	// I am lazy to extend drawString() with plotProc as a parameter, so
+	// fake it here
+
+	for (int ii = 0; ii < srcSurf.h; ii++) {
+		const T *src = (const T *)srcSurf.getBasePtr(0, ii);
+		T *dst = (T *)destSurf.getBasePtr(x, y + ii);
+		byte pat = pattern[ii % 8];
+		for (int j = 0; j < width; j++) {
+			if (*src != colorKey && (pat & (1 << (7 - (x + j) % 8))))
+				*dst = *src;
+			src++;
+			dst++;
+		}
+	}
+}
+
+template <typename T>
+static void drawMenuDelimiter(ManagedSurface &srcSurf, Common::Rect *r, int y, uint32 black, uint32 white) {
+	bool flip = r->left & 2;
+	T *ptr = (T *)srcSurf.getBasePtr(r->left + 1, y);
+	for (int xx = r->left + 1; xx <= r->right - 1; xx++, ptr++) {
+		*ptr = flip ? black : white;
+		flip = !flip;
+	}
 }
 
 static void underlineAccelerator(ManagedSurface *dst, const Font *font, const Common::UnicodeBiDiText &txt, int x, int y, int shortcutPos, uint32 color) {
@@ -999,7 +1041,16 @@ bool MacMenu::draw(ManagedSurface *g, bool forceRedraw) {
 
 	_screen.clear(_wm->_colorGreen);
 
-	drawFilledRoundRect(&_screen, r, (_wm->_mode & kWMModeWin95) ? 0 : kDesktopArc, _wm->_colorWhite);
+	bool shouldUseDesktopArc = !(_wm->_mode & kWMModeWin95) || (_wm->_mode & kWMModeForceMacBorder);
+
+	// Fill in the corners with black
+	_screen.fillRect(r, _wm->_colorBlack);
+
+	if (_wm->_pixelformat.bytesPerPixel == 1) {
+		drawFilledRoundRect<byte>(&_screen, r, shouldUseDesktopArc ? kDesktopArc : 0, _wm->_colorWhite);
+	} else {
+		drawFilledRoundRect<uint32>(&_screen, r, shouldUseDesktopArc ? kDesktopArc : 0, _wm->_colorWhite);
+	}
 
 	r.top = 7;
 	_screen.fillRect(r, _wm->_colorWhite);
@@ -1080,7 +1131,27 @@ void MacMenu::renderSubmenu(MacMenuSubMenu *menu, bool recursive) {
 	int x = _align == kTextAlignRight ? -_menuRightDropdownPadding: _menuLeftDropdownPadding;
 	x += r->left;
 
-	for (uint i = 0; i < menu->items.size(); i++) {
+	int maxVis = menu->bbox.height() / _menuDropdownItemHeight;
+	int numVis = menu->items.size() - menu->visStart - menu->visEnd + ABS(menu->scroll);
+	numVis = MIN(numVis, maxVis);
+
+	int ovTop = menu->visStart + menu->scroll; // Number of items overflowing from top
+	int ovBot = menu->items.size() - ovTop - numVis; // Number of items overflowing from bottom
+
+	for (int i = menu->visStart + menu->scroll; i < (int)menu->items.size(); i++) {
+		if ((ovTop && i == menu->visStart + menu->scroll) ||
+			(ovBot && i == numVis - 1 + menu->scroll + menu->visStart)) {
+			int direction = (i == menu->visStart + menu->scroll) ? 1 : -1;
+
+			int arrowX = _align == kTextAlignRight ? menu->bbox.right - _menuRightDropdownPadding : menu->bbox.left + _menuLeftDropdownPadding;
+			int arrowY = direction == 1 ? menu->bbox.top + _menuDropdownItemHeight / 2 : menu->bbox.bottom - _menuDropdownItemHeight / 2;
+
+			drawScrollArrow(arrowX, arrowY, direction);
+
+			y += _menuDropdownItemHeight;
+			continue;
+		}
+
 		Common::String text(menu->items[i]->text);
 		Common::String acceleratorText(getAcceleratorString(menu->items[i], ""));
 
@@ -1099,7 +1170,7 @@ void MacMenu::renderSubmenu(MacMenuSubMenu *menu, bool recursive) {
 		}
 
 		int color = _wm->_colorBlack;
-		if (i == (uint)menu->highlight && (!text.empty() || !unicodeText.empty()) && menu->items[i]->enabled) {
+		if (i == menu->highlight && (!text.empty() || !unicodeText.empty()) && menu->items[i]->enabled) {
 			color = _wm->_colorWhite;
 			Common::Rect trect(r->left, y - (_wm->_fontMan->hasBuiltInFonts() ? 1 : 0), r->right, y + _font->getFontHeight());
 
@@ -1147,27 +1218,18 @@ void MacMenu::renderSubmenu(MacMenuSubMenu *menu, bool recursive) {
 				drawSubMenuArrow(s, arrowX, ty, color);
 
 			if (!menu->items[i]->enabled) {
-				// I am lazy to extend drawString() with plotProc as a parameter, so
-				// fake it here
-				for (int ii = 0; ii < _tempSurface.h; ii++) {
-					const byte *src = (const byte *)_tempSurface.getBasePtr(0, ii);
-					byte *dst = (byte *)_screen.getBasePtr(x, y + ii);
-					byte pat = _wm->getBuiltinPatterns()[kPatternCheckers2 - 1][ii % 8];
-					for (int j = 0; j < r->width(); j++) {
-						if (*src != _wm->_colorGreen && (pat & (1 << (7 - (x + j) % 8))))
-							*dst = *src;
-						src++;
-						dst++;
-					}
+				if (_wm->_pixelformat.bytesPerPixel == 1) {
+					drawMenuPattern<byte>(_tempSurface, _screen, _wm->getBuiltinPatterns()[kPatternCheckers2 - 1], x, y, r->width(), _wm->_colorGreen);
+				} else {
+					drawMenuPattern<uint32>(_tempSurface, _screen, _wm->getBuiltinPatterns()[kPatternCheckers2 - 1], x, y, r->width(), _wm->_colorGreen);
 				}
 			}
 
 		} else { // Delimiter
-			bool flip = r->left & 2;
-			byte *ptr = (byte *)_screen.getBasePtr(r->left + 1, y + _menuDropdownItemHeight / 2);
-			for (int xx = r->left + 1; xx <= r->right - 1; xx++, ptr++) {
-				*ptr = flip ? _wm->_colorBlack : _wm->_colorWhite;
-				flip = !flip;
+			if (_wm->_pixelformat.bytesPerPixel == 1) {
+				drawMenuDelimiter<byte>(_screen, r, y + _menuDropdownItemHeight / 2, _wm->_colorBlack, _wm->_colorWhite);
+			} else {
+				drawMenuDelimiter<uint32>(_screen, r, y + _menuDropdownItemHeight / 2, _wm->_colorBlack, _wm->_colorWhite);
 			}
 		}
 
@@ -1206,7 +1268,7 @@ void MacMenu::drawSubMenuArrow(ManagedSurface *dst, int x, int y, int color) {
 }
 
 bool MacMenu::processEvent(Common::Event &event) {
-	if (!_isVisible)
+	if (!_isVisible && event.type != Common::EVENT_KEYDOWN)
 		return false;
 
 	switch (event.type) {
@@ -1232,7 +1294,7 @@ bool MacMenu::keyEvent(Common::Event &event) {
 
 	if (event.kbd.flags & (Common::KBD_ALT | Common::KBD_CTRL | Common::KBD_META)) {
 		if (event.kbd.ascii >= 0x20 && event.kbd.ascii <= 0x7f) {
-			return processMenuShortCut(event.kbd.flags, event.kbd.ascii);
+			return processMenuShortCut(event.kbd.ascii);
 		}
 	}
 
@@ -1248,8 +1310,32 @@ bool MacMenu::checkIntersects(Common::Rect &rect) {
 	return false;
 }
 
+static void scrollCallback(void *data) {
+	MacMenu *menu = (MacMenu *)data;
+	MacMenuSubMenu *subMenu = menu->_menustack.back();
+
+	int maxVis = subMenu->bbox.height() / menu->getDropdownItemHeight();
+	int numVis = subMenu->items.size() - subMenu->visStart - subMenu->visEnd + ABS(subMenu->scroll);
+	numVis = MIN(numVis, maxVis);
+
+	int ovTop = subMenu->visStart + subMenu->scroll; // Number of items overflowing from top
+	int ovBot = subMenu->items.size() - ovTop - numVis; // Number of items overflowing from bottom
+
+	if (menu->getScrollDirection() == -1) {
+		if (ovTop) {
+			subMenu->scroll--;
+			menu->renderSubmenu(subMenu);
+		}
+	} else {
+		if (ovBot) {
+			subMenu->scroll++;
+			menu->renderSubmenu(subMenu);
+		}
+	}
+}
+
 bool MacMenu::mouseClick(int x, int y) {
-	if (_bbox.contains(x, y)) {
+	if (!_isModal &&_bbox.contains(x, y)) {
 		for (uint i = 0; i < _items.size(); i++) {
 			if (_items[i]->bbox.contains(x, y)) {
 				if ((uint)_activeItem == i)
@@ -1280,16 +1366,6 @@ bool MacMenu::mouseClick(int x, int y) {
 			_wm->activateMenu();
 
 		setActive(true);
-
-		if (_wm->_mode & kWMModalMenuMode) {
-			draw(_wm->_screen);
-			eventLoop();
-
-			// Do not do full refresh as we took care of restoring
-			// the screen. WM is not even aware we were drawing.
-			_wm->setFullRefresh(false);
-		}
-
 		return true;
 	}
 
@@ -1299,20 +1375,62 @@ bool MacMenu::mouseClick(int x, int y) {
 	if (_menustack.size() > 0 && _menustack.back()->bbox.contains(x, y)) {
 		MacMenuSubMenu *menu = _menustack.back();
 		int numSubItem = menu->ytoItem(y, _menuDropdownItemHeight);
+		int selectedOption = numSubItem;
+		numSubItem += menu->visStart + menu->scroll;
+		numSubItem = MIN((uint)numSubItem, menu->items.size() - 1);
 
 		if (numSubItem != _activeSubItem) {
 			if (_wm->_mode & kWMModalMenuMode) {
 				if (_activeSubItem == -1 || menu->items[_activeSubItem]->submenu != nullptr)
 					g_system->copyRectToScreen(_wm->_screenCopy->getPixels(), _wm->_screenCopy->pitch, 0, 0, _wm->_screenCopy->w, _wm->_screenCopy->h);
 			}
-			_activeSubItem = numSubItem;
-			menu->highlight = _activeSubItem;
+
+			int maxVis = menu->bbox.height() / _menuDropdownItemHeight;
+			int numItemsVisible = menu->items.size() - menu->visStart - menu->visEnd + ABS(menu->scroll);
+			numItemsVisible = MIN(numItemsVisible, maxVis);
+
+			int ovTop = menu->visStart + menu->scroll;
+			int ovBot = menu->items.size() - ovTop - numItemsVisible;
+
+			// If the user clicks on the "Scroll Up Arrow" or the "Scroll Down Arrow" then ignore the selection
+			if (!(ovTop && selectedOption == 0) && !(ovBot && numItemsVisible == maxVis && menu->ytoItem(y, _menuDropdownItemHeight) == numItemsVisible - 1)) {
+				_activeSubItem = numSubItem;
+				menu->highlight = _activeSubItem;
+			}
+
+			if (selectedOption == 0) {
+				if (ovTop) {
+					if (!_scrollTimerActive) {
+						_scrollDirection = -1;
+						_scrollTimerActive = true;
+						g_system->getTimerManager()->installTimerProc(&scrollCallback, SCROLL_DELAY, this, "Scroll Up Handler");
+					}
+				}
+			} else if (selectedOption == numItemsVisible - 1) {
+				if (ovBot && numItemsVisible == maxVis) {
+					if (!_scrollTimerActive) {
+						_scrollDirection = 1;
+						_scrollTimerActive = true;
+						g_system->getTimerManager()->installTimerProc(&scrollCallback, SCROLL_DELAY, this, "Scroll Down Handler");
+					}
+				}
+			} else {
+				if (_scrollTimerActive) {
+					_scrollTimerActive = false;
+					g_system->getTimerManager()->removeTimerProc(&scrollCallback);
+				}
+			}
 
 			_contentIsDirty = true;
 			_wm->setFullRefresh(true);
 		}
 
 		return true;
+	} else {
+		if (_scrollTimerActive) {
+			_scrollTimerActive = false;
+			g_system->getTimerManager()->removeTimerProc(&scrollCallback);
+		}
 	}
 
 	if (_activeSubItem != -1 && _menustack.back()->items[_activeSubItem]->submenu != nullptr) {
@@ -1382,6 +1500,13 @@ bool MacMenu::contains(int x, int y) {
 	return false;
 }
 
+void MacMenu::drawScrollArrow(int arrowX, int arrowY, int direction) {
+	int arrowHeight = getMenuFont()->getFontHeight() / 2;
+
+	for (int j = 0; j <= arrowHeight / 2; j++)
+		_screen.hLine(arrowX - j, arrowY + j * direction, arrowX + j, _wm->_colorBlack);
+}
+
 bool MacMenu::mouseMove(int x, int y) {
 	if (_active) {
 		if (mouseClick(x, y))
@@ -1414,6 +1539,12 @@ bool MacMenu::checkCallback(bool unicode) {
 
 void MacMenu::closeMenu() {
 	setActive(false);
+
+	if (_scrollTimerActive) {
+		_scrollTimerActive = false;
+		g_system->getTimerManager()->removeTimerProc(&scrollCallback);
+	}
+
 	if (_wm->_mode & kWMModeAutohideMenu)
 		_isVisible = false;
 
@@ -1467,23 +1598,23 @@ bool MacMenu::mouseRelease(int x, int y) {
 	return true;
 }
 
-bool MacMenu::processMenuShortCut(byte flags, uint16 ascii) {
+bool MacMenu::processMenuShortCut(uint16 ascii) {
 	ascii = tolower(ascii);
 
-	if (flags & (Common::KBD_CTRL | Common::KBD_META)) {
-		for (uint i = 0; i < _items.size(); i++)
-			if (_items[i]->submenu != nullptr) {
-				for (uint j = 0; j < _items[i]->submenu->items.size(); j++)
-					if (_items[i]->submenu->items[j]->enabled && tolower(_items[i]->submenu->items[j]->shortcut) == ascii) {
-						if (_items[i]->submenu->items[j]->unicode) {
-							if (checkCallback(true))
-								(*_unicodeccallback)(_items[i]->submenu->items[j]->action, _items[i]->submenu->items[j]->unicodeText, _cdata);
-						} else {
-							if (checkCallback())
-								(*_ccallback)(_items[i]->submenu->items[j]->action, _items[i]->submenu->items[j]->text, _cdata);
-						}
-						return true;
+	for (uint i = 0; i < _items.size(); i++) {
+		if (_items[i]->submenu != nullptr) {
+			for (uint j = 0; j < _items[i]->submenu->items.size(); j++) {
+				if (_items[i]->submenu->items[j]->enabled && tolower(_items[i]->submenu->items[j]->shortcut) == ascii) {
+					if (_items[i]->submenu->items[j]->unicode) {
+						if (checkCallback(true))
+							(*_unicodeccallback)(_items[i]->submenu->items[j]->action, _items[i]->submenu->items[j]->unicodeText, _cdata);
+					} else {
+						if (checkCallback())
+							(*_ccallback)(_items[i]->submenu->items[j]->action, _items[i]->submenu->items[j]->text, _cdata);
 					}
+					return true;
+				}
+			}
 		}
 	}
 

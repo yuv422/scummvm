@@ -144,7 +144,8 @@ Graphics::ManagedSurface *GriffonEngine::loadImage(const char *name, bool colork
 	bitmapDecoder.loadStream(file);
 	file.close();
 
-	Graphics::ManagedSurface *surface = new Graphics::ManagedSurface(bitmapDecoder.getSurface()->convertTo(g_system->getScreenFormat()));
+	Graphics::ManagedSurface *surface = new Graphics::ManagedSurface();
+	surface->convertFrom(*bitmapDecoder.getSurface(), g_system->getScreenFormat());
 
 	if (colorkey)
 		surface->surfacePtr()->applyColorKey(255, 0, 255);
@@ -1101,7 +1102,7 @@ void GriffonEngine::loadItemImgs() {
 		temp->blendBlitTo(*_itemImg[i], 0, 0, Graphics::FLIP_NONE, &rcSrc);
 	}
 
-	temp->free();
+	delete temp;
 }
 
 void GriffonEngine::loadFont() {
@@ -1128,7 +1129,7 @@ void GriffonEngine::loadFont() {
 			font->blendBlitTo(*_fontChr[i2][f], rcDest.left, rcDest.top, Graphics::FLIP_NONE, &rcSrc);
 		}
 
-	font->free();
+	delete font;
 }
 
 void GriffonEngine::loadTiles() {

@@ -74,12 +74,16 @@ static const PlainGameDescriptor mohawkGames[] = {
 	{"drseussreading", "Dr. Seuss Reading Games"},
 	{"arthurreading", "Arthur's Reading Games"},
 	{"wsg", "Williams-Sonoma Guide to Good Cooking" },
+	{"mathsworkshop", "Maths Workshop" },
+	{"mathsworkshopdx", "Maths Workshop Deluxe" },
+	{"wricamact", "Write, Camera, Action!"},
+	{"amazingwriting", "The Amazing Writing Machine"},
 	{nullptr, nullptr}
 };
 
 #include "mohawk/detection_tables.h"
 
-static const char *directoryGlobs[] = {
+static const char *const directoryGlobs[] = {
 	"all",
 	"assets1",
 	"data",
@@ -89,9 +93,9 @@ static const char *directoryGlobs[] = {
 	nullptr
 };
 
-class MohawkMetaEngineDetection : public AdvancedMetaEngineDetection {
+class MohawkMetaEngineDetection : public AdvancedMetaEngineDetection<Mohawk::MohawkGameDescription> {
 public:
-	MohawkMetaEngineDetection() : AdvancedMetaEngineDetection(Mohawk::gameDescriptions, sizeof(Mohawk::MohawkGameDescription), mohawkGames) {
+	MohawkMetaEngineDetection() : AdvancedMetaEngineDetection(Mohawk::gameDescriptions, mohawkGames) {
 		_maxScanDepth = 2;
 		_directoryGlobs = directoryGlobs;
 	}

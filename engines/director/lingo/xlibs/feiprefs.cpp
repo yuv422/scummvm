@@ -48,9 +48,9 @@
 namespace Director {
 
 const char *FEIPrefsXObj::xlibName = "FEIPrefs";
-const char *FEIPrefsXObj::fileNames[] = {
-	"feiprefs",
-	nullptr
+const XlibFileDesc FEIPrefsXObj::fileNames[] = {
+	{ "feiprefs",	nullptr },
+	{ nullptr,		nullptr },
 };
 
 static MethodProto xlibMethods[] = {
@@ -60,7 +60,7 @@ static MethodProto xlibMethods[] = {
 	{ nullptr, nullptr, 0, 0, 0 }
 };
 
-void FEIPrefsXObj::open(int type) {
+void FEIPrefsXObj::open(ObjectType type, const Common::Path &path) {
    if (type == kXObj) {
 		FEIPrefsXObject::initMethods(xlibMethods);
 		FEIPrefsXObject *xobj = new FEIPrefsXObject(kXObj);
@@ -68,7 +68,7 @@ void FEIPrefsXObj::open(int type) {
    }
 }
 
-void FEIPrefsXObj::close(int type) {
+void FEIPrefsXObj::close(ObjectType type) {
    if (type == kXObj) {
 		FEIPrefsXObject::cleanupMethods();
 		g_lingo->_globalvars[xlibName] = Datum();
@@ -76,7 +76,7 @@ void FEIPrefsXObj::close(int type) {
 }
 
 
-FEIPrefsXObject::FEIPrefsXObject(ObjectType ObjectType) : Object<FEIPrefsXObject>("FEIPrefsXObj") {
+FEIPrefsXObject::FEIPrefsXObject(ObjectType ObjectType) : Object<FEIPrefsXObject>("FEIPrefs") {
 	_objType = ObjectType;
 }
 

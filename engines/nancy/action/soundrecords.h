@@ -27,35 +27,76 @@
 namespace Nancy {
 namespace Action {
 
-class PlayDigiSoundAndDie : public ActionRecord {
+// Sets the volume for a particular channel.
+class SetVolume : public ActionRecord {
 public:
-	PlayDigiSoundAndDie() {}
-	~PlayDigiSoundAndDie() { delete _soundEffect; }
-	
+	void readData(Common::SeekableReadStream &stream) override;
+	void execute() override;
+
+	uint16 channel = 0;
+	byte volume = 0;
+
+protected:
+	Common::String getRecordTypeName() const override { return "SetVolume"; }
+};
+
+// Used for sound effects. From nancy3 up it includes 3D sound data, which lets
+// the sound move in 3D space as the player rotates/changes scenes. Also supports
+// changing the scene and/or setting a flag
+class PlaySound : public ActionRecord {
+public:
+	PlaySound() {}
+	~PlaySound() { delete _soundEffect; }
+
 	void readData(Common::SeekableReadStream &stream) override;
 	void execute() override;
 
 	SoundDescription _sound;
 	SoundEffectDescription *_soundEffect = nullptr;
+	bool _changeSceneImmediately = false;
 	SceneChangeDescription _sceneChange;
-	FlagDescription _flagOnTrigger;
+	FlagDescription _flag;
 
 protected:
-	Common::String getRecordTypeName() const override { return "PlayDigiSoundAndDie"; }
+	Common::String getRecordTypeName() const override;
 };
 
-class PlayDigiSoundCC : public PlayDigiSoundAndDie {
+// The same as PlaySound, but with the addition of captioning text,
+// which gets displayed inside the Textbox.
+class PlaySoundCC : public PlaySound {
 public:
 	void readData(Common::SeekableReadStream &stream) override;
 	void execute() override;
 
+	void readCCText(Common::SeekableReadStream &stream, Common::String &out);
+
 	Common::String _ccText;
 
 protected:
-	Common::String getRecordTypeName() const override { return "PlayDigiSoundCC"; }
+	Common::String getRecordTypeName() const override;
 };
 
-class PlaySoundPanFrameAnchorAndDie : public ActionRecord {
+// Short version of PlaySoundCC, no event flag
+class PlaySoundTerse : public PlaySoundCC {
+public:
+	void readData(Common::SeekableReadStream &stream) override;
+
+protected:
+	Common::String getRecordTypeName() const override { return "PlaySoundTerse"; }
+};
+
+// Short version of PlaySoundCC, with event flag
+class PlaySoundEventFlagTerse : public PlaySoundCC {
+public:
+	void readData(Common::SeekableReadStream &stream) override;
+
+protected:
+	Common::String getRecordTypeName() const override { return "PlaySoundEventFlagTerse"; }
+};
+
+// Used for sounds that pan left-right depending on the scene background frame.
+// Only used in The Vampire Diaries; later games use PlaySound's 3D sound capabilities instead
+class PlaySoundFrameAnchor : public ActionRecord {
 public:
 	void readData(Common::SeekableReadStream &stream) override;
 	void execute() override;
@@ -63,9 +104,11 @@ public:
 	SoundDescription _sound;
 
 protected:
-	Common::String getRecordTypeName() const override { return "PlaySoundPanFrameAnchorAndDie"; }
+	Common::String getRecordTypeName() const override;
 };
 
+// Plays a sound effect; has multiple hotspots, one per scene background frame.
+// Used in exactly two places; one scene in tvd, and one in nancy1
 class PlaySoundMultiHS : public ActionRecord {
 public:
 	void readData(Common::SeekableReadStream &stream) override;
@@ -77,9 +120,12 @@ public:
 	Common::Array<HotspotDescription> _hotspots; // 0x31
 
 protected:
+	bool canHaveHotspot() const override { return true; }
 	Common::String getRecordTypeName() const override { return "PlaySoundMultiHS"; }
 };
 
+// Stops a sound if it's loaded and playing. Used very rarely, as sounds (usually)
+// get auto-stopped on a scene change
 class StopSound : public ActionRecord {
 public:
 	void readData(Common::SeekableReadStream &stream) override;
@@ -90,6 +136,52 @@ public:
 
 protected:
 	Common::String getRecordTypeName() const override { return "StopSound"; }
+};
+
+// Same as PlaySound, except it randomly picks between one of several
+// provided sound files; all other settings for the sound are shared.
+class PlayRandomSound : public PlaySound {
+public:
+	void readData(Common::SeekableReadStream &stream) override;
+	void execute() override;
+
+	Common::Array<Common::String> _soundNames;
+
+	uint _selectedSound = 0;
+
+protected:
+	Common::String getRecordTypeName() const override { return "PlayRandomSound"; }
+};
+
+// Short version of PlayRandomSound, but ALSO supports closed captioning text
+class PlayRandomSoundTerse : public PlaySoundTerse {
+public:
+	void readData(Common::SeekableReadStream &stream) override;
+	void execute() override;
+
+	Common::Array<Common::String> _soundNames;
+	Common::Array<Common::String> _ccTexts;
+
+	uint _selectedSound = 0;
+
+protected:
+	Common::String getRecordTypeName() const override { return "PlayRandomSoundTerse"; }
+};
+
+// Same as PlaySound, except it discards the filename provided in the data.
+// Instead, it takes the current value of an item in TableData, and appends that
+// value to the end of the base filename provided in the TABL chunk. Does not contain
+// any CC text inside the record data; instead, that also gets copied over from TABL.
+class TableIndexPlaySound : public PlaySoundCC {
+public:
+	void readData(Common::SeekableReadStream &stream) override;
+	void execute() override;
+
+protected:
+	Common::String getRecordTypeName() const override { return "TableIndexPlaySound"; }
+
+	uint16 _tableIndex = 0;
+	int16 _lastIndexVal = -1;
 };
 
 } // End of namespace Action

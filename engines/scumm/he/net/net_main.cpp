@@ -22,6 +22,11 @@
 #include "common/config-manager.h"
 
 #include "scumm/he/intern_he.h"
+
+// For random map generation
+#include "scumm/he/moonbase/moonbase.h"
+#include "scumm/he/moonbase/map_main.h"
+
 #include "scumm/he/net/net_main.h"
 #include "scumm/he/net/net_defines.h"
 
@@ -47,6 +52,7 @@ Net::Net(ScummEngine_v90he *vm) : _latencyTime(1), _fakeLatency(false), _vm(vm) 
 
 	_sessionServerPeer = -1;
 	_sessionServerHost = nullptr;
+	_gotSessions = false;
 	_isRelayingGame = false;
 
 	_numUsers = 0;
@@ -67,12 +73,19 @@ Net::Net(ScummEngine_v90he *vm) : _latencyTime(1), _fakeLatency(false), _vm(vm) 
 	_sessionName = Common::String();
 	_sessions = Common::Array<Session>();
 
+	_mapGenerator = 0;
+	_mapSeed = 0;
+	_mapSize = 0;
+	_mapTileset = 0;
+	_mapEnergy = 0;
+	_mapTerrain = 0;
+	_mapWater = 0;
+	_encodedMap = Common::String();
+
 	_hostPort = 0;
 
 	_hostDataQueue = Common::Queue<Common::JSONValue *>();
 	_peerIndexQueue = Common::Queue<int>();
-
-	_waitForTimedResp = false;
 }
 
 Net::~Net() {
@@ -134,6 +147,7 @@ int Net::hostGame(char *sessionName, char *userName) {
 int Net::joinGame(Common::String IP, char *userName) {
 	debugC(DEBUG_NETWORK, "Net::joinGame(\"%s\", \"%s\")", IP.c_str(), userName); // PN_JoinTCPIPGame
 	Address address = getAddressFromString(IP);
+	bool getGeneratedMap = false;
 
 	bool isLocal = false;
 	// TODO: 20-bit block address (172.16.0.0 – 172.31.255.255)
@@ -169,10 +183,12 @@ int Net::joinGame(Common::String IP, char *userName) {
 			if (address.host == "255.255.255.255")
 				address.host = _sessions[0].host;
 			address.port = _sessions[0].port;
+			getGeneratedMap = _sessions[0].getGeneratedMap;
+
 			stopQuerySessions();
 		}
 		// We got our address and port, attempt connection:
-		if (connectToSession(address.host, address.port)) {
+		if (connectToSession(address.host, address.port, getGeneratedMap)) {
 			// Connected, add our user.
 			return addUser(userName, userName);
 		} else {
@@ -185,13 +201,29 @@ int Net::joinGame(Common::String IP, char *userName) {
 	return 0;
 }
 
-bool Net::connectToSession(Common::String address, int port) {
+bool Net::connectToSession(Common::String address, int port, bool queryGeneratedMap) {
 	if (_hostPort)
 		_sessionHost = _enet->connectToHost("0.0.0.0", _hostPort, address, port);
 	else
 		_sessionHost = _enet->connectToHost(address, port);
 	if (!_sessionHost)
 		return false;
+
+	if (_gameName == "moonbase" && queryGeneratedMap) {
+		Common::String queryMap = Common::String("{\"cmd\":\"query_map\"}");
+
+		_sessionHost->send(queryMap.c_str(), 0, 0, true);
+
+		uint tickCount = 0;
+		while (_vm->_moonbase->_map->getGenerator() > 0) {
+			remoteReceiveData();
+			// Wait for five seconds for map data before giving up
+			tickCount += 5;
+			g_system->delayMillis(5);
+			if (tickCount >= 5000)
+				break;
+		}
+	}
 
 	return true;
 }
@@ -276,6 +308,25 @@ int Net::createSession(char *name) {
 
 	_isHost = true;
 
+	Common::String mapData = "{}";
+	if (_gameName == "moonbase") {
+		Map *map = _vm->_moonbase->_map;
+		if (map->generateNewMap()) {
+			// Store the configured map variables
+			_mapGenerator = map->getGenerator();
+			_mapSeed = map->getSeed();
+			_mapSize = map->getSize();
+			_mapTileset = map->getTileset();
+			_mapEnergy = map->getEnergy();
+			_mapTerrain = map->getTerrain();
+			_mapWater = map->getWater();
+			_encodedMap = map->getEncodedMap();
+			mapData = Common::String::format(
+				"{\"generator\":%d,\"seed\":%d,\"size\":%d,\"tileset\":%d,\"energy\":%d,\"terrain\":%d,\"water\":%d,\"data\":\"%s\"}",
+				_mapGenerator, _mapSeed, _mapSize, _mapTileset, _mapEnergy, _mapTerrain, _mapWater, _encodedMap.c_str());
+		}
+	}
+
 	bool enableSessionServer = true;
 	bool enableLanBroadcast = true;
 	if (ConfMan.hasKey("enable_session_server"))
@@ -297,8 +348,8 @@ int Net::createSession(char *name) {
 			_sessionServerPeer = 0;
 			// Create session to the session server.
 			Common::String req = Common::String::format(
-				"{\"cmd\":\"host_session\",\"game\":\"%s\",\"version\":\"%s\",\"name\":\"%s\",\"maxplayers\":%d}",
-				_gameName.c_str(), _gameVersion.c_str(), name, _maxPlayers);
+				"{\"cmd\":\"host_session\",\"game\":\"%s\",\"version\":\"%s\",\"name\":\"%s\",\"maxplayers\":%d,\"network_version\":\"%s\",\"map_data\":%s}",
+				_gameName.c_str(), _gameVersion.c_str(), name, _maxPlayers, NETWORK_VERSION, mapData.c_str());
 			debugC(DEBUG_NETWORK, "NETWORK: Sending to session server: %s", req.c_str());
 			_sessionHost->send(req.c_str(), _sessionServerPeer);
 		} else {
@@ -370,7 +421,11 @@ int Net::doJoinSession(Session session) {
 		_sessionServerHost = nullptr;
 	}
 
-	bool success = connectToSession(session.host, session.port);
+	if (_gameName == "moonbase" && session.mapGenerator > 0) {
+		generateMoonbaseMap(session);
+	}
+
+	bool success = connectToSession(session.host, session.port, session.getGeneratedMap);
 	if (!success) {
 		if (!session.local) {
 			// Start up a relay session with the host.
@@ -405,6 +460,10 @@ int Net::doJoinSession(Session session) {
 	return true;
 }
 
+void Net::generateMoonbaseMap(Session session) {
+	_vm->_moonbase->_map->generateMapWithInfo(session.encodedMap, session.mapGenerator, session.mapSeed, session.mapSize, session.mapTileset, session.mapEnergy, session.mapTerrain, session.mapWater);
+}
+
 int Net::joinSession(int sessionIndex) {
 	debugC(DEBUG_NETWORK, "Net::joinSession(%d)", sessionIndex); // PN_JoinSession
 	if (_sessions.empty()) {
@@ -428,7 +487,7 @@ int Net::endSession() {
 		_isShuttingDown = true;
 		// Send out any remaining data from the queue before shutting down.
 		while (_hostDataQueue.size()) {
-			if (_hostDataQueue.size() != _hostDataQueue.size())
+			if (_hostDataQueue.size() != _peerIndexQueue.size())
 				warning("NETWORK: Sizes of data and peer index queues does not match!  Expect some wonky stuff");
 			Common::JSONValue *json = _hostDataQueue.pop();
 			int peerIndex = _peerIndexQueue.pop();
@@ -477,6 +536,15 @@ int Net::endSession() {
 	_peerIndexQueue.clear();
 
 	_isRelayingGame = false;
+
+	_mapGenerator = 0;
+	_mapSeed = 0;
+	_mapSize = 0;
+	_mapTileset = 0;
+	_mapEnergy = 0;
+	_mapTerrain = 0;
+	_mapWater = 0;
+	_encodedMap = "";
 
 	return 1;
 }
@@ -600,8 +668,8 @@ int32 Net::updateQuerySessions() {
 	if (_sessionServerHost) {
 		// Get internet-based sessions from the session server.
 		Common::String getSessions = Common::String::format(
-			"{\"cmd\":\"get_sessions\",\"game\":\"%s\",\"version\":\"%s\"}",
-			_gameName.c_str(), _gameVersion.c_str());
+			"{\"cmd\":\"get_sessions\",\"game\":\"%s\",\"version\":\"%s\",\"network_version\":\"%s\"}",
+			_gameName.c_str(), _gameVersion.c_str(), NETWORK_VERSION);
 		_sessionServerHost->send(getSessions.c_str(), 0);
 
 		_gotSessions = false;
@@ -763,26 +831,21 @@ int Net::remoteSendData(int typeOfSend, int sendTypeParam, int type, Common::Str
 		_peerIndexQueue.push(sendTypeParam - 1);
 	} else {
 		_sessionHost->send(res.c_str(), 0, 0, reliable);
-		if (typeOfSend == PN_SENDTYPE_ALL_RELIABLE_TIMED) {
-			// Wait for a response to determine net lag.
-			_savedTime = g_system->getMillis();
-			_waitForTimedResp = true;
-		}
 	}
 	return defaultRes;
 }
 
 void Net::remoteSendArray(int typeOfSend, int sendTypeParam, int priority, int arrayIndex) {
-	debugC(DEBUG_NETWORK, "Net::remoteSendArray(%d, %d, %d, %d)", typeOfSend, sendTypeParam, priority, arrayIndex & ~0x33539000); // PN_RemoteSendArrayCommand
+	debugC(DEBUG_NETWORK, "Net::remoteSendArray(%d, %d, %d, %d)", typeOfSend, sendTypeParam, priority, arrayIndex & ~MAGIC_ARRAY_NUMBER); // PN_RemoteSendArrayCommand
 
-	ScummEngine_v90he::ArrayHeader *ah = (ScummEngine_v90he::ArrayHeader *)_vm->getResourceAddress(rtString, arrayIndex & ~0x33539000);
+	ScummEngine_v90he::ArrayHeader *ah = (ScummEngine_v90he::ArrayHeader *)_vm->getResourceAddress(rtString, arrayIndex & ~MAGIC_ARRAY_NUMBER);
 
 	Common::String jsonData = Common::String::format(
 		"\"type\":%d,\"dim1start\":%d,\"dim1end\":%d,\"dim2start\":%d,\"dim2end\":%d,\"data\":[",
-		ah->type, ah->dim1start, ah->dim1end, ah->dim2start, ah->dim2end);
+		ah->type, ah->acrossMin, ah->acrossMax, ah->downMin, ah->downMax);
 
-	int32 size = (FROM_LE_32(ah->dim1end) - FROM_LE_32(ah->dim1start) + 1) *
-		(FROM_LE_32(ah->dim2end) - FROM_LE_32(ah->dim2start) + 1);
+	int32 size = (FROM_LE_32(ah->acrossMax) - FROM_LE_32(ah->acrossMin) + 1) *
+		(FROM_LE_32(ah->downMax) - FROM_LE_32(ah->downMin) + 1);
 
 	for (int i = 0; i < size; i++) {
 		int32 data;
@@ -963,6 +1026,23 @@ void Net::handleSessionServerData(Common::String data) {
 					session.host = sessionAddress.host;
 					session.port = sessionAddress.port;
 					session.timestamp = g_system->getMillis();
+
+					if (_gameName == "moonbase" && sessionData.contains("map_data")) {
+						Common::JSONObject mapData = sessionData["map_data"]->asObject();
+						if (mapData.contains("generator") && mapData.contains("seed") &&
+							mapData.contains("size") && mapData.contains("tileset") &&
+							mapData.contains("energy") && mapData.contains("terrain") &&
+							mapData.contains("water") && mapData.contains("data")) {
+							session.mapGenerator = mapData["generator"]->asIntegerNumber();
+							session.mapSeed = mapData["seed"]->asIntegerNumber();
+							session.mapSize = mapData["size"]->asIntegerNumber();
+							session.mapTileset = mapData["tileset"]->asIntegerNumber();
+							session.mapEnergy = mapData["energy"]->asIntegerNumber();
+							session.mapTerrain = mapData["terrain"]->asIntegerNumber();
+							session.mapWater = mapData["water"]->asIntegerNumber();
+							session.encodedMap = mapData["data"]->asString();
+						}
+					}
 					_sessions.push_back(session);
 				}
 				_gotSessions = true;
@@ -1065,8 +1145,8 @@ void Net::handleBroadcastData(Common::String data, Common::String host, int port
 			// Session query.
 			if (_sessionHost) {
 				Common::String resp = Common::String::format(
-					"{\"cmd\":\"session_resp\",\"game\":\"%s\",\"version\":\"%s\",\"id\":%d,\"name\":\"%s\",\"players\":%d}",
-					_gameName.c_str(), _gameVersion.c_str(), _sessionId, _sessionName.c_str(), getTotalPlayers());
+					"{\"cmd\":\"session_resp\",\"game\":\"%s\",\"version\":\"%s\",\"id\":%d,\"name\":\"%s\",\"players\":%d,\"generated_map\":%s}",
+					_gameName.c_str(), _gameVersion.c_str(), _sessionId, _sessionName.c_str(), getTotalPlayers(), _mapGenerator > 0 ? "true" : "false");
 
 				// Send this through the session host instead of the broadcast socket
 				// because that will send the correct port to connect to.
@@ -1118,6 +1198,11 @@ void Net::handleBroadcastData(Common::String data, Common::String host, int port
 				session.name = name;
 				session.players = players;
 				session.timestamp = g_system->getMillis();
+
+				if (_gameName == "moonbase" && root.contains("generated_map")) {
+					session.getGeneratedMap = root["generated_map"]->asBool();
+				}
+
 				_sessions.push_back(session);
 			}
 		}
@@ -1158,15 +1243,10 @@ void Net::remoteReceiveData() {
 			if (_gameName == "moonbase") {
 				// TODO: Host migration
 				if (!_isHost && _vm->_currentRoom == 2) {
-					_vm->displayMessage(0, "You have been disconnected from the host.\nNormally, host migration would take place, but ScummVM doesn't do that yet, so this game session will now end." );
+					_vm->displayMessage(0, "You have been disconnected from the game host.\nNormally, host migration would take place, but ScummVM doesn't do that yet, so this game session will now end.");
 					_vm->VAR(253) = 26; // gGameMode = GAME-OVER
 					_vm->runScript(2104, 1, 0, 0); // leave-game
 				}
-			} else {
-				// Football/Baseball
-
-				// We have lost our only other opponent, do not wait for a timed response.
-				_waitForTimedResp = false;
 			}
 			break;
 		}
@@ -1252,6 +1332,28 @@ void Net::remoteReceiveData() {
 						handleGameDataHost(json, peerIndex);
 					else
 						handleGameData(json, peerIndex);
+				} else if (_isHost && command == "query_map" && _gameName == "moonbase" && _mapGenerator > 0) {
+					// LAN connection wants generated map data
+					Common::String resp = Common::String::format(
+						"{\"cmd\":\"map_data\",\"generator\":%d,\"seed\":%d,\"size\":%d,\"tileset\":%d,\"energy\":%d,\"terrain\":%d,\"water\":%d,\"data\":\"%s\"}",
+						_mapGenerator, _mapSeed, _mapSize, _mapTileset, _mapEnergy, _mapTerrain, _mapWater, _encodedMap.c_str());
+					_sessionHost->send(resp.c_str(), peerIndex);
+				} else if (!_isHost && command == "map_data" && _gameName == "moonbase") {
+					if (root.contains("generator") && root.contains("seed") &&
+						root.contains("size") && root.contains("tileset") &&
+						root.contains("energy") && root.contains("terrain") &&
+						root.contains("water") && root.contains("data")) {
+						uint8 mapGenerator = root["generator"]->asIntegerNumber();
+						int mapSeed = root["seed"]->asIntegerNumber();
+						int mapSize = root["size"]->asIntegerNumber();
+						int mapTileset = root["tileset"]->asIntegerNumber();
+						int mapEnergy = root["energy"]->asIntegerNumber();
+						int mapTerrain = root["terrain"]->asIntegerNumber();
+						int mapWater = root["water"]->asIntegerNumber();
+						Common::String encodedMap = root["data"]->asString();
+
+						_vm->_moonbase->_map->generateMapWithInfo(encodedMap, mapGenerator, mapSeed, mapSize, mapTileset, mapEnergy, mapTerrain, mapWater);
+					}
 				}
 			}
 			if (_sessionHost)
@@ -1267,9 +1369,6 @@ void Net::doNetworkOnceAFrame(int msecs) {
 	if (!_enet || !_sessionHost)
 		return;
 
-	uint tickCount = 0;
-
-receiveData:
 	remoteReceiveData();
 
 	if (_sessionServerHost)
@@ -1279,24 +1378,11 @@ receiveData:
 		serviceBroadcast();
 
 	if (_isHost && _hostDataQueue.size()) {
-		if (_hostDataQueue.size() != _hostDataQueue.size())
+		if (_hostDataQueue.size() != _peerIndexQueue.size())
 			warning("NETWORK: Sizes of data and peer index queues does not match!  Expect some wonky stuff");
 		Common::JSONValue *json = _hostDataQueue.pop();
 		int peerIndex = _peerIndexQueue.pop();
 		handleGameDataHost(json, peerIndex);
-	}
-
-	if (_waitForTimedResp) {
-		g_system->delayMillis(msecs);
-
-		// Wait for 3 seconds for a response before giving up.
-		tickCount += msecs;
-		if (tickCount >= 3000) {
-			_savedTime = 0;
-			_waitForTimedResp = false;
-			return;
-		}
-		goto receiveData;
 	}
 }
 
@@ -1304,7 +1390,6 @@ void Net::handleGameData(Common::JSONValue *json, int peerIndex) {
 	if (!_enet || !_sessionHost)
 		return;
 	_fromUserId = json->child("from")->asIntegerNumber();
-	uint to = json->child("to")->asIntegerNumber();
 	uint type = json->child("type")->asIntegerNumber();
 
 	uint32 *params;
@@ -1319,7 +1404,7 @@ void Net::handleGameData(Common::JSONValue *json, int peerIndex) {
 				if (paramsArray[0]->asIntegerNumber() == 145 && _fromUserId == 1) {
 					if (!_isHost && _vm->_currentRoom == 2) {
 						// TODO: Host migration
-						_vm->displayMessage(0, "You have been disconnected from the host.\nNormally, host migration would take place, but ScummVM doesn't do that yet, so this game session will now end.");
+						_vm->displayMessage(0, "You have been disconnected from the game host.\nNormally, host migration would take place, but ScummVM doesn't do that yet, so this game session will now end.");
 						_vm->VAR(253) = 26; // GAME-OVER
 						_vm->runScript(2104, 1, 0, 0); // leave-game
 						return;
@@ -1420,25 +1505,9 @@ void Net::handleGameData(Common::JSONValue *json, int peerIndex) {
 			_vm->runScript(_vm->VAR(_vm->VAR_NETWORK_RECEIVE_ARRAY_SCRIPT), 1, 0, (int *)_tmpbuffer);
 		}
 		break;
-	case PACKETTYPE_RELIABLETIMEDRESP:
-		{
-			int savedTime = ((g_system->getMillis() - _savedTime) / 2) ;	//div by 2 for one-way lag.
-			_vm->VAR(_vm->VAR_NETWORK_NET_LAG) = savedTime;
-			_waitForTimedResp = false;
-		}
-		break;
-
 	default:
 		warning("NETWORK: Received unknown network command %d", type);
 	}
-
-	if (to == PN_SENDTYPE_ALL_RELIABLE_TIMED) {
-		if (_fromUserId != _myUserId) {
-			// Send a response
-			remoteSendData(PN_SENDTYPE_INDIVIDUAL, _fromUserId, PACKETTYPE_RELIABLETIMEDRESP, "", PN_PRIORITY_HIGH);
-		}
-	}
-
 }
 
 void Net::handleGameDataHost(Common::JSONValue *json, int peerIndex) {
@@ -1495,17 +1564,6 @@ void Net::handleGameDataHost(Common::JSONValue *json, int peerIndex) {
 						}
 					} else
 						_sessionHost->send(str.c_str(), i, 0, reliable);
-				}
-			}
-
-			if (to == PN_SENDTYPE_ALL_RELIABLE_TIMED) {
-				if (from == _myUserId) {
-					// That's us, wait for a response to determine net lag.
-					// Don't wait if we're the only ones here (our opponent disconnected).
-					if (getTotalPlayers() > 1) {
-						_savedTime = g_system->getMillis();
-						_waitForTimedResp = true;
-					}
 				}
 			}
 		}

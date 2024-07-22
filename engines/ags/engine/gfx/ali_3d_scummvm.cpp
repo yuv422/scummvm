@@ -21,7 +21,7 @@
 
 #include "ags/engine/gfx/gfxfilter_scummvm_renderer.h"
 #include "ags/engine/gfx/ali_3d_scummvm.h"
-#include "ags/lib/std/algorithm.h"
+#include "common/std/algorithm.h"
 #include "ags/engine/ac/sys_events.h"
 #include "ags/engine/gfx/gfxfilter_scummvm_renderer.h"
 #include "ags/engine/gfx/gfx_util.h"
@@ -339,7 +339,7 @@ void ScummVMRendererGraphicsDriver::InitSpriteBatch(size_t index, const SpriteBa
 
 void ScummVMRendererGraphicsDriver::ResetAllBatches() {
 	// NOTE: we don't release batches themselves here, only sprite lists.
-	// This is because we cache batch surfaces, for perfomance reasons.
+	// This is because we cache batch surfaces, for performance reasons.
 	_spriteList.clear();
 }
 
@@ -388,7 +388,7 @@ void ScummVMRendererGraphicsDriver::RenderToBackBuffer() {
 	// with blending and translucency; it seems you'd have to first stretch the original sprite onto a
 	// temp buffer and then TransBlendBlt / LitBlendBlt it to the final destination. Of course, doing
 	// that here would slow things down significantly, so if we ever go that way sprite caching will
-	// be required (similarily to how AGS caches flipped/scaled object sprites now for).
+	// be required (similarly to how AGS caches flipped/scaled object sprites now for).
 	//
 
 	const size_t last_batch_to_rend = _spriteBatchDesc.size() - 1;

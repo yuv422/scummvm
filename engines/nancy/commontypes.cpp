@@ -22,8 +22,11 @@
 #include "engines/nancy/commontypes.h"
 #include "engines/nancy/util.h"
 #include "engines/nancy/nancy.h"
-
+#include "engines/nancy/cif.h"
+#include "engines/nancy/resource.h"
 #include "engines/nancy/state/scene.h"
+
+#include "common/memstream.h"
 
 namespace Nancy {
 
@@ -47,11 +50,37 @@ void SceneChangeDescription::readData(Common::SeekableReadStream &stream, bool l
 	}
 }
 
-void SceneChangeWithFlag::readData(Common::SeekableReadStream &stream, bool longFormat) {
-	_sceneChange.readData(stream, longFormat);
-	stream.skip(2); // shouldStopRendering
-	_flag.label = stream.readSint16LE();
-	_flag.flag = stream.readByte();
+void SceneChangeWithFlag::readData(Common::SeekableReadStream &stream, bool reverseFormat) {
+	_sceneChange.sceneID = stream.readUint16LE();
+	_sceneChange.frameID = stream.readUint16LE();
+	_sceneChange.verticalOffset = stream.readUint16LE();
+	_sceneChange.continueSceneSound = stream.readUint16LE();
+
+	if (reverseFormat) {
+		// NO shouldStopRendering
+		_flag.label = stream.readSint16LE();
+		_flag.flag = stream.readByte();
+
+		if (g_nancy->getGameType() >= kGameTypeNancy3) {
+			int32 x = stream.readSint32LE();
+			int32 y = stream.readSint32LE();
+			int32 z = stream.readSint32LE();
+			_sceneChange.listenerFrontVector.set(x, y, z);
+			_sceneChange.frontVectorFrameID = _sceneChange.frameID;
+		}
+	} else {
+		if (g_nancy->getGameType() >= kGameTypeNancy3) {
+			int32 x = stream.readSint32LE();
+			int32 y = stream.readSint32LE();
+			int32 z = stream.readSint32LE();
+			_sceneChange.listenerFrontVector.set(x, y, z);
+			_sceneChange.frontVectorFrameID = _sceneChange.frameID;
+		}
+
+		stream.skip(2); // shouldStopRendering
+		_flag.label = stream.readSint16LE();
+		_flag.flag = stream.readByte();
+	}
 }
 
 void SceneChangeWithFlag::execute() {
@@ -64,16 +93,16 @@ void HotspotDescription::readData(Common::SeekableReadStream &stream) {
 	readRect(stream, coords);
 }
 
-void BitmapDescription::readData(Common::SeekableReadStream &stream, bool frameIsLong) {
-	if (!frameIsLong) {
-		frameID = stream.readUint16LE();
-	} else {
-		frameID = stream.readUint32LE();
+void FrameBlitDescription::readData(Common::SeekableReadStream &stream, bool longFormat) {
+	frameID = stream.readUint16LE();
+
+	if (longFormat) {
+		// In static mode Overlays, this is the id of the _srcRect to be used
+		staticRectID = stream.readUint16LE();
 	}
 
-	if (g_nancy->getGameType() >= kGameTypeNancy3) {
-		// Most likely transparency
-		stream.skip(2);
+	if (g_nancy->getGameType() >= kGameTypeNancy3 && longFormat) {
+		hasHotspot = stream.readUint16LE();
 	}
 
 	readRect(stream, src);
@@ -149,7 +178,7 @@ void SoundDescription::readNormal(Common::SeekableReadStream &stream) {
 	s.skip(2, kGameTypeVampire, kGameTypeNancy2);
 
 	s.syncAsUint32LE(numLoops);
-	
+
 	s.skip(2, kGameTypeVampire, kGameTypeNancy2);
 
 	s.syncAsUint16LE(volume);
@@ -227,6 +256,14 @@ void SoundDescription::readScene(Common::SeekableReadStream &stream) {
 	s.skip(2, kGameTypeVampire, kGameTypeNancy2);
 	s.skip(4, kGameTypeVampire, kGameTypeNancy2); // Panning, always? at center
 	s.syncAsUint32LE(samplesPerSec, kGameTypeVampire, kGameTypeNancy2);
+}
+
+void SoundDescription::readTerse(Common::SeekableReadStream &stream) {
+	readFilename(stream, name);
+	channelID = stream.readUint16LE();
+	numLoops = stream.readUint32LE();
+	volume = stream.readUint16LE();
+	stream.skip(2);
 }
 
 void ConditionalDialogue::readData(Common::SeekableReadStream &stream) {
@@ -312,9 +349,15 @@ void SoundChannelInfo::readData(Common::SeekableReadStream &stream) {
 	}
 }
 
-void StaticData::readData(Common::SeekableReadStream &stream, Common::Language language, uint32 endPos) {
+void StaticData::readData(Common::SeekableReadStream &stream, Common::Language language, uint32 endPos, int8 majorVersion, int8 minorVersion) {
 	uint16 num = 0;
 	int languageID = -1;
+
+	// Used for patch file reading
+	byte *patchBuf = nullptr;
+	uint32 patchBufSize = 0;
+	Common::Array<Common::Array<Common::String>> confManProps;
+	Common::Array<Common::Array<Common::Path>> fileIDs;
 
 	while (stream.pos() < endPos) {
 		uint32 nextSectionOffset = stream.readUint32LE();
@@ -325,10 +368,13 @@ void StaticData::readData(Common::SeekableReadStream &stream, Common::Language l
 			numItems = stream.readUint16LE();
 			numEventFlags = stream.readUint16LE();
 
-			num = stream.readUint16LE();
-			mapAccessSceneIDs.resize(num);
-			for (uint16 i = 0; i < num; ++i) {
-				mapAccessSceneIDs[i] = stream.readUint16LE();
+			// TODO remove once updated nancy.dat is pushed
+			if (minorVersion == 0) {
+				num = stream.readUint16LE();
+				mapAccessSceneIDs.resize(num);
+				for (uint16 i = 0; i < num; ++i) {
+					mapAccessSceneIDs[i] = stream.readUint16LE();
+				}
 			}
 
 			num = stream.readUint16LE();
@@ -337,9 +383,25 @@ void StaticData::readData(Common::SeekableReadStream &stream, Common::Language l
 				genericEventFlags[i] = stream.readUint16LE();
 			}
 
-			numNonItemCursors = stream.readUint16LE();
-			numCurtainAnimationFrames = stream.readUint16LE();
+			numCursorTypes = stream.readUint16LE();
+			if (minorVersion == 0) {
+				// TODO remove once updated nancy.dat is pushed
+				numCursorTypes /= (g_nancy->getGameType() == kGameTypeVampire ? 2 : 3);
+				stream.skip(2);
+			}
+
 			logoEndAfter = stream.readUint32LE();
+			if (minorVersion == 1) {
+				wonGameFlagID = stream.readUint16LE();
+			}
+
+			break;
+		case MKTAG('M', 'A', 'P', 'A') :
+			num = stream.readUint16LE();
+			mapAccessSceneIDs.resize(num);
+			for (uint16 i = 0; i < num; ++i) {
+				mapAccessSceneIDs[i] = stream.readUint16LE();
+			}
 
 			break;
 		case MKTAG('S', 'C', 'H', 'N') :
@@ -347,7 +409,7 @@ void StaticData::readData(Common::SeekableReadStream &stream, Common::Language l
 			soundChannelInfo.readData(stream);
 
 			break;
-		case MKTAG('L', 'A', 'N', 'G') : 
+		case MKTAG('L', 'A', 'N', 'G') :
 			// Order of languages inside game data
 			num = stream.readUint16LE();
 			languageID = -1;
@@ -498,32 +560,57 @@ void StaticData::readData(Common::SeekableReadStream &stream, Common::Language l
 			}
 
 			break;
+		case MKTAG('P', 'A', 'T', 'C') :
+			// Patch file
+			patchBufSize = nextSectionOffset - stream.pos();
+			patchBuf = new byte[patchBufSize];
+			stream.read(patchBuf, patchBufSize);
+			break;
+		case MKTAG('P', 'A', 'S', 'S') :
+			// Patch file <-> ConfMan entries associations
+			num = stream.readUint16LE();
+			confManProps.resize(num);
+			fileIDs.resize(num);
+			for (uint i = 0; i < num; ++i) {
+				// Read ConfMan key-value pairs
+				uint16 num2 = stream.readUint16LE();
+				confManProps[i].resize(num2);
+				for (uint j = 0; j < num2; ++j) {
+					confManProps[i][j] = stream.readString();
+				}
+
+				// Read filenames
+				num2 = stream.readUint16LE();
+				fileIDs[i].resize(num2);
+				for (uint j = 0; j < num2; ++j) {
+					fileIDs[i][j] = Common::Path(stream.readString());
+				}
+			}
+
+			break;
 		default:
 			stream.seek(nextSectionOffset);
 		}
 	}
-	
 
-	
+	if (patchBuf) {
+		// Load the patch tree into the ResourceManager
+		Common::MemoryReadStream *patchStream = new Common::MemoryReadStream(patchBuf, patchBufSize, DisposeAfterUse::YES);
+		PatchTree *tree = g_nancy->_resource->readPatchTree(patchStream, "patchtree", 2);
+		assert(tree);
 
-	// Read the strings logic
-	
+		// Write the ConfMan associations
+		for (uint i = 0; i < confManProps.size(); ++i) {
+			assert(confManProps[i].size() % 2 == 0);
+			// Separate the array of strings into an array of Pairs of strings
+			Common::Array<Common::Pair<Common::String, Common::String>> props;
+			for (uint j = 0; j < confManProps[i].size() / 2; ++j) {
+				props.push_back({confManProps[i][j * 2], confManProps[i][j * 2 + 1]});
+			}
 
-	
-
-	
-
-	// Read the in-game strings, making sure to pick the correct language
-
-
-	
-
-	
-
-	
-
-	// Read debug strings
-	
+			tree->_associations.push_back({props, fileIDs[i]});
+		}
+	}
 }
 
 } // End of namespace Nancy

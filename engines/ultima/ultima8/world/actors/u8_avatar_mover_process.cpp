@@ -156,12 +156,14 @@ void U8AvatarMoverProcess::handleCombatMode() {
 
 		if (canAttack()) {
 			// double left click = attack
-//			debugC(kDebugActor, "AvatarMover: combat attack");
+			if (hasMovementFlags(MOVE_ANY_DIRECTION)) {
+				waitFor(avatar->doAnim(Animation::attack, direction));
+			} else {
+				if (checkTurn(mousedir, false))
+					return;
 
-			if (checkTurn(mousedir, false))
-				return;
-
-			waitFor(avatar->doAnim(Animation::attack, mousedir));
+				waitFor(avatar->doAnim(Animation::attack, mousedir));
+			}
 			_lastAttack = Kernel::get_instance()->getFrameNum();
 
 			// attacking gives str/dex
@@ -179,7 +181,7 @@ void U8AvatarMoverProcess::handleCombatMode() {
 		Gump *desktopgump = Ultima8Engine::get_instance()->getDesktopGump();
 		int32 mx, my;
 		mouse->getMouseCoords(mx, my);
-		if (desktopgump->TraceObjId(mx, my) == 1) {
+		if (desktopgump->TraceObjId(mx, my) == kMainActorId) {
 			// double right click on avatar = toggle combat mode
 			avatar->toggleInCombat();
 			waitFor(avatar->doAnim(Animation::unreadyWeapon, direction));
@@ -188,12 +190,14 @@ void U8AvatarMoverProcess::handleCombatMode() {
 
 		if (canAttack()) {
 			// double right click = kick
-//			debugC(kDebugActor, "AvatarMover: combat kick");
+			if (hasMovementFlags(MOVE_ANY_DIRECTION)) {
+				waitFor(avatar->doAnim(Animation::kick, direction));
+			} else {
+				if (checkTurn(mousedir, false))
+					return;
 
-			if (checkTurn(mousedir, false))
-				return;
-
-			waitFor(avatar->doAnim(Animation::kick, mousedir));
+				waitFor(avatar->doAnim(Animation::kick, mousedir));
+			}
 			_lastAttack = Kernel::get_instance()->getFrameNum();
 
 			// kicking gives str/dex
@@ -226,7 +230,7 @@ void U8AvatarMoverProcess::handleCombatMode() {
 			nextanim = Animation::advance;
 		}
 
-		if (mouselength == 2) {
+		if (mouselength == 2 || hasMovementFlags(MOVE_RUN)) {
 			// Take a step before running
 			nextanim = Animation::walk;
 			avatar->setActorFlag(Actor::ACT_COMBATRUN);
@@ -434,7 +438,7 @@ void U8AvatarMoverProcess::handleNormalMode() {
 		}
 	}
 
-	if ((!_mouseButton[0].isState(MBS_HANDLED) || m0unhandled) && hasMovementFlags(MOVE_ANY_DIRECTION | MOVE_STEP)) {
+	if ((!_mouseButton[0].isState(MBS_HANDLED) || m0unhandled) && hasMovementFlags(MOVE_MOUSE_DIRECTION | MOVE_STEP)) {
 		_mouseButton[0].setState(MBS_HANDLED);
 		// We got a left mouse down while already moving in any direction or holding the step button.
 		// CHECKME: check what needs to happen when keeping left pressed
@@ -445,7 +449,7 @@ void U8AvatarMoverProcess::handleNormalMode() {
 		Gump *desktopgump = Ultima8Engine::get_instance()->getDesktopGump();
 		int32 mx, my;
 		mouse->getMouseCoords(mx, my);
-		if (desktopgump->TraceObjId(mx, my) == 1) {
+		if (desktopgump->TraceObjId(mx, my) == kMainActorId) {
 			// double right click on avatar = toggle combat mode
 			_mouseButton[1].setState(MBS_HANDLED);
 			_mouseButton[1]._lastDown = 0;
@@ -475,6 +479,23 @@ void U8AvatarMoverProcess::handleNormalMode() {
 		else if ((hasMovementFlags(MOVE_MOUSE_DIRECTION) && mouselength == 0) || hasMovementFlags(MOVE_STEP)) {
 			nextanim = Animation::jumpUp;
 		}
+		else if (!hasMovementFlags(MOVE_MOUSE_DIRECTION)) {
+			// check if there's something we can climb up onto here
+			Animation::Sequence climbanim = Animation::climb72;
+			while (climbanim >= Animation::climb16) {
+				if (avatar->tryAnim(climbanim, direction) ==
+					Animation::SUCCESS) {
+					nextanim = climbanim;
+				}
+				climbanim = static_cast<Animation::Sequence>(climbanim - 1);
+			}
+
+			if (nextanim >= Animation::climb16 && nextanim <= Animation::climb72) {
+				// climbing gives str/dex
+				avatar->accumulateStr(2 + nextanim - Animation::climb16);
+				avatar->accumulateDex(2 * (2 + nextanim - Animation::climb16));
+			}
+		}
 
 		nextanim = Animation::checkWeapon(nextanim, lastanim);
 		waitFor(avatar->doAnim(nextanim, direction));
@@ -487,9 +508,9 @@ void U8AvatarMoverProcess::handleNormalMode() {
 		if (checkTurn(mousedir, false))
 			return;
 
-		Animation::Sequence nextanim = Animation::jumpUp;
-		if (mouselength > 0) {
-			nextanim = Animation::jump;
+		Animation::Sequence nextanim = Animation::jump;
+		if (mouselength == 0 || hasMovementFlags(MOVE_STEP)) {
+			nextanim = Animation::jumpUp;
 		}
 
 		// check if there's something we can climb up onto here
@@ -506,7 +527,7 @@ void U8AvatarMoverProcess::handleNormalMode() {
 			jump(Animation::jump, direction);
 		}
 		else {
-			if (nextanim != Animation::jumpUp) {
+			if (nextanim >= Animation::climb16 && nextanim <= Animation::climb72) {
 				// climbing gives str/dex
 				avatar->accumulateStr(2 + nextanim - Animation::climb16);
 				avatar->accumulateDex(2 * (2 + nextanim - Animation::climb16));
@@ -518,11 +539,11 @@ void U8AvatarMoverProcess::handleNormalMode() {
 	}
 
 	if (hasMovementFlags(MOVE_MOUSE_DIRECTION)) {
-		Animation::Sequence nextanim = Animation::step;
+		Animation::Sequence nextanim = Animation::walk;
 
-		if (mouselength == 1) {
-			nextanim = Animation::walk;
-		} else if (mouselength == 2) {
+		if (mouselength == 0 || hasMovementFlags(MOVE_STEP)) {
+			nextanim = Animation::step;
+		} else if (mouselength == 2 || hasMovementFlags(MOVE_RUN)) {
 			if (lastanim == Animation::run
 			        || lastanim == Animation::runningJump
 			        || lastanim == Animation::walk)
@@ -676,9 +697,8 @@ void U8AvatarMoverProcess::step(Animation::Sequence action, Direction direction,
 
 	if (action == Animation::step && res == Animation::END_OFF_LAND &&
 	        lastanim != Animation::keepBalance && !adjusted) {
-		int32 ax, ay, az;
-		avatar->getLocation(ax, ay, az);
-		if (az > 0) {
+		Point3 pt = avatar->getLocation();
+		if (pt.z > 0) {
 			if (checkTurn(stepdir, false))
 				return;
 			debug(6, "Step: end off land both altdirs failed, keep balance.");
@@ -691,6 +711,13 @@ void U8AvatarMoverProcess::step(Animation::Sequence action, Direction direction,
 		action = Animation::stand;
 	}
 
+	if (action == Animation::walk && res == Animation::END_OFF_LAND) {
+		action = Animation::step;
+	}
+
+	if (action == Animation::run && res == Animation::END_OFF_LAND) {
+		action = Animation::walk;
+	}
 
 	bool moving = (action == Animation::run || action == Animation::walk);
 
@@ -721,7 +748,7 @@ void U8AvatarMoverProcess::jump(Animation::Sequence action, Direction direction)
 	bool targeting = ConfMan.getBool("targetedjump");
 	if (targeting) {
 		Mouse *mouse = Mouse::get_instance();
-		int32 coords[3];
+		Point3 coords;
 		int32 mx, my;
 		mouse->getMouseCoords(mx, my);
 		GameMapGump *gameMap = Ultima8Engine::get_instance()->getGameMapGump();
@@ -730,11 +757,10 @@ void U8AvatarMoverProcess::jump(Animation::Sequence action, Direction direction)
 		ObjId targetId = gameMap->TraceCoordinates(mx, my, coords);
 		Item *target = getItem(targetId);
 
-		int32 ax, ay, az;
-		avatar->getCentre(ax, ay, az);
+		Point3 a = avatar->getCentre();
 
-		int32 xrange = abs(ax - coords[0]);
-		int32 yrange = abs(ay - coords[1]);
+		int32 xrange = abs(a.x - coords.x);
+		int32 yrange = abs(a.y - coords.y);
 		int maxrange = avatar->getStr() * 32;
 
 		if (target && target->getShapeInfo()->is_land() &&

@@ -27,6 +27,7 @@
 #include "sci/sci.h"
 #include "sci/engine/state.h"
 #include "sci/graphics/cache.h"
+#include "sci/graphics/gfxdrivers.h"
 #include "sci/graphics/maciconbar.h"
 #include "sci/graphics/palette.h"
 #include "sci/graphics/remap.h"
@@ -84,23 +85,7 @@ GfxPalette::GfxPalette(ResourceManager *resMan, GfxScreen *screen)
 	_macClut = nullptr;
 	loadMacIconBarPalette();
 
-	switch (_resMan->getViewType()) {
-	case kViewEga:
-		_totalScreenColors = 16;
-		break;
-	case kViewAmiga:
-		_totalScreenColors = 32;
-		break;
-	case kViewAmiga64:
-		_totalScreenColors = 64;
-		break;
-	case kViewVga:
-	case kViewVga11:
-			_totalScreenColors = 256;
-		break;
-	default:
-		error("GfxPalette: Unknown view type");
-	}
+	_totalScreenColors = _screen->gfxDriver()->numColors();
 }
 
 GfxPalette::~GfxPalette() {
@@ -274,9 +259,6 @@ static byte blendColors(byte c1, byte c2) {
 }
 
 void GfxPalette::setEGA() {
-	int curColor;
-	byte color1, color2;
-
 	_sysPalette.colors[1].r  = 0x000; _sysPalette.colors[1].g  = 0x000; _sysPalette.colors[1].b  = 0x0AA;
 	_sysPalette.colors[2].r  = 0x000; _sysPalette.colors[2].g  = 0x0AA; _sysPalette.colors[2].b  = 0x000;
 	_sysPalette.colors[3].r  = 0x000; _sysPalette.colors[3].g  = 0x0AA; _sysPalette.colors[3].b  = 0x0AA;
@@ -292,14 +274,15 @@ void GfxPalette::setEGA() {
 	_sysPalette.colors[13].r = 0x0FF; _sysPalette.colors[13].g = 0x055; _sysPalette.colors[13].b = 0x0FF;
 	_sysPalette.colors[14].r = 0x0FF; _sysPalette.colors[14].g = 0x0FF; _sysPalette.colors[14].b = 0x055;
 	_sysPalette.colors[15].r = 0x0FF; _sysPalette.colors[15].g = 0x0FF; _sysPalette.colors[15].b = 0x0FF;
-	for (curColor = 0; curColor <= 15; curColor++) {
+	for (int curColor = 0; curColor <= 15; curColor++) {
 		_sysPalette.colors[curColor].used = 1;
 	}
 	// Now setting colors 16-254 to the correct mix colors that occur when not doing a dithering run on
 	//  finished pictures
-	for (curColor = 0x10; curColor <= 0xFE; curColor++) {
+	for (int curColor = 0x10; curColor <= 0xFE; curColor++) {
 		_sysPalette.colors[curColor].used = 1;
-		color1 = curColor & 0x0F; color2 = curColor >> 4;
+		byte color1 = curColor & 0x0F;
+		byte color2 = curColor >> 4;
 
 		_sysPalette.colors[curColor].r = blendColors(_sysPalette.colors[color1].r, _sysPalette.colors[color2].r);
 		_sysPalette.colors[curColor].g = blendColors(_sysPalette.colors[color1].g, _sysPalette.colors[color2].g);
@@ -491,11 +474,6 @@ uint16 GfxPalette::matchColor(byte matchRed, byte matchGreen, byte matchBlue, bo
 	return bestColorNr;
 }
 
-void GfxPalette::getSys(Palette *pal) {
-	if (pal != &_sysPalette)
-		memcpy(pal, &_sysPalette,sizeof(Palette));
-}
-
 void GfxPalette::setOnScreen(bool update) {
 	copySysPaletteToScreen(update);
 }
@@ -559,10 +537,10 @@ void GfxPalette::kernelUnsetFlag(uint16 fromColor, uint16 toColor, uint16 flag) 
 }
 
 void GfxPalette::kernelSetIntensity(uint16 fromColor, uint16 toColor, uint16 intensity, bool setPalette) {
-	memset(&_sysPalette.intensity[0] + fromColor, intensity, toColor - fromColor);
-	if (setPalette) {
+	if (_screen->gfxDriver()->supportsPalIntensity())
+		memset(&_sysPalette.intensity[0] + fromColor, intensity, toColor - fromColor);
+	if (setPalette)
 		setOnScreen();
-	}
 }
 
 int16 GfxPalette::kernelFindColor(uint16 r, uint16 g, uint16 b, bool force16BitColorMatch) {

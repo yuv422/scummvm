@@ -47,6 +47,21 @@ namespace Cruise {
 
 #define MAX_LANGUAGE_STRINGS 25
 
+	
+
+enum CRUISEAction {
+	kActionNone,
+	kActionFastMode,
+	kActionExit,
+	kActionEscape,
+	kActionPause,
+	kActionPlayerMenu,
+	kActionInventory,
+	kActionEndUserWaiting,
+	kActionIncreaseGameSpeed,
+	kActionDecreaseGameSpeed
+};
+
 enum LangStringId { ID_PAUSED = 0, ID_INVENTORY = 5, ID_SPEAK_ABOUT = 6, ID_PLAYER_MENU = 7,
 	ID_SAVE = 9, ID_LOAD = 10, ID_RESTART = 11, ID_QUIT = 12};
 
@@ -92,9 +107,9 @@ public:
 
 	static const char *getSavegameFile(int saveGameIdx);
 	Common::Error loadGameState(int slot) override;
-	bool canLoadGameStateCurrently() override;
+	bool canLoadGameStateCurrently(Common::U32String *msg = nullptr) override;
 	Common::Error saveGameState(int slot, const Common::String &desc, bool isAutosave = false) override;
-	bool canSaveGameStateCurrently() override;
+	bool canSaveGameStateCurrently(Common::U32String *msg = nullptr) override;
 	Common::String getSaveStateName(int slot) const override { return getSavegameFile(slot); }
 	void syncSoundSettings() override;
 

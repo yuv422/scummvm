@@ -24,6 +24,7 @@
 
 #include <unistd.h>
 #include <string.h>
+#include <stdio.h>
 
 #include <sys/time.h>
 #include <QuartzCore/QuartzCore.h>
@@ -36,6 +37,7 @@
 #include "common/fs.h"
 #include "common/config-manager.h"
 #include "common/translation.h"
+#include "common/formats/ini-file.h"
 
 #include "base/main.h"
 
@@ -63,23 +65,23 @@ SoundProc OSystem_iOS7::s_soundCallback = NULL;
 void *OSystem_iOS7::s_soundParam = NULL;
 
 class SandboxedSaveFileManager : public DefaultSaveFileManager {
-	Common::String _sandboxRootPath;
+	Common::Path _sandboxRootPath;
 public:
 
-	SandboxedSaveFileManager(Common::String sandboxRootPath, Common::String defaultSavepath)
+	SandboxedSaveFileManager(const Common::Path &sandboxRootPath, const Common::Path &defaultSavepath)
 			: DefaultSaveFileManager(defaultSavepath), _sandboxRootPath(sandboxRootPath) {
 	}
 
 	bool removeSavefile(const Common::String &filename) override {
-		Common::String chrootedFile = getSavePath() + "/" + filename;
-		Common::String realFilePath = _sandboxRootPath + chrootedFile;
+		Common::Path chrootedFile = getSavePath().join(filename);
+		Common::Path realFilePath = _sandboxRootPath.join(chrootedFile);
 
-		if (remove(realFilePath.c_str()) != 0) {
+		if (remove(realFilePath.toString(Common::Path::kNativeSeparator).c_str()) != 0) {
 			if (errno == EACCES)
-				setError(Common::kWritePermissionDenied, "Search or write permission denied: "+chrootedFile);
+				setError(Common::kWritePermissionDenied, "Search or write permission denied: "+chrootedFile.toString(Common::Path::kNativeSeparator));
 
 			if (errno == ENOENT)
-				setError(Common::kPathDoesNotExist, "removeSavefile: '"+chrootedFile+"' does not exist or path is invalid");
+				setError(Common::kPathDoesNotExist, "removeSavefile: '"+chrootedFile.toString(Common::Path::kNativeSeparator)+"' does not exist or path is invalid");
 			return false;
 		} else {
 			return true;
@@ -89,12 +91,10 @@ public:
 
 OSystem_iOS7::OSystem_iOS7() :
 	_mixer(NULL), _queuedEventTime(0),
-	_secondaryTapped(false),
 	_screenOrientation(kScreenOrientationAuto),
-	_timeSuspended(0), _runningTasks(0) {
+	_runningTasks(0) {
 	_queuedInputEvent.type = Common::EVENT_INVALID;
-	_touchpadModeEnabled = ConfMan.getBool("touchpad_mode");
-	_mouseClickAndDragEnabled = ConfMan.getBool("clickanddrag_mode");
+	_currentTouchMode = kTouchModeTouchpad;
 
 	_chrootBasePath = iOS7_getDocumentsDir();
 	ChRootFilesystemFactory *chFsFactory = new ChRootFilesystemFactory(_chrootBasePath);
@@ -112,13 +112,9 @@ OSystem_iOS7::~OSystem_iOS7() {
 	delete _graphicsManager;
 }
 
-bool OSystem_iOS7::touchpadModeEnabled() const {
-	return _touchpadModeEnabled;
-}
-
 #if defined(USE_OPENGL) && defined(USE_GLAD)
 void *OSystem_iOS7::getOpenGLProcAddress(const char *name) const {
-	return dlsym(RTLD_SELF, name);
+	return dlsym(RTLD_DEFAULT, name);
 }
 #endif
 
@@ -129,7 +125,7 @@ int OSystem_iOS7::timerHandler(int t) {
 }
 
 void OSystem_iOS7::initBackend() {
-	_savefileManager = new SandboxedSaveFileManager(_chrootBasePath, "/Savegames");
+	_savefileManager = new SandboxedSaveFileManager(Common::Path(_chrootBasePath, Common::Path::kNativeSeparator), "/Savegames");
 
 	_timerManager = new DefaultTimerManager();
 
@@ -141,7 +137,7 @@ void OSystem_iOS7::initBackend() {
 
 	setTimerCallback(&OSystem_iOS7::timerHandler, 10);
 
-	ConfMan.registerDefault("iconspath", "/");
+	ConfMan.registerDefault("iconspath", Common::Path("/"));
 
 	EventsBaseBackend::initBackend();
 }
@@ -149,6 +145,7 @@ void OSystem_iOS7::initBackend() {
 bool OSystem_iOS7::hasFeature(Feature f) {
 	switch (f) {
 	case kFeatureCursorPalette:
+	case kFeatureCursorAlpha:
 	case kFeatureFilteringMode:
 	case kFeatureVirtualKeyboard:
 #if TARGET_OS_IOS
@@ -253,7 +250,6 @@ bool OSystem_iOS7::setGraphicsMode(int mode, uint flags) {
 
 void OSystem_iOS7::suspendLoop() {
 	bool done = false;
-	uint32 startTime = getMillis();
 
 	PauseToken pt;
 	if (g_engine)
@@ -275,67 +271,81 @@ void OSystem_iOS7::suspendLoop() {
 	}
 
 	startSoundsystem();
-
-	_timeSuspended += getMillis() - startTime;
 }
 
 void OSystem_iOS7::saveState() {
 	// Clear any previous restore state to avoid having and obsolete one if we don't save it again below.
 	clearState();
 
-	// If there is an engine running and it accepts autosave, do an autosave and add the current
-	// running target to the config file.
-	if (g_engine && g_engine->hasFeature(Engine::kSupportsSavingDuringRuntime) && g_engine->canSaveAutosaveCurrently()) {
+	// If there is an engine running and it both accepts autosave and loading from the launcher (required to restore the state),
+	// do an autosave and save the current running target and autosave slot to a state file.
+	if (g_engine && g_engine->hasFeature(Engine::kSupportsSavingDuringRuntime) && g_engine->canSaveAutosaveCurrently() &&
+		g_engine->getMetaEngine()->hasFeature(MetaEngine::kSupportsLoadingDuringStartup)) {
 		Common::String targetName(ConfMan.getActiveDomainName());
 		int saveSlot = g_engine->getAutosaveSlot();
+		if (saveSlot == -1)
+			return;
 		// Make sure we do not overwrite a user save
 		SaveStateDescriptor desc = g_engine->getMetaEngine()->querySaveMetaInfos(targetName.c_str(), saveSlot);
 		if (desc.getSaveSlot() != -1 && !desc.isAutosave())
 			return;
 
-		// Do the auto-save, and if successful store this it in the config
+		// Do the auto-save, and if successful create the state file with the target and save slot.
 		if (g_engine->saveGameState(saveSlot, _("Autosave"), true).getCode() == Common::kNoError) {
-			ConfMan.set("restore_target", targetName, Common::ConfigManager::kApplicationDomain);
-			ConfMan.setInt("restore_slot", saveSlot, Common::ConfigManager::kApplicationDomain);
-			ConfMan.flushToDisk();
+			Common::INIFile stateFile;
+			stateFile.addSection("state");
+			stateFile.setKey("restore_target", "state", targetName);
+			stateFile.setKey("restore_slot", "state", Common::String::format("%d", saveSlot));
+			stateFile.saveToFile("/scummvm.state");
 		}
 	}
 }
 
 void OSystem_iOS7::restoreState() {
-	Common::String target;
-	int slot = -1;
-	if (ConfMan.hasKey("restore_target", Common::ConfigManager::kApplicationDomain) &&
-		ConfMan.hasKey("restore_slot", Common::ConfigManager::kApplicationDomain)) {
-		target = ConfMan.get("restore_target", Common::ConfigManager::kApplicationDomain);
-		slot = ConfMan.getInt("restore_slot", Common::ConfigManager::kApplicationDomain);
+	// If the g_engine is still running (i.e. the application was not terminated) we don't need to do anything other than clear the saved state.
+	if (g_engine) {
 		clearState();
+		return;
 	}
 
-	// If the g_engine is still running (i.e. the application was not terminated) we don't need to do anything.
-	if (g_engine)
+	// Read the state
+	Common::FSNode node("/scummvm.state");
+	Common::File stateFile;
+	if (!stateFile.open(node))
 		return;
 
-	if (!target.empty() && slot != -1) {
-		ConfMan.setInt("save_slot", slot, Common::ConfigManager::kTransientDomain);
-		ConfMan.setActiveDomain(target);
+	Common::String targetName, slotString;
+	int saveSlot = -1;
+	Common::INIFile stateIniFile;
+	if (stateIniFile.loadFromStream(stateFile) &&
+		stateIniFile.getKey("restore_target", "state", targetName) &&
+		stateIniFile.getKey("restore_slot", "state", slotString) &&
+		!slotString.empty()) {
+		char *errpos;
+		saveSlot = (int)strtol(slotString.c_str(), &errpos, 10);
+		if (slotString.c_str() == errpos)
+			saveSlot = -1;
+	}
+
+	clearState();
+
+	// Reload the state
+	if (!targetName.empty() && saveSlot != -1) {
+		ConfMan.setInt("save_slot", saveSlot, Common::ConfigManager::kTransientDomain);
+		ConfMan.setActiveDomain(targetName);
 		if (GUI::GuiManager::hasInstance())
 			g_gui.exitLoop();
 	}
 }
 
 void OSystem_iOS7::clearState() {
-	if (ConfMan.hasKey("restore_target", Common::ConfigManager::kApplicationDomain) &&
-	ConfMan.hasKey("restore_slot", Common::ConfigManager::kApplicationDomain)) {
-		ConfMan.removeKey("restore_target", Common::ConfigManager::kApplicationDomain);
-		ConfMan.removeKey("restore_slot", Common::ConfigManager::kApplicationDomain);
-		ConfMan.flushToDisk();
-	}
+	Common::String statePath = _chrootBasePath + "/scummvm.state";
+	remove(statePath.c_str());
 }
 
 uint32 OSystem_iOS7::getMillis(bool skipRecord) {
 	CFTimeInterval timeInSeconds = CACurrentMediaTime();
-	return (uint32) ((timeInSeconds - _startTime) * 1000.0) - _timeSuspended;
+	return (uint32) ((timeInSeconds - _startTime) * 1000.0);
 }
 
 void OSystem_iOS7::delayMillis(uint msecs) {
@@ -408,9 +418,8 @@ OSystem_iOS7 *OSystem_iOS7::sharedInstance() {
 	return instance;
 }
 
-Common::String OSystem_iOS7::getDefaultConfigFileName() {
-	Common::String path = "/Preferences";
-	return path;
+Common::Path OSystem_iOS7::getDefaultConfigFileName() {
+	return Common::Path("/Preferences");
 }
 
 void OSystem_iOS7::addSysArchivesToSearchSet(Common::SearchSet &s, int priority) {
@@ -429,13 +438,16 @@ void OSystem_iOS7::addSysArchivesToSearchSet(Common::SearchSet &s, int priority)
 	}
 }
 
-bool iOS7_touchpadModeEnabled() {
-	OSystem_iOS7 *sys = dynamic_cast<OSystem_iOS7 *>(g_system);
-	return sys && sys->touchpadModeEnabled();
-}
-
 void iOS7_buildSharedOSystemInstance() {
 	OSystem_iOS7::sharedInstance();
+}
+
+TouchMode iOS7_getCurrentTouchMode() {
+	OSystem_iOS7 *sys = dynamic_cast<OSystem_iOS7 *>(g_system);
+	if (!sys) {
+		abort();
+	}
+	return sys->getCurrentTouchMode();
 }
 
 void iOS7_main(int argc, char **argv) {

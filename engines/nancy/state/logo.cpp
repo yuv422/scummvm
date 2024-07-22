@@ -83,6 +83,9 @@ bool Logo::onStateExit(const NancyState::NancyState nextState) {
 void Logo::init() {
 	const ImageChunk *lg0 = (const ImageChunk *)g_nancy->getEngineData("LG0");
 	const ImageChunk *plg0 = (const ImageChunk *)g_nancy->getEngineData("PLG0");
+	if (!plg0) {
+		plg0 = (const ImageChunk *)g_nancy->getEngineData("PLGO");
+	}
 	assert(lg0);
 
 	_logoImage.init(lg0->imageName);
@@ -111,7 +114,7 @@ void Logo::init() {
 // play the video before the game logo
 void Logo::playIntroVideo() {
 	if (_tvdVideoDecoder.needsUpdate()) {
-		_videoObj._drawSurface.blitFrom(_tvdVideoDecoder.decodeNextFrame());
+		_videoObj._drawSurface.blitFrom(*_tvdVideoDecoder.decodeNextFrame());
 		_videoObj.setVisible(true);
 	}
 	if (_tvdVideoDecoder.endOfVideo() || (g_nancy->_input->getInput().input & NancyInput::kLeftMouseButtonDown)) {

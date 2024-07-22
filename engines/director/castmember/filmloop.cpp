@@ -47,6 +47,24 @@ FilmLoopCastMember::FilmLoopCastMember(Cast *cast, uint16 castId, Common::Seekab
 	_center = false;
 }
 
+FilmLoopCastMember::FilmLoopCastMember(Cast *cast, uint16 castId, FilmLoopCastMember &source)
+		: CastMember(cast, castId) {
+	_type = kCastFilmLoop;
+	// force a load so we can copy the cast resource information
+	source.load();
+	_loaded = true;
+
+	_initialRect = source._initialRect;
+	_boundingRect = source._boundingRect;
+	_children = source._children;
+
+	_enableSound = source._enableSound;
+	_crop = source._crop;
+	_center = source._center;
+	_frames = source._frames;
+	_subchannels = source._subchannels;
+}
+
 FilmLoopCastMember::~FilmLoopCastMember() {
 
 }
@@ -67,7 +85,7 @@ Common::Array<Channel> *FilmLoopCastMember::getSubChannels(Common::Rect &bbox, C
 	_subchannels.clear();
 
 	if (channel->_filmLoopFrame >= _frames.size()) {
-		warning("Film loop frame %d requested, only %d available", channel->_filmLoopFrame, _frames.size());
+		warning("FilmLoopCastMember::getSubChannels(): Film loop frame %d requested, only %d available", channel->_filmLoopFrame, _frames.size());
 		return &_subchannels;
 	}
 
@@ -77,6 +95,15 @@ Common::Array<Channel> *FilmLoopCastMember::getSubChannels(Common::Rect &bbox, C
 		spriteIds.push_back(iter._key);
 	}
 	Common::sort(spriteIds.begin(), spriteIds.end());
+
+	debugC(5, kDebugImages, "FilmLoopCastMember::getSubChannels(): castId: %d, frame: %d, count: %d, initRect: %d,%d %dx%d, bbox: %d,%d %dx%d",
+			_castId, channel->_filmLoopFrame, spriteIds.size(),
+			_initialRect.left + _initialRect.width()/2,
+			_initialRect.top + _initialRect.height()/2,
+			_initialRect.width(), _initialRect.height(),
+			bbox.left + bbox.width()/2,
+			bbox.top + bbox.height()/2,
+			bbox.width(), bbox.height());
 
 	// copy the sprites in order to the list
 	for (auto &iter : spriteIds) {
@@ -91,16 +118,23 @@ Common::Array<Channel> *FilmLoopCastMember::getSubChannels(Common::Rect &bbox, C
 		int16 width = src._width * widgetRect.width() / _initialRect.width();
 		int16 height = src._height * widgetRect.height() / _initialRect.height();
 
+		debugC(5, kDebugImages, "FilmLoopCastMember::getSubChannels(): sprite: %d - cast: %s, orig: %d,%d %dx%d, trans: %d,%d %dx%d",
+				iter, src._castId.asString().c_str(),
+				src._startPoint.x, src._startPoint.y, src._width, src._height,
+				absX, absY, width, height);
+
+		// Re-inject the translated position into the Sprite.
+		// This saves the hassle of having to force the Channel to be in puppet mode.
+		src._width = width;
+		src._height = height;
+		src._startPoint = Common::Point(absX, absY);
+		src._stretch = true;
+
 		// Film loop frames are constructed as a series of Channels, much like how a normal frame
 		// is rendered by the Score. We don't include a pointer to the current Score here,
 		// that's only for querying the constraint channel which is not used.
 		Channel chan(nullptr, &src);
-		chan._currentPoint = Common::Point(absX, absY);
-		chan._width = width;
-		chan._height = height;
-
 		_subchannels.push_back(chan);
-
 	}
 	// Initialise the widgets on all of the subchannels.
 	// This has to be done once the list has been constructed, otherwise
@@ -129,7 +163,11 @@ void FilmLoopCastMember::loadFilmLoopDataD2(Common::SeekableReadStreamEndian &st
 	FilmLoopFrame newFrame;
 
 	while (stream.pos() < size) {
-		uint16 frameSize = stream.readUint16BE() - 2;
+		uint16 frameSize = stream.readUint16BE();
+		if (frameSize == 0) {
+			continue;
+		}
+		frameSize -= 2;
 		if (debugChannelSet(5, kDebugLoading)) {
 			debugC(5, kDebugLoading, "loadFilmLoopDataD2: Frame entry:");
 			stream.hexdump(frameSize);
@@ -140,8 +178,9 @@ void FilmLoopCastMember::loadFilmLoopDataD2(Common::SeekableReadStreamEndian &st
 			int order = stream.readByte() * 2 - 0x20;
 			frameSize -= 2;
 
-			int channel = (order / channelSize) - 1;
+			int channel = order / channelSize;
 			int channelOffset = order % channelSize;
+			int offset = order;
 
 			debugC(8, kDebugLoading, "loadFilmLoopDataD2: Message: msgWidth %d, channel %d, channelOffset %d", msgWidth, channel, channelOffset);
 			if (debugChannelSet(8, kDebugLoading)) {
@@ -159,15 +198,15 @@ void FilmLoopCastMember::loadFilmLoopDataD2(Common::SeekableReadStreamEndian &st
 				}
 
 				sprite._spriteType = kCastMemberSprite;
-				sprite._puppet = 1;
-				sprite._stretch = 1;
+				sprite._stretch = true;
 
-				uint16 needSize = MIN((uint16)(nextStart - channelOffset), segSize);
+				uint16 needSize = MIN((uint16)(nextStart - offset), segSize);
 				int startPosition = stream.pos() - channelOffset;
 				int finishPosition = stream.pos() + needSize;
 				readSpriteDataD2(stream, sprite, startPosition, finishPosition);
 				newFrame.sprites.setVal(channel, sprite);
 				segSize -= needSize;
+				offset += needSize;
 				channel += 1;
 				channelOffset = 0;
 				nextStart += kSprChannelSizeD2;
@@ -234,7 +273,11 @@ void FilmLoopCastMember::loadFilmLoopDataD4(Common::SeekableReadStreamEndian &st
 	FilmLoopFrame newFrame;
 
 	while (stream.pos() < size) {
-		uint16 frameSize = stream.readUint16BE() - 2;
+		uint16 frameSize = stream.readUint16BE();
+		if (frameSize == 0) {
+			continue;
+		}
+		frameSize -= 2;
 		if (debugChannelSet(5, kDebugLoading)) {
 			debugC(5, kDebugLoading, "loadFilmLoopDataD4: Frame entry:");
 			stream.hexdump(frameSize);
@@ -261,11 +304,15 @@ void FilmLoopCastMember::loadFilmLoopDataD4(Common::SeekableReadStreamEndian &st
 				Sprite sprite(nullptr);
 				sprite._movie = g_director->getCurrentMovie();
 				if (newFrame.sprites.contains(channel)) {
-					sprite = newFrame.sprites.getVal(channel);
+					// In some cases, particularly in Total Distortion, there could be sprites of type kInactiveSprite.
+					// We need to skip processing them to avoid issues.
+
+					if (newFrame.sprites.getVal(channel)._spriteType == kBitmapSprite) {
+						sprite = newFrame.sprites.getVal(channel);
+					}
 				}
 
-				sprite._puppet = 1;
-				sprite._stretch = 1;
+				sprite._stretch = true;
 
 				uint16 needSize = MIN((uint16)(nextStart - offset), segSize);
 				int startPosition = stream.pos() - channelOffset;
@@ -355,19 +402,24 @@ void FilmLoopCastMember::load() {
 			warning("FilmLoopCastMember::load(): Film loop not found");
 		}
 	} else if (_cast->_version >= kFileVer400 && _cast->_version < kFileVer500) {
-		if (_children.size() == 1) {
-			uint16 filmLoopId = _children[0].index;
-			uint32 tag = _children[0].tag;
-			Common::SeekableReadStreamEndian *loop = _cast->getResource(tag, filmLoopId);
-			if (loop) {
-				debugC(2, kDebugLoading, "****** Loading '%s' id: %d, %d bytes", tag2str(tag), filmLoopId, (int)loop->size());
-				loadFilmLoopDataD4(*loop);
-				delete loop;
-			} else {
-				warning("FilmLoopCastMember::load(): Film loop not found");
+		Common::SeekableReadStreamEndian *loop = nullptr;
+		uint16 filmLoopId = 0;
+		uint32 tag = 0;
+		for (auto &it : _children) {
+			if (it.tag == MKTAG('S', 'C', 'V', 'W')) {
+				filmLoopId = it.index;
+				tag = it.tag;
+				loop = _cast->getResource(tag, filmLoopId);
+				break;
 			}
+		}
+
+		if (loop) {
+			debugC(2, kDebugLoading, "****** Loading '%s' id: %d, %d bytes", tag2str(tag), filmLoopId, (int)loop->size());
+			loadFilmLoopDataD4(*loop);
+			delete loop;
 		} else {
-			warning("FilmLoopCastMember::load(): Expected 1 child for film loop cast, got %d", _children.size());
+			warning("FilmLoopCastMember::load(): No SCVW resource found in %d children", _children.size());
 		}
 	} else {
 		warning("STUB: FilmLoopCastMember::load(): Film loops not yet supported for version %d", _cast->_version);

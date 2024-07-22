@@ -34,6 +34,15 @@
 #include "common/translation.h"
 #endif
 
+#ifdef EMSCRIPTEN
+#include "backends/platform/sdl/emscripten/emscripten.h"
+#endif
+
+#if defined(USE_IMGUI) && SDL_VERSION_ATLEAST(2, 0, 0)
+#include "backends/imgui/backends/imgui_impl_sdl2.h"
+#include "backends/imgui/backends/imgui_impl_opengl3.h"
+#endif
+
 SdlGraphicsManager::SdlGraphicsManager(SdlEventSource *source, SdlWindow *window)
 	: _eventSource(source), _window(window), _hwScreen(nullptr)
 #if SDL_VERSION_ATLEAST(2, 0, 0)
@@ -328,7 +337,7 @@ bool SdlGraphicsManager::createOrUpdateWindow(int width, int height, const Uint3
 void SdlGraphicsManager::saveScreenshot() {
 	Common::String filename;
 
-	Common::String screenshotsPath;
+	Common::Path screenshotsPath;
 	OSystem_SDL *sdl_g_system = dynamic_cast<OSystem_SDL*>(g_system);
 	if (sdl_g_system)
 		screenshotsPath = sdl_g_system->getScreenshotsPath();
@@ -346,27 +355,34 @@ void SdlGraphicsManager::saveScreenshot() {
 		filename = Common::String::format("scummvm%s%s-%05d.%s", currentTarget.empty() ? "" : "-",
 		                                  currentTarget.c_str(), n, extension);
 
-		Common::FSNode file = Common::FSNode(screenshotsPath + filename);
+		Common::FSNode file = Common::FSNode(screenshotsPath.appendComponent(filename));
 		if (!file.exists()) {
 			break;
 		}
 	}
 
-	if (saveScreenshot(screenshotsPath + filename)) {
+	if (saveScreenshot(screenshotsPath.appendComponent(filename))) {
 		if (screenshotsPath.empty())
 			debug("Saved screenshot '%s' in current directory", filename.c_str());
 		else
-			debug("Saved screenshot '%s' in directory '%s'", filename.c_str(), screenshotsPath.c_str());
+			debug("Saved screenshot '%s' in directory '%s'", filename.c_str(),
+					screenshotsPath.toString(Common::Path::kNativeSeparator).c_str());
 
 #ifdef USE_OSD
 		if (!ConfMan.getBool("disable_saved_screenshot_osd"))
 			displayMessageOnOSD(Common::U32String::format(_("Saved screenshot '%s'"), filename.c_str()));
 #endif
+
+#ifdef EMSCRIPTEN
+		// Users can't access the virtual emscripten filesystem in the browser, so we export the generated screenshot file via OSystem_Emscripten::exportFile.
+		OSystem_Emscripten *emscripten_g_system = dynamic_cast<OSystem_Emscripten*>(g_system);
+		emscripten_g_system->exportFile(screenshotsPath.appendComponent(filename));
+#endif
 	} else {
 		if (screenshotsPath.empty())
 			warning("Could not save screenshot in current directory");
 		else
-			warning("Could not save screenshot in directory '%s'", screenshotsPath.c_str());
+			warning("Could not save screenshot in directory '%s'", screenshotsPath.toString(Common::Path::kNativeSeparator).c_str());
 
 #ifdef USE_OSD
 		displayMessageOnOSD(_("Could not save screenshot"));
@@ -491,3 +507,89 @@ Common::Keymap *SdlGraphicsManager::getKeymap() {
 
 	return keymap;
 }
+
+#if defined(USE_IMGUI) && SDL_VERSION_ATLEAST(2, 0, 0)
+void SdlGraphicsManager::initImGui(void *glContext) {
+	assert(!_imGuiReady);
+	_imGuiInited = false;
+
+	if (!glContext) {
+		return;
+	}
+
+	IMGUI_CHECKVERSION();
+	if (!ImGui::CreateContext()) {
+		return;
+	}
+	ImGuiIO &io = ImGui::GetIO();
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
+	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;       // Enable Multi-Viewport / Platform Windows
+	ImGui::StyleColorsDark();
+	// When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
+	ImGuiStyle& style = ImGui::GetStyle();
+	style.WindowRounding = 0.0f;
+	style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+	io.IniFilename = nullptr;
+	if (!ImGui_ImplSDL2_InitForOpenGL(_window->getSDLWindow(), glContext)) {
+		ImGui::DestroyContext();
+		return;
+	}
+
+	if (!ImGui_ImplOpenGL3_Init("#version 110")) {
+		ImGui_ImplSDL2_Shutdown();
+		ImGui::DestroyContext();
+		return;
+	}
+
+	_imGuiReady = true;
+
+	if (_imGuiCallbacks.init) {
+		_imGuiCallbacks.init();
+		_imGuiInited = true;
+	}
+}
+
+void SdlGraphicsManager::renderImGui() {
+	if (!_imGuiReady || !_imGuiCallbacks.render) {
+		return;
+	}
+
+	if (!_imGuiInited) {
+		if (_imGuiCallbacks.init) {
+			_imGuiCallbacks.init();
+		}
+		_imGuiInited = true;
+	}
+
+	ImGui_ImplOpenGL3_NewFrame();
+	ImGui_ImplSDL2_NewFrame();
+
+	ImGui::NewFrame();
+	_imGuiCallbacks.render();
+	ImGui::Render();
+	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+	SDL_Window* backup_current_window = SDL_GL_GetCurrentWindow();
+	SDL_GLContext backup_current_context = SDL_GL_GetCurrentContext();
+	ImGui::UpdatePlatformWindows();
+	ImGui::RenderPlatformWindowsDefault();
+	SDL_GL_MakeCurrent(backup_current_window, backup_current_context);
+}
+
+void SdlGraphicsManager::destroyImGui() {
+	if (!_imGuiReady) {
+		return;
+	}
+
+	if (_imGuiCallbacks.cleanup) {
+		_imGuiCallbacks.cleanup();
+	}
+
+	_imGuiInited = false;
+	_imGuiReady = false;
+
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplSDL2_Shutdown();
+	ImGui::DestroyContext();
+}
+#endif

@@ -56,14 +56,10 @@ void DarkEngine::loadAssetsZXFullGame() {
 
 	loadMessagesFixedSize(&file, 0x56b - 6, 16, 27);
 
-	loadFonts(&file, 0x5d60 - 6);
+	loadFonts(&file, 0x5d60 - 6, _font);
 	loadGlobalObjects(&file, 0x1a, 23);
 	load8bitBinary(&file, 0x5ec0 - 4, 4);
-	for (auto &it : _areaMap) {
-		addWalls(it._value);
-		addECDs(it._value);
-		addSkanner(it._value);
-	}
+	loadSpeakerFxZX(&file, 0x9c1, 0xa55);
 
 	_indicators.push_back(loadBundledImage("dark_fallen_indicator"));
 	_indicators.push_back(loadBundledImage("dark_crouch_indicator"));
@@ -71,7 +67,7 @@ void DarkEngine::loadAssetsZXFullGame() {
 	_indicators.push_back(loadBundledImage("dark_jet_indicator"));
 
 	for (auto &it : _indicators)
-		it->convertToInPlace(_gfx->_texturePixelFormat, nullptr);
+		it->convertToInPlace(_gfx->_texturePixelFormat);
 }
 
 void DarkEngine::loadAssetsZXDemo() {
@@ -97,23 +93,18 @@ void DarkEngine::loadAssetsZXDemo() {
 
 	loadMessagesFixedSize(&file, 0x56b, 16, 27);
 	loadMessagesFixedSize(&file, 0x5761, 264, 5);
+	loadSpeakerFxZX(&file, 0x9c7, 0xa5b);
 
-	loadFonts(&file, 0x6164);
+	loadFonts(&file, 0x6164, _font);
 	loadGlobalObjects(&file, 0x20, 23);
 	load8bitBinary(&file, 0x62c6, 4);
-	for (auto &it : _areaMap) {
-		addWalls(it._value);
-		addECDs(it._value);
-		addSkanner(it._value);
-	}
-
 	_indicators.push_back(loadBundledImage("dark_fallen_indicator"));
 	_indicators.push_back(loadBundledImage("dark_crouch_indicator"));
 	_indicators.push_back(loadBundledImage("dark_walk_indicator"));
 	_indicators.push_back(loadBundledImage("dark_jet_indicator"));
 
 	for (auto &it : _indicators)
-		it->convertToInPlace(_gfx->_texturePixelFormat, nullptr);
+		it->convertToInPlace(_gfx->_texturePixelFormat);
 }
 
 void DarkEngine::drawZXUI(Graphics::Surface *surface) {

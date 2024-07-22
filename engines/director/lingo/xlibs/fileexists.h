@@ -27,10 +27,10 @@ namespace Director {
 namespace FileExists {
 
 extern const char *xlibName;
-extern const char *fileNames[];
+extern const XlibFileDesc fileNames[];
 
-void open(int type);
-void close(int type);
+void open(ObjectType type, const Common::Path &path);
+void close(ObjectType type);
 
 void m_fileexists(int nargs);
 

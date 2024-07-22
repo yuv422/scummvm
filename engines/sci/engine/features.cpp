@@ -126,9 +126,7 @@ bool GameFeatures::autoDetectSoundType() {
 					_doSoundType = foundTarget ? SCI_VERSION_1_LATE : SCI_VERSION_1_EARLY;
 					break;
 				}
-
-				if (_doSoundType != SCI_VERSION_NONE)
-					return true;
+				return true;
 			}
 		}
 	}
@@ -233,7 +231,7 @@ SciVersion GameFeatures::detectSetCursorType() {
 	return _setCursorType;
 }
 
-bool GameFeatures::autoDetectLofsType(Common::String gameSuperClassName, int methodNum) {
+bool GameFeatures::autoDetectLofsType(const Common::String &gameSuperClassName, int methodNum) {
 	// Look up the script address
 	reg_t addr = getDetectionAddr(gameSuperClassName.c_str(), -1, methodNum);
 
@@ -568,7 +566,6 @@ bool GameFeatures::supportsSpeechWithSubtitles() const {
 	case GID_LAURABOW2:
 	case GID_KQ6:
 #ifdef ENABLE_SCI32
-	// TODO: SCI3
 	case GID_GK1:
 	case GID_KQ7:
 	case GID_LSL6HIRES:
@@ -589,7 +586,6 @@ bool GameFeatures::audioVolumeSyncUsesGlobals() const {
 	switch (g_sci->getGameId()) {
 	case GID_GK1:
 	case GID_GK2:
-	case GID_HOYLE5:
 	case GID_LSL6:
 	case GID_LSL6HIRES:
 	case GID_LSL7:
@@ -598,6 +594,9 @@ bool GameFeatures::audioVolumeSyncUsesGlobals() const {
 	case GID_RAMA:
 	case GID_TORIN:
 		return true;
+	case GID_HOYLE5:
+		// Hoyle school house math does not use a volume global
+		return !g_sci->getResMan()->testResource(ResourceId(kResourceTypeView, 21));
 	default:
 		return false;
 	}
@@ -614,7 +613,6 @@ MessageTypeSyncStrategy GameFeatures::getMessageTypeSyncStrategy() const {
 
 #ifdef ENABLE_SCI32
 	switch (g_sci->getGameId()) {
-	// TODO: SCI3
 	case GID_GK1:
 	case GID_PQ4:
 	case GID_QFG4:
@@ -901,11 +899,10 @@ bool GameFeatures::canSaveFromGMM() const {
 
 uint16 GameFeatures::getGameFlagsGlobal() const {
 	Common::Platform platform = g_sci->getPlatform();
-	bool isCD = g_sci->isCD();
 	switch (g_sci->getGameId()) {
 	case GID_CAMELOT: return 250;
 	case GID_CASTLEBRAIN: return 250;
-	case GID_ECOQUEST: return isCD ? 152 : 150;
+	case GID_ECOQUEST: return (getSciVersion() == SCI_VERSION_1_1) ? 152 : 150;
 	case GID_ECOQUEST2: return 110;
 	case GID_FAIRYTALES: return 250;
 	case GID_FREDDYPHARKAS: return 186;

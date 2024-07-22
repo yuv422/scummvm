@@ -124,7 +124,7 @@ enum {
 };
 
 AndroidOptionsWidget::AndroidOptionsWidget(GuiObject *boss, const Common::String &name, const Common::String &domain) :
-		OptionsContainerWidget(boss, name, "AndroidOptionsDialog", false, domain), _enabled(true) {
+		OptionsContainerWidget(boss, name, "AndroidOptionsDialog", domain), _enabled(true) {
 
 	const bool inAppDomain = domain.equalsIgnoreCase(Common::ConfigManager::kApplicationDomain);;
 
@@ -204,18 +204,18 @@ void AndroidOptionsWidget::defineLayout(GUI::ThemeEval &layouts, const Common::S
 
 	if (inAppDomain) {
 		layouts.addLayout(GUI::ThemeLayout::kLayoutHorizontal)
-			.addPadding(0, 0, 0, 0)
+			.addPadding(16, 16, 0, 0)
 			.addWidget("TMMenusText", "OptionsLabel")
 			.addWidget("TMMenus", "PopUp")
 		.closeLayout();
 	}
 	layouts.addLayout(GUI::ThemeLayout::kLayoutHorizontal)
-			.addPadding(0, 0, 0, 0)
+			.addPadding(16, 16, 0, 0)
 			.addWidget("TM2DGamesText", "OptionsLabel")
 			.addWidget("TM2DGames", "PopUp")
 		.closeLayout()
 		.addLayout(GUI::ThemeLayout::kLayoutHorizontal)
-			.addPadding(0, 0, 0, 0)
+			.addPadding(16, 16, 0, 0)
 			.addWidget("TM3DGamesText", "OptionsLabel")
 			.addWidget("TM3DGames", "PopUp")
 		.closeLayout();
@@ -223,13 +223,13 @@ void AndroidOptionsWidget::defineLayout(GUI::ThemeEval &layouts, const Common::S
 	layouts.addWidget("OrientationText", "", -1, layouts.getVar("Globals.Line.Height"));
 	if (inAppDomain) {
 		layouts.addLayout(GUI::ThemeLayout::kLayoutHorizontal)
-			.addPadding(0, 0, 0, 0)
+			.addPadding(16, 16, 0, 0)
 			.addWidget("OMenusText", "OptionsLabel")
 			.addWidget("OMenus", "PopUp")
 		.closeLayout();
 	}
 	layouts.addLayout(GUI::ThemeLayout::kLayoutHorizontal)
-			.addPadding(0, 0, 0, 0)
+			.addPadding(16, 16, 0, 0)
 			.addWidget("OGamesText", "OptionsLabel")
 			.addWidget("OGames", "PopUp")
 		.closeLayout();
@@ -476,7 +476,7 @@ void OSystem_Android::applyOrientationSettings() {
 }
 
 void OSystem_Android::applyBackendSettings() {
-	JNI::showKeyboardControl(ConfMan.getBool("onscreen_control"));
+	updateOnScreenControls();
 }
 
 SAFRemoveDialog::SAFRemoveDialog() : GUI::Dialog("SAFBrowser") {

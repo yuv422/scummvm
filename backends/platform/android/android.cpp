@@ -138,10 +138,10 @@ void checkGlError(const char *expr, const char *file, int line) {
 
 class AndroidSaveFileManager : public DefaultSaveFileManager {
 public:
-	AndroidSaveFileManager(const Common::String &defaultSavepath) : DefaultSaveFileManager(defaultSavepath) {}
+	AndroidSaveFileManager(const Common::Path &defaultSavepath) : DefaultSaveFileManager(defaultSavepath) {}
 
 	bool removeSavefile(const Common::String &filename) override {
-		Common::String path = getSavePath() + "/" + filename;
+		Common::String path = getSavePath().join(filename).toString(Common::Path::kNativeSeparator);
 		AbstractFSNode *node = AndroidFilesystemFactory::instance().makeFileNodePath(path);
 
 		if (!node) {
@@ -192,8 +192,9 @@ OSystem_Android::OSystem_Android(int audio_sample_rate, int audio_buffer_size) :
 	_thirdPointerId(-1),
 	_trackball_scale(2),
 	_joystick_scale(10),
-	_defaultConfigFileName(""),
-	_defaultLogFileName(""),
+	_engineRunning(false),
+	_defaultConfigFileName(),
+	_defaultLogFileName(),
 	_systemPropertiesSummaryStr(""),
 	_systemSDKdetectedStr(""),
 	_logger(nullptr) {
@@ -524,27 +525,19 @@ void OSystem_Android::initBackend() {
 	}
 
 	if (!ConfMan.hasKey("browser_lastpath")) {
-		ConfMan.set("browser_lastpath", "/");
-	}
-
-	if (!ConfMan.hasKey("gui_scale")) {
-		// Until a proper scale detection is done (especially post PR https://github.com/scummvm/scummvm/pull/3264/commits/8646dfca329b6fbfdba65e0dc0802feb1382dab2),
-		// set scale by default to large, if not set, and then let the user set it manually from the launcher -> Options -> Misc tab
-		// Otherwise the screen may default to very tiny and indiscernible text and be barely usable.
-		// TODO We need a proper scale detection for Android, see: (float) AndroidGraphicsManager::getHiDPIScreenFactor() in android/graphics.cpp
-		ConfMan.setInt("gui_scale", 125); // "Large" (see gui/options.cpp and guiBaseValues[])
+		ConfMan.setPath("browser_lastpath", "/");
 	}
 
 	Common::String basePath = JNI::getScummVMBasePath();
 
-	_savefileManager = new AndroidSaveFileManager(basePath + "/saves");
+	_savefileManager = new AndroidSaveFileManager(Common::Path(basePath, Common::Path::kNativeSeparator).joinInPlace("saves"));
 	// TODO remove the debug message eventually
-	LOGD("Setting DefaultSaveFileManager path to: %s", ConfMan.get("savepath").c_str());
+	LOGD("Setting DefaultSaveFileManager path to: %s", ConfMan.getPath("savepath").toString(Common::Path::kNativeSeparator).c_str());
 
 
-	ConfMan.registerDefault("iconspath", basePath + "/icons");
+	ConfMan.registerDefault("iconspath", Common::Path(basePath, Common::Path::kNativeSeparator).joinInPlace("icons"));
 	// TODO remove the debug message eventually
-	LOGD("Setting Default Icons and Shaders path to: %s", ConfMan.get("iconspath").c_str());
+	LOGD("Setting Default Icons and Shaders path to: %s", ConfMan.getPath("iconspath").toString(Common::Path::kNativeSeparator).c_str());
 
 	_timerManager = new DefaultTimerManager();
 
@@ -578,7 +571,31 @@ void OSystem_Android::initBackend() {
 	BaseBackend::initBackend();
 }
 
-Common::String OSystem_Android::getDefaultConfigFileName() {
+void OSystem_Android::engineInit() {
+	_engineRunning = true;
+	updateOnScreenControls();
+
+	JNI::setCurrentGame(ConfMan.getActiveDomainName());
+}
+
+void OSystem_Android::engineDone() {
+	_engineRunning = false;
+	updateOnScreenControls();
+	JNI::setCurrentGame("");
+}
+
+void OSystem_Android::updateOnScreenControls() {
+	int enableMask = SHOW_ON_SCREEN_ALL;
+	if (!ConfMan.getBool("onscreen_control")) {
+		enableMask = SHOW_ON_SCREEN_NONE;
+	} else if (!_engineRunning) {
+		// Don't show the menu icon if the engine is not running
+		enableMask &= ~SHOW_ON_SCREEN_MENU;
+	}
+	JNI::showOnScreenControls(enableMask);
+}
+
+Common::Path OSystem_Android::getDefaultConfigFileName() {
 	// if possible, skip JNI call which is more costly (performance wise)
 	if (_defaultConfigFileName.empty()) {
 		_defaultConfigFileName = JNI::getScummVMConfigPath();
@@ -586,7 +603,7 @@ Common::String OSystem_Android::getDefaultConfigFileName() {
 	return _defaultConfigFileName;
 }
 
-Common::String OSystem_Android::getDefaultLogFileName() {
+Common::Path OSystem_Android::getDefaultLogFileName() {
 	if (_defaultLogFileName.empty()) {
 		_defaultLogFileName = JNI::getScummVMLogPath();
 	}
@@ -594,12 +611,14 @@ Common::String OSystem_Android::getDefaultLogFileName() {
 }
 
 Common::WriteStream *OSystem_Android::createLogFileForAppending() {
-	if (getDefaultLogFileName().empty()) {
+	Common::String logPath(getDefaultLogFileName().toString(Common::Path::kNativeSeparator));
+
+	if (logPath.empty()) {
 		__android_log_write(ANDROID_LOG_ERROR, android_log_tag, "Log file path is not known upon create attempt!");
 		return nullptr;
 	}
 
-	FILE *scvmLogFilePtr = fopen(getDefaultLogFileName().c_str(), "a");
+	FILE *scvmLogFilePtr = fopen(logPath.c_str(), "a");
 	if (scvmLogFilePtr != nullptr) {
 		// We check for log file size; if it's too big, we rewrite it.
 		// This happens only upon app launch, in initBackend() when createLogFileForAppending() is called
@@ -608,9 +627,9 @@ Common::WriteStream *OSystem_Android::createLogFileForAppending() {
 		if (sz > MAX_ANDROID_SCUMMVM_LOG_FILESIZE_IN_BYTES) {
 			fclose(scvmLogFilePtr);
 			__android_log_write(ANDROID_LOG_WARN, android_log_tag, "Default log file is bigger than 100KB. It will be overwritten!");
-			if (!getDefaultLogFileName().empty()) {
+			if (!logPath.empty()) {
 				// Create the log file from scratch overwriting the previous one
-				scvmLogFilePtr = fopen(getDefaultLogFileName().c_str(), "w");
+				scvmLogFilePtr = fopen(logPath.c_str(), "w");
 				if (scvmLogFilePtr == nullptr) {
 					__android_log_write(ANDROID_LOG_ERROR, android_log_tag, "Could not open default log file for rewrite!");
 					return nullptr;
@@ -622,7 +641,7 @@ Common::WriteStream *OSystem_Android::createLogFileForAppending() {
 		}
 	} else {
 		__android_log_write(ANDROID_LOG_ERROR, android_log_tag, "Could not open default log file for writing/appending.");
-		__android_log_write(ANDROID_LOG_ERROR, android_log_tag, getDefaultLogFileName().c_str());
+		__android_log_write(ANDROID_LOG_ERROR, android_log_tag, logPath.c_str());
 	}
 	return new PosixIoStream(scvmLogFilePtr);
 }
@@ -816,12 +835,13 @@ Common::MutexInternal *OSystem_Android::createMutex() {
 void OSystem_Android::quit() {
 	ENTER();
 
+	_audio_thread_exit = true;
+	_timer_thread_exit = true;
+
+	JNI::wakeupForQuit();
 	JNI::setReadyForEvents(false);
 
-	_audio_thread_exit = true;
 	pthread_join(_audio_thread, 0);
-
-	_timer_thread_exit = true;
 	pthread_join(_timer_thread, 0);
 }
 
@@ -950,6 +970,7 @@ bool OSystem_Android::setGraphicsMode(int mode, uint flags) {
 	if (render3d && !supports3D) {
 		debug(5, "switching to 3D graphics");
 		delete _graphicsManager;
+		_graphicsManager = nullptr;
 		AndroidGraphics3dManager *manager = new AndroidGraphics3dManager();
 		_graphicsManager = manager;
 		androidGraphicsManager = manager;
@@ -957,6 +978,7 @@ bool OSystem_Android::setGraphicsMode(int mode, uint flags) {
 	} else if (!render3d && supports3D) {
 		debug(5, "switching to 2D graphics");
 		delete _graphicsManager;
+		_graphicsManager = nullptr;
 		AndroidGraphicsManager *manager = new AndroidGraphicsManager();
 		_graphicsManager = manager;
 		androidGraphicsManager = manager;
@@ -1026,104 +1048,106 @@ void *OSystem_Android::getOpenGLProcAddress(const char *name) const {
 #endif
 
 static const char * const helpTabs[] = {
-_s("Controls"),
+
+_s("Getting help"),
 "",
 _s(
-"## Touch controls\n"
+"## Help, I'm lost!\n"
 "\n"
-"The touch control scheme can be configured in the global settings. From the Launcher, go to **Options > Backend > Choose the preferred touch mode**.\n"
-"It's possible to configure the touch mode for three situations (ScummVM menus, 2D games and 3D games) and choose one of the three possible modes:\n"
+"First, make sure you have the games and necessary game files ready. Check the **Where to Get the Games** section under the **General** tab. Once obtained, follow the steps outlined in the **Adding Games** tab to finish adding them on this device. Take a moment to review this process carefully, as some users encountered challenges here owing to recent Android changes.\n"
 "\n"
-" * Direct mouse, the touch controls are direct. The pointer jumps to where the finger touches the screen (default for menus).\n"
-" * Touchpad emulation, the touch controls are indirect. The finger can be far away from the pointer and still move it, like on a laptop touchpad.\n"
-" * Gamepad emulation, the touch controls don't move any mouse. The fingers must be placed on lower left and right of the screen and respectively emulate a directional pad and action buttons.\n"
-" * The pointer speed setting in the **Controls tab** affects how far the pointer moves in response to a finger movement.\n"
+"Need more help? Refer to our [online documentation for Android](https://docs.scummvm.org/en/latest/other_platforms/android.html). Got questions? Swing by our [support forums](https://forums.scummvm.org/viewforum.php?f=17) or hop on our [Discord server](https://discord.gg/4cDsMNtcpG), which includes an [Android support channel](https://discord.com/channels/581224060529148060/1135579923185139862).\n"
 "\n"
-"The touch mode can be switched at anytime by tapping on the controller icon, next to the menu icon at the top right of the screen.\n"
+"Oh, and heads up, many of our supported games are intentionally tricky, sometimes mind-bogglingly so. If you're stuck in a game, think about checking out a game walkthrough. Good luck!\n"
+),
+
+_s("Touch Controls"),
+"android-help.zip",
+_s(
+"## Touch control modes\n"
+"The touch control mode can be changed by tapping or clicking on the controller icon in the upper right corner"
 "\n"
-"To display or hide the small controller icon, from the Launcher select **Options** and then the **Backend** tab. Tick the **Show on-screen control** box to enable the controller icon.\n"
+"### Direct mouse \n"
 "\n"
-"## Two finger tap\n"
+"The touch controls are direct. The pointer jumps to where the finger touches the screen (default for menus).\n"
+"\n"
+"  ![Direct mouse mode](mouse.png \"Direct mouse mode\"){w=10em}\n"
+"\n"
+"### Touchpad emulation \n"
+"\n"
+"The touch controls are indirect, like on a laptop touchpad.\n"
+"\n"
+"  ![Touchpad mode](touchpad.png \"Touchpad mode\"){w=10em}\n"
+"\n"
+"### Gamepad emulation \n"
+"\n"
+"Fingers must be placed on lower left and right of the screen to emulate a directional pad and action buttons.\n"
+"\n"
+"  ![Gamepad mode](gamepad.png \"Gamepad mode\"){w=10em}\n"
+"\n"
+"To select the preferred touch mode for menus, 2D games, and 3D games, go to **Global Options > Backend > Choose the preferred touch mode**.\n"
+"\n"
+"## Touch actions \n"
+"\n"
+"### Two finger scroll \n"
+"\n"
+"To scroll, slide two fingers up or down the screen"
+"\n"
+"### Two finger tap\n"
 "\n"
 "To do a two finger tap, hold one finger down and then tap with a second finger.\n"
 "\n"
-"## Three finger tap\n"
+"### Three finger tap\n"
 "\n"
 "To do a three finger tap, start with holding down one finger and progressively touch down the other two fingers, one at a time, while still holding down the previous fingers. Imagine you are impatiently tapping your fingers on a surface, but then slow down that movement so it is rhythmic, but not too slow.\n"
 "\n"
-"## Immersive Sticky fullscreen mode\n"
+"### Immersive Sticky fullscreen mode\n"
 "\n"
-"ScummVM for Android uses the Immersive Sticky fullscreen mode, which means that the Android system bar is hidden until the user swipes from an edge with a system bar. Swipe from the edge to reveal the system bars.  They remain semi-transparent and disappear after a few seconds unless you interact with them. Your swipe also registers in the game, so if you need to swipe from an edge with system bars, your game play is not interrupted.\n"
+"Swipe from the edge to reveal the system bars.  They remain semi-transparent and disappear after a few seconds unless you interact with them.\n"
 "\n"
-"## Global Main Menu\n"
+"### Global Main Menu\n"
 "\n"
-"To open the Global Main Menu, tap on the small menu icon at the top right of the screen.\n"
+"To open the Global Main Menu, tap on the menu icon at the top right of the screen.\n"
 "\n"
-"To display or hide the small menu icon, from the Launcher select **Options** and then the **Backend** tab. Tick the **Show on-screen control** box to enable the menu icon.\n"
+"  ![Menu icon](menu.png \"Menu icon\"){w=10em}\n"
 "\n"
 "## Virtual keyboard\n"
 "\n"
-"To open the virtual keyboard, long press on the small controller icon at the top right of the screen, or tap on any editable text field. To hide the virtual keyboard, tap the small controller icon (which became a keyboard one) again, or tap outside the text field.\n"
+"To open the virtual keyboard, long press on the controller icon at the top right of the screen, or tap on any editable text field. To hide the virtual keyboard, tap the controller icon again, or tap outside the text field.\n"
+"\n"
+"\n"
+"  ![Keybpard icon](keyboard.png \"Keyboard icon\"){w=10em}\n"
 "\n"
 	),
 
 _s("Adding Games"),
 "android-help.zip",
 _s(
-"## Adding SAF paths to ScummVM directory list\n"
+"## Adding Games \n"
 "\n"
-"Starting with version 2.7.0 of ScummVM for Android, significant changes were made to the file access system to allow support for modern versions of the Android Operating System.\n"
+"1. Select **Add Game...** from the launcher. \n"
 "\n"
-"If you find that your existing added games or custom paths no longer work, please edit those paths and this time use the SAF system to browse to the desired locations.\n"
+"2. Inside the ScummVM file browser, select **Go Up** until you reach the root folder which has the **<Add a new folder>** option. \n"
 "\n"
-"To do that:\n"
+"  ![ScummVM file browser root](browser-root.png \"ScummVM file browser root\"){w=70%}\n"
 "\n"
-"  1. For each game whose data is not found, go to the \"Paths\" tab in the \"Game Options\" and change the \"Game path\"\n"
+"3. Double-tap **<Add a new folder>**. In your device's file browser, navigate to the folder containing all your game folders. For example, **SD Card > ScummVMgames**. \n"
 "\n"
-"  2. Inside the ScummVM file browser, use \"Go Up\" until you reach the \"root\" folder where you will see the \"<Add a new folder>\" option.\n"
+"4. Select **Use this folder**. \n"
 "\n"
-"  ![File browser](browser-root.png \"Android browser\")\n"
+"  ![OS selectable folder](fs-folder.png \"OS selectable folder\"){w=70%}\n"
 "\n"
-"    File Browser root with <Add a new folder> item\n"
+"5. Select **ALLOW** to give ScummVM permission to access the folder. \n"
 "\n"
-"  3. Choose that, then browse and select the \"parent\" folder for your games subfolders, e.g. \"SD Card > ScummVMgames\". Click on \"Use this folder\".\n"
+"  ![OS access permission dialog](fs-permission.png \"OS access permission\"){w=70%}\n"
 "\n"
-"  ![OS file browser root](fs-root.png \"OS file browser root\")\n"
+"6. In the ScummVM file browser, double-tap to browse through your added folder. Add a game by selecting the sub-folder containing the game files, then tap **Choose**. \n"
 "\n"
-"    OS file browser root\n"
+"  ![SAF folder added](browser-folder-in-list.png \"SAF folder added\"){w=70%}\n"
 "\n"
-"  ![OS selectable folder](fs-folder.png \"OS selectable folder\")\n"
+"Step 2 and 3 are done only once. To add more games, repeat Steps 1 and 6. \n"
 "\n"
-"    OS file browser selectable folder with \"Use this folder\" button\n"
-"\n"
-"  ![OS access permission dialog](fs-permission.png \"OS access permission\")\n"
-"\n"
-"    OS file browser ask to grant ScummVM directory access permission\n"
-"\n"
-"  4. Then, a new folder \"ScummVMgames\" will appear on the \"root\" folder of the ScummVM browser.\n"
-"\n"
-"  ![SAF folder added](browser-folder-in-list.png \"SAF folder added\")\n"
-"\n"
-"    File browser with added SAF folder in root\n"
-"\n"
-"  5. Browse through this folder to your game data.\n"
-"\n"
-"Steps 2 and 3 need to be done only once for all of your games.\n"
-"\n"
-"\n"
-"## Removing SAF path authorizations\n"
-"\n"
-"In case you would like to revoke any of the granted SAF authorizations, there is an option for this in the \"Global Options > Backend\" tab as shown on the screenshot below:\n"
-"\n"
-"![\"Remove folder authorizations...\" button](gui-remove-permissions.png \"'Remove folder authorizations...' button\")\n"
-"\n"
-"    GUI tab with \"Remove folder authorizations...\" button\n"
-"\n"
-"![List of authorizations to revoked](gui-remove-list.png \"List of authorizations to revoke\")\n"
-"\n"
-"    GUI dialog with list of authorizations to revoke\n"
-"\n"
-"In case you revoke authorization to a path, still used for specific games/titles, please follow the procedure of fixing them outlined in the previous subheading.\n"
+"See our [Android documentation](https://docs.scummvm.org/en/latest/other_platforms/android.html) for more information.\n"
 	),
 
 0 // End of list

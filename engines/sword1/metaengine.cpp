@@ -20,19 +20,41 @@
  */
 
 #include "engines/advancedDetector.h"
-#include "engines/obsolete.h"
 
 #include "sword1/sword1.h"
 #include "sword1/control.h"
-#include "sword1/obsolete.h"
+#include "sword1/logic.h"
 
 #include "common/savefile.h"
 #include "common/system.h"
+#include "common/translation.h"
 
 #include "graphics/thumbnail.h"
 #include "graphics/surface.h"
 
-class SwordMetaEngine : public AdvancedMetaEngine {
+namespace Sword1 {
+		
+#define GAMEOPTION_WINDOWS_AUDIO_MODE GUIO_GAMEOPTIONS1
+
+static const ADExtraGuiOptionsMap optionsList[] = {
+	{
+		GAMEOPTION_WINDOWS_AUDIO_MODE,
+		{
+			_s("Simulate the audio engine from the Windows executable"),
+			_s("Makes the game use softer (logarithmic) audio curves, but removes fade-in and fade-out for "
+			   "sound effects, fade-in for music, and automatic music volume attenuation for when speech is playing"),
+			"windows_audio_mode",
+			false,
+			0,
+			0
+		}
+	},
+	AD_EXTRA_GUI_OPTIONS_TERMINATOR
+};
+
+} // End of namespace Sword1
+
+class SwordMetaEngine : public AdvancedMetaEngine<ADGameDescription> {
 public:
 	const char *getName() const override {
 		return "sword1";
@@ -44,11 +66,10 @@ public:
 	int getMaximumSaveSlot() const override;
 	void removeSaveState(const char *target, int slot) const override;
 	SaveStateDescriptor querySaveMetaInfos(const char *target, int slot) const override;
-
-	Common::Error createInstance(OSystem *syst, Engine **engine) override {
-		Engines::upgradeTargetIfNecessary(obsoleteGameIDsTable);
-		return AdvancedMetaEngine::createInstance(syst, engine);
+	const ADExtraGuiOptionsMap *getAdvancedExtraGuiOptions() const override {
+		return Sword1::optionsList;
 	}
+
 	Common::Error createInstance(OSystem *syst, Engine **engine, const ADGameDescription *desc) const override;
 
 	Common::String getSavegameFile(int saveGameIdx, const char *target) const override {
@@ -182,7 +203,6 @@ SaveStateDescriptor SwordMetaEngine::querySaveMetaInfos(const char *target, int 
 namespace Sword1 {
 
 Common::Error SwordEngine::loadGameState(int slot) {
-	_systemVars.forceRestart = false;
 	_systemVars.controlPanelMode = CP_NORMAL;
 	_control->restoreGameFromFile(slot);
 	reinitialize();
@@ -191,7 +211,7 @@ Common::Error SwordEngine::loadGameState(int slot) {
 	return Common::kNoError;    // TODO: return success/failure
 }
 
-bool SwordEngine::canLoadGameStateCurrently() {
+bool SwordEngine::canLoadGameStateCurrently(Common::U32String *msg) {
 	return (mouseIsActive() && !_control->isPanelShown()); // Disable GMM loading when game panel is shown
 }
 
@@ -201,8 +221,8 @@ Common::Error SwordEngine::saveGameState(int slot, const Common::String &desc, b
 	return Common::kNoError;    // TODO: return success/failure
 }
 
-bool SwordEngine::canSaveGameStateCurrently() {
-	return (mouseIsActive() && !_control->isPanelShown());
+bool SwordEngine::canSaveGameStateCurrently(Common::U32String *msg) {
+	return (mouseIsActive() && !_control->isPanelShown() && Logic::_scriptVars[SCREEN] != 91);
 }
 
 } // End of namespace Sword1

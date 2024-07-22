@@ -71,6 +71,15 @@ enum ScriptType {
 	kMaxScriptType = 7	// Sync with types.cpp:28, array scriptTypes[]
 };
 
+enum EventHandlerSourceType {
+	kNoneHandler = 0,
+	kPrimaryHandler = 1,
+	kSpriteHandler = 2,
+	kCastHandler = 3,
+	kFrameHandler = 4,
+	kMovieHandler = 5
+};
+
 enum ScriptFlag {
 	kScriptFlagUnused		= (1 << 0x0),
 	kScriptFlagFuncsGlobal	= (1 << 0x1),
@@ -290,6 +299,11 @@ enum TransitionType {
 	kTransDissolveBits
 };
 
+enum RenderMode {
+	kRenderModeNormal,
+	kRenderForceUpdate
+};
+
 // TODO: Can there be any more built-in palette types?
 enum PaletteType {
 	kClutSystemMac = -1,
@@ -314,8 +328,11 @@ enum DirectorCursor {
 
 enum PlayState {
 	kPlayNotStarted,
+	kPlayLoaded,
 	kPlayStarted,
-	kPlayStopped
+	kPlayStopped,
+	kPlayPaused,
+	kPlayPausedAfterLoading,
 };
 
 enum SymbolType {
@@ -390,6 +407,7 @@ enum LPPFlag {
 	kLPPNone = 0,
 	kLPPSimple = 1 << 0,
 	kLPPForceD2 = 1 << 1,
+	kLPPTrimGarbage = 1 << 2,
 };
 
 struct CastMemberID {
@@ -415,10 +433,10 @@ struct CastMemberID {
 };
 
 enum CompareResult {
-	kCompareLess,
-	kCompareEqual,
-	kCompareGreater,
-	kCompareError
+	kCompareLess	= 1 << 0,
+	kCompareEqual	= 1 << 1,
+	kCompareGreater = 1 << 2,
+	kCompareError	= 1 << 3,
 };
 
 enum DebugDrawModes {
@@ -434,6 +452,7 @@ typedef Common::Array<PCell> PropertyArray;
 const char *scriptType2str(ScriptType scr);
 const char *castType2str(CastType type);
 const char *spriteType2str(SpriteType type);
+const char *inkType2str(InkType type);
 
 } // End of namespace Director
 

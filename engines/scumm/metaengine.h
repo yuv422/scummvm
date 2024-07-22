@@ -29,7 +29,8 @@ class ScummMetaEngine : public MetaEngine {
 
 	bool hasFeature(MetaEngineFeature f) const override;
 
-	Common::Error createInstance(OSystem *syst, Engine **engine) override;
+	Common::Error createInstance(OSystem *syst, Engine **engine,
+	                             const DetectedGame &gameDescriptor, const void *metaEngineDescriptor) override;
 
 	SaveStateList listSaves(const char *target) const override;
 	int getMaximumSaveSlot() const override;
@@ -37,9 +38,15 @@ class ScummMetaEngine : public MetaEngine {
 	SaveStateDescriptor querySaveMetaInfos(const char *target, int slot) const override;
 
 	const ExtraGuiOptions getExtraGuiOptions(const Common::String &target) const override;
+	void registerDefaultSettings(const Common::String &) const override;
+
 	GUI::OptionsContainerWidget *buildEngineOptionsWidget(GUI::GuiObject *boss, const Common::String &name, const Common::String &target) const override;
 
 	Common::KeymapArray initKeymaps(const char *target) const override;
+
+private:
+	GUI::OptionsContainerWidget *buildLoomOptionsWidget(GUI::GuiObject *boss, const Common::String &name, const Common::String &target) const;
+	GUI::OptionsContainerWidget *buildMI1OptionsWidget(GUI::GuiObject *boss, const Common::String &name, const Common::String &target) const;
 };
 
 #endif // SCUMM_METAENGINE_H

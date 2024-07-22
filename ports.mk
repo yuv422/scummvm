@@ -15,7 +15,7 @@ install-data:
 	$(INSTALL) -d "$(DESTDIR)$(docdir)"
 	$(INSTALL) -c -m 644 $(DIST_FILES_DOCS) "$(DESTDIR)$(docdir)"
 	$(INSTALL) -d "$(DESTDIR)$(datadir)"
-	$(INSTALL) -c -m 644 $(DIST_FILES_THEMES) $(DIST_FILES_NETWORKING) $(DIST_FILES_VKEYBD) $(DIST_FILES_ENGINEDATA) "$(DESTDIR)$(datadir)/"
+	$(INSTALL) -c -m 644 $(DIST_FILES_THEMES) $(DIST_FILES_NETWORKING) $(DIST_FILES_VKEYBD) $(DIST_FILES_ENGINEDATA) $(DIST_FILES_ENGINEDATA_BIG)  $(DIST_FILES_SOUNDFONTS) "$(DESTDIR)$(datadir)/"
 	$(INSTALL) -d "$(DESTDIR)$(datarootdir)/applications"
 	$(INSTALL) -c -m 644 "$(srcdir)/dists/org.scummvm.scummvm.desktop" "$(DESTDIR)$(datarootdir)/applications/org.scummvm.scummvm.desktop"
 	$(INSTALL) -d "$(DESTDIR)$(datarootdir)/metainfo"
@@ -61,19 +61,22 @@ dist-generic: $(EXECUTABLE) $(PLUGINS)
 	mkdir -p ./dist-generic/scummvm/doc
 	rm -f ./dist-generic/scummvm/$(EXECUTABLE)
 	cp $(EXECUTABLE) ./dist-generic/scummvm
-ifeq ($(BACKEND), atari)
-	m68k-atari-mint-flags -S ./dist-generic/scummvm/$(EXECUTABLE)
-endif
 	cp $(DIST_FILES_DOCS) ./dist-generic/scummvm/doc
 	cp $(DIST_FILES_THEMES) ./dist-generic/scummvm/data
 ifdef DIST_FILES_ENGINEDATA
 	cp $(DIST_FILES_ENGINEDATA) ./dist-generic/scummvm/data
+endif
+ifdef DIST_FILES_ENGINEDATA_BIG
+	cp $(DIST_FILES_ENGINEDATA_BIG) ./dist-generic/scummvm/data
 endif
 ifdef DIST_FILES_NETWORKING
 	cp $(DIST_FILES_NETWORKING) ./dist-generic/scummvm/data
 endif
 ifdef DIST_FILES_VKEYBD
 	cp $(DIST_FILES_VKEYBD) ./dist-generic/scummvm/data
+endif
+ifdef DIST_FILES_SOUNDFONTS
+	cp $(DIST_FILES_SOUNDFONTS) ./dist-generic/scummvm/data
 endif
 ifdef DIST_FILES_SHADERS
 	mkdir -p ./dist-generic/scummvm/data/shaders
@@ -137,12 +140,14 @@ bundle-pack:
 	mkdir -p $(bundle_name)/Contents/MacOS
 	mkdir -p $(bundle_name)/Contents/Resources
 	echo "APPL????" > $(bundle_name)/Contents/PkgInfo
-	sed -e 's/$$(PRODUCT_BUNDLE_IDENTIFIER)/org.scummvm.scummvm/' $(srcdir)/dists/macosx/Info.plist >$(bundle_name)/Contents/Info.plist
+	sed -e 's/$$(PRODUCT_BUNDLE_IDENTIFIER)/org.scummvm.app/' $(srcdir)/dists/macosx/Info.plist >$(bundle_name)/Contents/Info.plist
 ifdef USE_SPARKLE
 	mkdir -p $(bundle_name)/Contents/Frameworks
 	cp $(srcdir)/dists/macosx/dsa_pub.pem $(bundle_name)/Contents/Resources/
 	rm -rf $(bundle_name)/Contents/Frameworks/Sparkle.framework
 	cp -RP $(SPARKLEPATH)/Sparkle.framework $(bundle_name)/Contents/Frameworks/
+	rm -f $(bundle_name)/Contents/Frameworks/Sparkle.framework/XPCServices
+	rm -rf $(bundle_name)/Contents/Frameworks/Sparkle.framework/Versions/Current/XPCServices/
 endif
 ifdef MACOSX_LEOPARD_OR_BELOW
 	cp $(srcdir)/icons/scummvm_legacy.icns $(bundle_name)/Contents/Resources/scummvm.icns
@@ -157,8 +162,14 @@ endif
 ifdef DIST_FILES_ENGINEDATA
 	cp $(DIST_FILES_ENGINEDATA) $(bundle_name)/Contents/Resources/
 endif
+ifdef DIST_FILES_ENGINEDATA_BIG
+	cp $(DIST_FILES_ENGINEDATA_BIG) $(bundle_name)/Contents/Resources/
+endif
 ifdef DIST_FILES_VKEYBD
 	cp $(DIST_FILES_VKEYBD) $(bundle_name)/Contents/Resources/
+endif
+ifdef DIST_FILES_SOUNDFONTS
+	cp $(DIST_FILES_SOUNDFONTS) $(bundle_name)/Contents/Resources/
 endif
 ifneq ($(DIST_FILES_SHADERS),)
 	mkdir -p $(bundle_name)/Contents/Resources/shaders
@@ -171,10 +182,21 @@ ifdef USE_PANDOC
 	@sed -i'.sed-orig' -e "s|href=\"AUTHORS\"|href=\"https://www.scummvm.org/credits/\"|g" $(bundle_name)/Contents/Resources/README$(PANDOCEXT)
 endif
 	@rm $(bundle_name)/Contents/Resources/*.sed-orig
-	cp $(bundle_name)/Contents/Resources/COPYING.LGPL $(bundle_name)/Contents/Resources/COPYING-LGPL
-	cp $(bundle_name)/Contents/Resources/COPYING.FREEFONT $(bundle_name)/Contents/Resources/COPYING-FREEFONT
-	cp $(bundle_name)/Contents/Resources/COPYING.OFL $(bundle_name)/Contents/Resources/COPYING-OFL
+	cp $(bundle_name)/Contents/Resources/COPYING.Apache $(bundle_name)/Contents/Resources/COPYING-Apache
 	cp $(bundle_name)/Contents/Resources/COPYING.BSD $(bundle_name)/Contents/Resources/COPYING-BSD
+	cp $(bundle_name)/Contents/Resources/COPYING.BSL $(bundle_name)/Contents/Resources/COPYING-BSL
+	cp $(bundle_name)/Contents/Resources/COPYING.FREEFONT $(bundle_name)/Contents/Resources/COPYING-FREEFONT
+	cp $(bundle_name)/Contents/Resources/COPYING.GLAD $(bundle_name)/Contents/Resources/COPYING-GLAD
+	cp $(bundle_name)/Contents/Resources/COPYING.ISC $(bundle_name)/Contents/Resources/COPYING-ISC
+	cp $(bundle_name)/Contents/Resources/COPYING.LGPL $(bundle_name)/Contents/Resources/COPYING-LGPL
+	cp $(bundle_name)/Contents/Resources/COPYING.LUA $(bundle_name)/Contents/Resources/COPYING-LUA
+	cp $(bundle_name)/Contents/Resources/COPYING.MIT $(bundle_name)/Contents/Resources/COPYING-MIT
+	cp $(bundle_name)/Contents/Resources/COPYING.MKV $(bundle_name)/Contents/Resources/COPYING-MKV
+	cp $(bundle_name)/Contents/Resources/COPYING.MPL $(bundle_name)/Contents/Resources/COPYING-MPL
+	cp $(bundle_name)/Contents/Resources/COPYING.OFL $(bundle_name)/Contents/Resources/COPYING-OFL
+	cp $(bundle_name)/Contents/Resources/COPYING.TINYGL $(bundle_name)/Contents/Resources/COPYING-TINYGL
+	cp $(bundle_name)/Contents/Resources/CatharonLicense.txt $(bundle_name)/Contents/Resources/CatharonLicense-txt
+
 ifdef DYNAMIC_MODULES
 	cp $(PLUGINS) $(bundle_name)/Contents/Resources/
 endif
@@ -212,6 +234,19 @@ ios7bundle: scummvm-static-ios
 			print "\t\t\t\t<string>AppIcon29x29</string>";\
 			print "\t\t\t\t<string>AppIcon40x40</string>";\
 			print "\t\t\t\t<string>AppIcon60x60</string>";\
+			print "\t\t\t</array>";\
+			print "\t\t</dict>";\
+			print "\t</dict>";\
+			s=2}\
+		/<key>CFBundleIcons~ipad<\/key>/ {\
+			print $$0;\
+			print "\t<dict>";\
+			print "\t\t<key>CFBundlePrimaryIcon</key>";\
+			print "\t\t<dict>";\
+			print "\t\t\t<key>CFBundleIconFiles</key>";\
+			print "\t\t\t<array>";\
+			print "\t\t\t\t<string>AppIcon76x76</string>";\
+			print "\t\t\t\t<string>AppIcon83.5x83.5</string>";\
 			print "\t\t\t</array>";\
 			print "\t\t</dict>";\
 			print "\t</dict>";\
@@ -288,8 +323,14 @@ endif
 ifdef DIST_FILES_ENGINEDATA
 	cp $(DIST_FILES_ENGINEDATA) $(bundle_name)/
 endif
+ifdef DIST_FILES_ENGINEDATA_BIG
+	cp $(DIST_FILES_ENGINEDATA_BIG) $(bundle_name)/
+endif
 ifdef DIST_FILES_VKEYBD
 	cp $(DIST_FILES_VKEYBD) $(bundle_name)/
+endif
+ifdef DIST_FILES_SOUNDFONTS
+	cp $(DIST_FILES_SOUNDFONTS) $(bundle_name)/
 endif
 ifneq ($(DIST_FILES_SHADERS),)
 	cp $(DIST_FILES_SHADERS) $(bundle_name)/
@@ -297,6 +338,7 @@ endif
 	$(STRIP) scummvm
 	chmod 755 scummvm
 	cp scummvm $(bundle_name)/ScummVM
+	cp $(srcdir)/dists/ios7/ios-help.zip $(bundle_name)/ios-help.zip
 	cp $(srcdir)/dists/ios7/Images.xcassets/AppIcon.appiconset/icon4-29@2x.png $(bundle_name)/AppIcon29x29@2x.png
 	cp $(srcdir)/dists/ios7/Images.xcassets/AppIcon.appiconset/icon4-29@2x.png $(bundle_name)/AppIcon29x29@2x~ipad.png
 	cp $(srcdir)/dists/ios7/Images.xcassets/AppIcon.appiconset/icon4-29@3x.png $(bundle_name)/AppIcon29x29@3x.png
@@ -318,6 +360,7 @@ endif
 	cp $(srcdir)/dists/ios7/Images.xcassets/LaunchImage.launchimage/ScummVM-splash-1242x2208.png $(bundle_name)/LaunchImage-800-Portrait-736h@3x.png
 	cp $(srcdir)/dists/ios7/Images.xcassets/LaunchImage.launchimage/ScummVM-splash-2208x1242.png $(bundle_name)/LaunchImage-800-Landscape-736h@3x.png
 	cp $(srcdir)/dists/ios7/Images.xcassets/LaunchImage.launchimage/ScummVM-splash-750x1334.png $(bundle_name)/LaunchImage-800-667h@2x.png
+	cp $(srcdir)/dists/ios7/Assets.car $(bundle_name)/Assets.car
 	codesign -s - --deep --force $(bundle_name)
 
 tvosbundle: scummvm-static-ios
@@ -377,8 +420,14 @@ endif
 ifdef DIST_FILES_ENGINEDATA
 	cp $(DIST_FILES_ENGINEDATA) $(bundle_name)/
 endif
+ifdef DIST_FILES_ENGINEDATA_BIG
+	cp $(DIST_FILES_ENGINEDATA_BIG) $(bundle_name)/
+endif
 ifdef DIST_FILES_VKEYBD
 	cp $(DIST_FILES_VKEYBD) $(bundle_name)/
+endif
+ifdef DIST_FILES_SOUNDFONTS
+	cp $(DIST_FILES_SOUNDFONTS) $(bundle_name)/
 endif
 ifneq ($(DIST_FILES_SHADERS),)
 	cp $(DIST_FILES_SHADERS) $(bundle_name)/
@@ -488,6 +537,10 @@ ifdef USE_MIKMOD
 OSX_STATIC_LIBS += $(STATICLIBPATH)/lib/libmikmod.a
 endif
 
+ifdef USE_OPENMPT
+OSX_STATIC_LIBS += $(STATICLIBPATH)/lib/libopenmpt.a
+endif
+
 ifdef USE_MPEG2
 OSX_STATIC_LIBS += $(STATICLIBPATH)/lib/libmpeg2.a
 endif
@@ -514,6 +567,10 @@ endif
 
 ifdef USE_RETROWAVE
 OSX_STATIC_LIBS += $(STATICLIBPATH)/lib/libRetroWave.a
+endif
+
+ifdef USE_SONIVOX
+OSX_STATIC_LIBS += $(STATICLIBPATH)/lib/libsonivox-static.a
 endif
 
 ifdef USE_SPARKLE
@@ -548,16 +605,19 @@ osxsnap: bundle
 	mkdir ScummVM-snapshot
 	cp $(DIST_FILES_DOCS) ./ScummVM-snapshot/
 	mv ./ScummVM-snapshot/COPYING ./ScummVM-snapshot/License\ \(GPL\)
-	mv ./ScummVM-snapshot/COPYING.LGPL ./ScummVM-snapshot/License\ \(LGPL\)
-	mv ./ScummVM-snapshot/COPYING.FREEFONT ./ScummVM-snapshot/License\ \(FREEFONT\)
-	mv ./ScummVM-snapshot/COPYING.OFL ./ScummVM-snapshot/License\ \(OFL\)
+	mv ./ScummVM-snapshot/COPYING.Apache ./ScummVM-snapshot/License\ \(Apache\)
 	mv ./ScummVM-snapshot/COPYING.BSD ./ScummVM-snapshot/License\ \(BSD\)
+	mv ./ScummVM-snapshot/COPYING.BSL ./ScummVM-snapshot/License\ \(BSL\)
+	mv ./ScummVM-snapshot/COPYING.FREEFONT ./ScummVM-snapshot/License\ \(FREEFONT\)
+	mv ./ScummVM-snapshot/COPYING.GLAD ./ScummVM-snapshot/License\ \(Glad\)
 	mv ./ScummVM-snapshot/COPYING.ISC ./ScummVM-snapshot/License\ \(ISC\)
+	mv ./ScummVM-snapshot/COPYING.LGPL ./ScummVM-snapshot/License\ \(LGPL\)
 	mv ./ScummVM-snapshot/COPYING.LUA ./ScummVM-snapshot/License\ \(Lua\)
 	mv ./ScummVM-snapshot/COPYING.MIT ./ScummVM-snapshot/License\ \(MIT\)
 	mv ./ScummVM-snapshot/COPYING.MKV ./ScummVM-snapshot/License\ \(MKV\)
+	mv ./ScummVM-snapshot/COPYING.MPL ./ScummVM-snapshot/License\ \(MPL\)
+	mv ./ScummVM-snapshot/COPYING.OFL ./ScummVM-snapshot/License\ \(OFL\)
 	mv ./ScummVM-snapshot/COPYING.TINYGL ./ScummVM-snapshot/License\ \(TinyGL\)
-	mv ./ScummVM-snapshot/COPYING.GLAD ./ScummVM-snapshot/License\ \(Glad\)
 	mv ./ScummVM-snapshot/CatharonLicense.txt ./ScummVM-snapshot/CatharonLicense.txt
 	$(XCODETOOLSPATH)/SetFile -t ttro -c ttxt ./ScummVM-snapshot/*
 	mkdir ScummVM-snapshot/doc

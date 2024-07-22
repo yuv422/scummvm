@@ -22,6 +22,8 @@
 #include "common/config-manager.h"
 #include "common/translation.h"
 
+#include "engines/metaengine.h"
+
 #include "graphics/macgui/macwindowmanager.h"
 #include "graphics/macgui/macmenu.h"
 
@@ -311,10 +313,10 @@ bool PinkEngine::executePageChangeCommand(uint id) {
 }
 
 void PinkEngine::openLocalWebPage(const Common::String &pageName) const {
-	Common::FSNode gameFolder = Common::FSNode(ConfMan.get("path"));
+	Common::FSNode gameFolder = Common::FSNode(ConfMan.getPath("path"));
 	Common::FSNode filePath = gameFolder.getChild("INSTALL").getChild(pageName);
 	if (filePath.exists()) {
-		Common::String fullUrl = Common::String::format("file:///%s", filePath.getPath().c_str());
+		Common::String fullUrl = Common::String::format("file:///%s", filePath.getPath().toString('/').c_str());
 		_system->openUrl(fullUrl);
 	}
 }

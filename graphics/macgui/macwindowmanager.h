@@ -24,11 +24,13 @@
 
 #include "common/hashmap.h"
 #include "common/list.h"
+#include "common/mutex.h"
 #include "common/stack.h"
 #include "common/events.h"
 
 #include "graphics/font.h"
 #include "graphics/fontman.h"
+#include "graphics/palette.h"
 #include "graphics/macgui/macwindow.h"
 #include "graphics/macgui/macmenu.h"
 
@@ -90,6 +92,7 @@ enum {
 	kWMModeWin95				= (1 << 10),
 	kWMModeForceMacFontsInWin95 = (1 << 11), // Enforce Mac font for languages which don't have glyphs in ms_sans_serif.ttf
 	kWMModeNoCursorOverride     = (1 << 12),
+	kWMModeForceMacBorder       = (1 << 13),
 };
 
 }
@@ -362,7 +365,7 @@ public:
 
 	BorderOffsets getBorderOffsets(uint32 windowType);
 	Common::SeekableReadStream *getBorderFile(uint32 windowType, uint32 flags);
-	Common::SeekableReadStream *getFile(const Common::String &filename);
+	Common::SeekableReadStream *getFile(const Common::Path &filename);
 
 	void setTextInClipboard(const Common::U32String &str);
 	/**
@@ -400,7 +403,7 @@ public:
 	Common::Point _lastMousePos;
 	Common::Rect _menuHotzone;
 
-	bool _menuTimerActive;
+	uint32 _menuTimer;
 	bool _mouseDown;
 
 	uint32 _colorBlack, _colorGray80, _colorGray88, _colorGrayEE, _colorWhite, _colorGreen, _colorGreen2;
@@ -424,7 +427,7 @@ private:
 	void adjustDimensions(const Common::Rect &clip, const Common::Rect &dims, int &adjWidth, int &adjHeight);
 
 public:
-	TransparentSurface *_desktopBmp;
+	Surface *_desktopBmp;
 	ManagedSurface *_desktop;
 	PixelFormat _pixelformat;
 
@@ -433,6 +436,7 @@ public:
 	Common::Rect _screenDims;
 
 private:
+	Common::Mutex _mutex;
 	Common::List<BaseMacWindow *> _windowStack;
 	Common::HashMap<uint, BaseMacWindow *> _windows;
 
@@ -458,9 +462,9 @@ private:
 	void *_engineR;
 	void (*_redrawEngineCallback)(void *engine);
 
-	MacCursorType _tempType;
+	MacCursorType _tempType = kMacCursorArrow;
 	Common::Stack<MacCursorType> _cursorTypeStack;
-	Cursor *_cursor;
+	Cursor *_cursor = nullptr;
 
 	MacWidget *_activeWidget;
 	MacWidget *_lockedWidget;

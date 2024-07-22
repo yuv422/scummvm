@@ -118,6 +118,7 @@ Script::Script(GroovieEngine *vm, EngineVersion version) :
 	_videoSkipAddress = 0;
 	resetFastForward();
 	_eventKbdChar = 0;
+	_eventAction = kActionNone;
 	_eventMouseClicked = 0;
 	_wantAutosave = false;
 }
@@ -166,7 +167,7 @@ bool Script::loadScript(Common::String filename) {
 		scriptfile = _vm->_macResFork->getResource(filename);
 	} else {
 		// Try to open the script file
-		scriptfile = SearchMan.createReadStreamForMember(filename);
+		scriptfile = SearchMan.createReadStreamForMember(Common::Path(filename));
 	}
 
 	if (!scriptfile)
@@ -395,6 +396,10 @@ void Script::setMouseClick(uint8 button) {
 
 void Script::setKbdChar(uint8 c) {
 	_eventKbdChar = c;
+}
+
+void Script::setAction(uint8 a) {
+	_eventAction = a;
 }
 
 Common::String &Script::getContext() {
@@ -983,11 +988,12 @@ bool Script::playvideofromref(uint32 fileref, bool loopUntilAudioDone) {
 	}
 
 	// Check if the user wants to skip the video
-	if (_eventMouseClicked == 2 || _eventKbdChar == Common::KEYCODE_ESCAPE || _eventKbdChar == Common::KEYCODE_SPACE) {
+	if (_eventMouseClicked == 2 || _eventAction == kActionSkip) {
 		// we don't want to clear a left click here, that would eat the input
 		if (_eventMouseClicked == 2)
 			_eventMouseClicked = 0;
 		_eventKbdChar = 0;
+		_eventAction = kActionNone;
 		if (_videoSkipAddress != 0) {
 			// Jump to the given address
 			_currentInstruction = _videoSkipAddress;
@@ -1038,6 +1044,7 @@ bool Script::playvideofromref(uint32 fileref, bool loopUntilAudioDone) {
 			// Clear the input events while playing the video
 			_eventMouseClicked = 0;
 			_eventKbdChar = 0;
+			_eventAction = kActionNone;
 
 			// Newline
 			debugCN(1, kDebugScript, "\n");
@@ -1103,6 +1110,7 @@ void Script::o_inputloopstart() {	//0x0B
 	// Save the current pressed character for the whole loop
 	_kbdChar = _eventKbdChar;
 	_eventKbdChar = 0;
+	_eventAction = kActionNone;
 }
 
 void Script::o_keyboardaction() {
@@ -1329,7 +1337,7 @@ void Script::o_sleep() {
 	while (_vm->_system->getMillis() < endTime && !_fastForwarding) {
 		_vm->_system->getEventManager()->pollEvent(ev);
 		if (ev.type == Common::EVENT_RBUTTONDOWN
-			|| (ev.type == Common::EVENT_KEYDOWN && (ev.kbd.ascii == Common::KEYCODE_SPACE || ev.kbd.ascii == Common::KEYCODE_ESCAPE))
+			|| (ev.type == Common::EVENT_CUSTOM_ENGINE_ACTION_START && (ev.customType == kActionSkip))
 		) {
 			_fastForwarding = true;
 			break;
@@ -1827,10 +1835,11 @@ void Script::o_printstring() {
 	stringstorage[counter] = 0;
 
 	Common::Rect topbar(640, 80);
-	Graphics::Surface *gamescreen = _vm->_system->lockScreen();
 
 	// Clear the top bar
-	gamescreen->fillRect(topbar, 0);
+	_vm->_system->fillScreen(topbar, 0);
+
+	Graphics::Surface *gamescreen = _vm->_system->lockScreen();
 
 	// Draw the string
 	printString(gamescreen, stringstorage);
@@ -1870,10 +1879,10 @@ void Script::o_hotspot_slot() {
 			return;
 		}
 
-		Graphics::Surface *gamescreen = _vm->_system->lockScreen();
-
 		// Clear the top bar
-		gamescreen->fillRect(removeText, 0);	// 0 works for both color formats (Groovie V1 and V2)
+		_vm->_system->fillScreen(removeText, 0);	// 0 works for both color formats (Groovie V1 and V2)
+
+		Graphics::Surface *gamescreen = _vm->_system->lockScreen();
 
 		printString(gamescreen, _saveNames[slot].c_str());
 
@@ -1885,12 +1894,7 @@ void Script::o_hotspot_slot() {
 
 	} else {
 		if (_hotspotSlot == slot) {
-			Graphics::Surface *gamescreen;
-			gamescreen = _vm->_system->lockScreen();
-
-			gamescreen->fillRect(removeText, 0);	// 0 works for both color formats (Groovie V1 and V2)
-
-			_vm->_system->unlockScreen();
+			_vm->_system->fillScreen(removeText, 0);	// 0 works for both color formats (Groovie V1 and V2)
 
 			// Removing the slot highlight
 			_hotspotSlot = (uint16)-1;

@@ -292,6 +292,7 @@ bool Movements::processBehaviourExecution(int actorIdx) {
 		_engine->_animations->initAnim(AnimationTypes::kHide, AnimType::kAnimationTypeRepeat, AnimationTypes::kAnimInvalid, actorIdx);
 		break;
 	case HeroBehaviourType::kProtoPack:
+	case HeroBehaviourType::kMax:
 		break;
 	}
 	return executeAction;
@@ -357,7 +358,7 @@ void Movements::processManualMovementExecution(int actorIdx) {
 			if (actor->_genAnim == AnimationTypes::kStanding) {
 				_engine->_animations->initAnim(AnimationTypes::kTurnLeft, AnimType::kAnimationTypeRepeat, AnimationTypes::kAnimInvalid, actorIdx);
 			} else {
-				if (!actor->_dynamicFlags.bIsRotationByAnim) {
+				if (!actor->_workFlags.bIsRotationByAnim) {
 					actor->_beta = actor->realAngle.getRealAngle(_engine->timerRef);
 				}
 			}
@@ -366,7 +367,7 @@ void Movements::processManualMovementExecution(int actorIdx) {
 			if (actor->_genAnim == AnimationTypes::kStanding) {
 				_engine->_animations->initAnim(AnimationTypes::kTurnRight, AnimType::kAnimationTypeRepeat, AnimationTypes::kAnimInvalid, actorIdx);
 			} else {
-				if (!actor->_dynamicFlags.bIsRotationByAnim) {
+				if (!actor->_workFlags.bIsRotationByAnim) {
 					actor->_beta = actor->realAngle.getRealAngle(_engine->timerRef);
 				}
 			}
@@ -427,7 +428,7 @@ void Movements::processFollowAction(int actorIdx) {
 
 void Movements::processRandomAction(int actorIdx) {
 	ActorStruct *actor = _engine->_scene->getActor(actorIdx);
-	if (actor->_dynamicFlags.bIsRotationByAnim) {
+	if (actor->_workFlags.bIsRotationByAnim) {
 		return;
 	}
 
@@ -479,7 +480,7 @@ void Movements::doDir(int32 actorIdx) {
 		return;
 	}
 
-	if (actor->_dynamicFlags.bIsFalling) {
+	if (actor->_workFlags.bIsFalling) {
 		if (actor->_controlMode == ControlMode::kManual) {
 			manualRealAngle(actor);
 			// TODO: _lastJoyFlag = _joyFlag;

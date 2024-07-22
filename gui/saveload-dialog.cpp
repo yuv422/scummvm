@@ -444,6 +444,7 @@ SaveLoadChooserSimple::SaveLoadChooserSimple(const Common::U32String &title, con
 	_list = new ListWidget(this, "SaveLoadChooser.List");
 	_list->setNumberingMode(kListNumberingZero);
 	_list->setEditable(saveMode);
+	_list->enableQuickSelect(false); // quick select is only useful on sorted list
 
 	_gfxWidget = new GraphicsWidget(this, 0, 0, 10, 10);
 
@@ -495,6 +496,19 @@ void SaveLoadChooserSimple::handleCommand(CommandSender *sender, uint32 cmd, uin
 	int selItem = _list->getSelected();
 
 	switch (cmd) {
+	case kListItemSingleClickedCmd:
+		// This command is sent even if an item is clicked while in edit mode,
+		// but that's okay because startEditMode() does nothing when editing.
+		if (_list->isEditable() && _chooseButton->isEnabled()) {
+			_list->startEditMode();
+		}
+		break;
+	case kListItemEditModeStartedCmd:
+		if (_list->getSelectedString() == _("Untitled saved game")) {
+			_list->setEditString(Common::U32String());
+			_list->setEditColor(ThemeEngine::kFontColorNormal);
+		}
+		break;
 	case kListItemActivatedCmd:
 	case kListItemDoubleClickedCmd:
 		if (selItem >= 0 && _chooseButton->isEnabled()) {
@@ -529,10 +543,8 @@ void SaveLoadChooserSimple::handleCommand(CommandSender *sender, uint32 cmd, uin
 
 				setResult(-1);
 				int scrollPos = _list->getCurrentScrollPos();
-				_list->setSelected(-1); // resets scroll pos
+				updateSaveList(); // resets scroll pos
 				_list->scrollTo(scrollPos);
-
-				updateSaveList();
 				updateSelection(true);
 			}
 		}
@@ -621,7 +633,6 @@ void SaveLoadChooserSimple::updateSelection(bool redraw) {
 
 	bool isDeletable = _delSupport;
 	bool isWriteProtected = false;
-	bool startEditMode = _list->isEditable();
 	bool isLocked = false;
 
 	// We used to support letting the themes specify the fill color with our
@@ -636,14 +647,10 @@ void SaveLoadChooserSimple::updateSelection(bool redraw) {
 		if (!_saveList[selItem].getLocked() && desc.getSaveSlot() >= 0 && !desc.getDescription().empty())
 			_saveList[selItem] = desc;
 
-		isDeletable = desc.getDeletableFlag() && _delSupport;
+		isDeletable = _saveList[selItem].getDeletableFlag() && _delSupport;
 		isWriteProtected = desc.getWriteProtectedFlag() ||
 			_saveList[selItem].getWriteProtectedFlag();
 		isLocked = desc.getLocked();
-
-		// Don't allow the user to change the description of write protected games
-		if (isWriteProtected)
-			startEditMode = false;
 
 		if (_thumbnailSupport) {
 			const Graphics::Surface *thumb = desc.getThumbnail();
@@ -668,20 +675,10 @@ void SaveLoadChooserSimple::updateSelection(bool redraw) {
 		}
 	}
 
-
 	if (_list->isEditable()) {
 		// Disable the save button if slot is locked, nothing is selected,
 		// or if the selected game is write protected
 		_chooseButton->setEnabled(!isLocked && selItem >= 0 && !isWriteProtected);
-
-		if (startEditMode) {
-			_list->startEditMode();
-
-			if (_chooseButton->isEnabled() && _list->getSelectedString() == _("Untitled saved game")) {
-				_list->setEditString(Common::U32String());
-				_list->setEditColor(ThemeEngine::kFontColorNormal);
-			}
-		}
 	} else {
 		// Disable the load button if slot is locked, nothing is selected,
 		// or if an empty list item is selected.
@@ -740,6 +737,7 @@ void SaveLoadChooserSimple::updateSaveList() {
 	int saveSlot = 0;
 	Common::U32StringArray saveNames;
 	ThemeEngine::FontColor color = ThemeEngine::kFontColorNormal;
+	Common::U32String emptyDesc;
 	for (SaveStateList::const_iterator x = _saveList.begin(); x != _saveList.end(); ++x) {
 		// Handle gaps in the list of save games
 		saveSlot = x->getSaveSlot();
@@ -747,7 +745,7 @@ void SaveLoadChooserSimple::updateSaveList() {
 			while (curSlot < saveSlot) {
 				SaveStateDescriptor dummySave(_metaEngine, curSlot, "");
 				_saveList.insert_at(curSlot, dummySave);
-				saveNames.push_back(GUI::ListWidget::getThemeColor(color) + dummySave.getDescription());
+				saveNames.push_back(emptyDesc);
 				curSlot++;
 			}
 
@@ -785,8 +783,6 @@ void SaveLoadChooserSimple::updateSaveList() {
 	}
 #endif
 
-	Common::U32String emptyDesc;
-	color = ThemeEngine::kFontColorNormal;
 	for (int i = curSlot; i <= maximumSaveSlots; i++) {
 		saveNames.push_back(emptyDesc);
 		SaveStateDescriptor dummySave(_metaEngine, i, "");
@@ -1145,6 +1141,8 @@ void SaveLoadChooserGrid::hideButtons() {
 void SaveLoadChooserGrid::updateSaves() {
 	hideButtons();
 
+	bool isWriteProtected = false;
+
 	for (uint i = _curPage * _entriesPerPage, curNum = 0; i < _saveList.size() && curNum < _entriesPerPage; ++i, ++curNum) {
 		const uint saveSlot = _saveList[i].getSaveSlot();
 
@@ -1159,10 +1157,10 @@ void SaveLoadChooserGrid::updateSaves() {
 		} else {
 			curButton.button->setGfx(kThumbnailWidth, kThumbnailHeight2, 0, 0, 0);
 		}
-		curButton.description->setLabel(Common::U32String(Common::String::format("%d. ", saveSlot)) + desc.getDescription());
+		curButton.description->setLabel(Common::U32String(Common::String::format("%d. ", saveSlot)) + _saveList[i].getDescription());
 
 		Common::U32String tooltip(_("Name: "));
-		tooltip += desc.getDescription();
+		tooltip += _saveList[i].getDescription();
 
 		if (_saveDateSupport) {
 			const Common::U32String &saveDate = desc.getSaveDate();
@@ -1191,7 +1189,9 @@ void SaveLoadChooserGrid::updateSaves() {
 		// In save mode we disable the button, when it's write protected.
 		// TODO: Maybe we should not display it at all then?
 		// We also disable and description the button if slot is locked
-		if ((_saveMode && desc.getWriteProtectedFlag()) || desc.getLocked()) {
+		isWriteProtected = desc.getWriteProtectedFlag() ||
+			_saveList[i].getWriteProtectedFlag();
+		if ((_saveMode && isWriteProtected) || desc.getLocked()) {
 			curButton.button->setEnabled(false);
 		} else {
 			curButton.button->setEnabled(true);

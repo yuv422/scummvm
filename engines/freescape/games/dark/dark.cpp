@@ -18,8 +18,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
+#include "backends/keymapper/action.h"
+#include "backends/keymapper/keymap.h"
+#include "backends/keymapper/standard-actions.h"
 #include "common/file.h"
+#include "common/translation.h"
 
 #include "freescape/freescape.h"
 #include "freescape/games/dark/dark.h"
@@ -40,10 +43,8 @@ DarkEngine::DarkEngine(OSystem *syst, const ADGameDescription *gd) : FreescapeEn
 		initAmigaAtari();
 
 	_playerHeightNumber = 1;
-	_playerHeights.push_back(16);
-	_playerHeights.push_back(48);
+	_playerHeightMaxNumber = 1;
 
-	_playerHeight = _playerHeights[_playerHeightNumber];
 	_playerWidth = 12;
 	_playerDepth = 32;
 	_stepUpDistance = 64;
@@ -156,37 +157,52 @@ bool DarkEngine::checkECD(uint16 areaID, int index) {
 	return !obj->isDestroyed();
 }
 
+void DarkEngine::initKeymaps(Common::Keymap *engineKeyMap, const char *target) {
+	FreescapeEngine::initKeymaps(engineKeyMap, target);
+	Common::Action *act;
+
+	act = new Common::Action("JETPACK", _("Enable/Disable Jetpack"));
+	act->setKeyEvent(Common::KeyState(Common::KEYCODE_j, 'j'));
+	act->addDefaultInputMapping("JOY_LEFT_SHOULDER");
+	act->addDefaultInputMapping("JOY_RIGHT_SHOULDER");
+	act->addDefaultInputMapping("j");
+	engineKeyMap->addAction(act);
+}
+
 void DarkEngine::initGameState() {
-	_flyMode = false;
-	_hasFallen = false;
-	_noClipMode = false;
-	_playerWasCrushed = false;
-	_shootingFrames = 0;
-	_underFireFrames = 0;
-	_yaw = 0;
-	_pitch = 0;
-
-	for (int i = 0; i < k8bitMaxVariable; i++) // TODO: check maximum variable
-		_gameStateVars[i] = 0;
-
-	for (auto &it : _areaMap)
-		it._value->resetArea();
-
-	_gameStateBits = 0;
-
+	FreescapeEngine::initGameState();
 	_gameStateVars[k8bitVariableEnergy] = _initialEnergy;
 	_gameStateVars[k8bitVariableShield] = _initialShield;
 	_gameStateVars[kVariableActiveECDs] = 100;
 
 	_playerHeightNumber = 1;
-	_playerHeight = _playerHeights[_playerHeightNumber];
-	removeTimers();
-	startCountdown(_initialCountdown);
-	_lastMinute = 0;
-	_demoIndex = 0;
-	_demoEvents.clear();
 	_exploredAreas.clear();
 	_exploredAreas[_startArea] = true;
+
+	_endArea = 1;
+	_endEntrance = 26;
+
+	int seconds, minutes, hours;
+	getTimeFromCountdown(seconds, minutes, hours);
+	_lastMinute = minutes;
+	_lastTenSeconds = seconds / 10;
+}
+
+void DarkEngine::loadAssets() {
+	FreescapeEngine::loadAssets();
+
+	for (auto &it : _areaMap) {
+		addWalls(it._value);
+		addECDs(it._value);
+		if (it._value->getAreaID() != 255)
+			addSkanner(it._value);
+	}
+
+	_timeoutMessage = _messagesList[14];
+	_noShieldMessage = _messagesList[15];
+	_noEnergyMessage = _messagesList[16];
+	_fallenMessage = _messagesList[17];
+	_crushedMessage = _messagesList[10];
 }
 
 bool DarkEngine::tryDestroyECDFullGame(int index) {
@@ -326,42 +342,60 @@ bool DarkEngine::tryDestroyECD(int index) {
 }
 
 void DarkEngine::addSkanner(Area *area) {
-	GeometricObject *obj = nullptr;
-	int16 id;
+	debugC(1, kFreescapeDebugParser, "Adding skanner to room %d", area->getAreaID());
+	int16 id = 0;
+	if (isAmiga() || isAtariST()) {
+		id = 251;
+		debugC(1, kFreescapeDebugParser, "Adding group %d", id);
+		area->addGroupFromArea(id, _areaMap[255]);
+	} else {
+		GeometricObject *obj = nullptr;
+		id = 248;
+		// If first object is already added, do not re-add any
+		if (area->objectWithID(id) != nullptr)
+			return;
 
-	id = 248;
-	// If first object is already added, do not re-add any
-	if (area->objectWithID(id) != nullptr)
-		return;
+		debugC(1, kFreescapeDebugParser, "Adding object %d to room structure", id);
+		obj = (GeometricObject *)_areaMap[255]->objectWithID(id);
+		assert(obj);
+		obj = (GeometricObject *)obj->duplicate();
+		obj->makeInvisible();
+		area->addObject(obj);
 
-	debugC(1, kFreescapeDebugParser, "Adding object %d to room structure", id);
-	obj = (GeometricObject *)_areaMap[255]->objectWithID(id);
-	assert(obj);
-	obj = (GeometricObject *)obj->duplicate();
-	obj->makeInvisible();
-	area->addObject(obj);
+		id = 249;
+		debugC(1, kFreescapeDebugParser, "Adding object %d to room structure", id);
+		obj = (GeometricObject *)_areaMap[255]->objectWithID(id);
+		assert(obj);
+		obj = (GeometricObject *)obj->duplicate();
+		obj->makeInvisible();
+		area->addObject(obj);
 
-	id = 249;
-	debugC(1, kFreescapeDebugParser, "Adding object %d to room structure", id);
-	obj = (GeometricObject *)_areaMap[255]->objectWithID(id);
-	assert(obj);
-	obj = (GeometricObject *)obj->duplicate();
-	obj->makeInvisible();
-	area->addObject(obj);
-
-	id = 250;
-	debugC(1, kFreescapeDebugParser, "Adding object %d to room structure", id);
-	obj = (GeometricObject *)_areaMap[255]->objectWithID(id);
-	assert(obj);
-	obj = (GeometricObject *)obj->duplicate();
-	obj->makeInvisible();
-	area->addObject(obj);
+		id = 250;
+		debugC(1, kFreescapeDebugParser, "Adding object %d to room structure", id);
+		obj = (GeometricObject *)_areaMap[255]->objectWithID(id);
+		assert(obj);
+		obj = (GeometricObject *)obj->duplicate();
+		obj->makeInvisible();
+		area->addObject(obj);
+	}
 }
 
 bool DarkEngine::checkIfGameEnded() {
+	if (_gameStateControl == kFreescapeGameStatePlaying) {
+		FreescapeEngine::checkIfGameEnded();
+
+		// If the game state changed to game over, then the player failed
+		if (_gameStateControl == kFreescapeGameStateEnd) {
+			_gameStateVars[kVariableDarkEnding] = kDarkEndingEvathDestroyed;
+		}
+	}
+
 	if (_gameStateVars[kVariableDarkECD] > 0) {
 		int index = _gameStateVars[kVariableDarkECD] - 1;
 		bool destroyed = tryDestroyECD(index);
+		if (isSpectrum())
+			playSound(7, false);
+
 		if (destroyed) {
 			_gameStateVars[kVariableActiveECDs] -= 4;
 			_gameStateVars[k8bitVariableScore] += 52750;
@@ -369,62 +403,56 @@ bool DarkEngine::checkIfGameEnded() {
 		} else {
 			restoreECD(*_currentArea, index);
 			insertTemporaryMessage(_messagesList[1], _countdown - 2);
+			if (isSpectrum())
+				playSound(30, false);
+			else
+				playSound(19, true);
 		}
 		_gameStateVars[kVariableDarkECD] = 0;
-	}
 
-	if (_hasFallen) {
-		_gameStateVars[kVariableDarkEnding] = kDarkEndingEvathDestroyed;
-		playSound(14, false);
-		insertTemporaryMessage(_messagesList[17], _countdown - 4);
-		drawBackground();
-		drawBorder();
-		drawUI();
-		_gfx->flipBuffer();
-		g_system->updateScreen();
-		g_system->delayMillis(1000);
-		gotoArea(1, 26);
-	} else if (_playerWasCrushed) {
-		insertTemporaryMessage(_messagesList[10], _countdown - 2);
-		_gameStateVars[kVariableDarkEnding] = kDarkEndingEvathDestroyed;
-		drawFrame();
-		_gfx->flipBuffer();
-		g_system->updateScreen();
-		g_system->delayMillis(2000);
-		_playerWasCrushed = false;
-		gotoArea(1, 26);
-	} else if (_gameStateVars[k8bitVariableShield] == 0) {
-		insertTemporaryMessage(_messagesList[15], _countdown - 2);
-		_gameStateVars[kVariableDarkEnding] = kDarkEndingEvathDestroyed;
-		drawFrame();
-		_gfx->flipBuffer();
-		g_system->updateScreen();
-		g_system->delayMillis(2000);
-		gotoArea(1, 26);
-	} else if (_forceEndGame) {
-		_forceEndGame = false;
-		insertTemporaryMessage(_messagesList[18], _countdown - 2);
-		_gameStateVars[kVariableDarkEnding] = kDarkEndingEvathDestroyed;
-		drawFrame();
-		_gfx->flipBuffer();
-		g_system->updateScreen();
-		g_system->delayMillis(2000);
-		gotoArea(1, 26);
-	}
-
-	if (_currentArea->getAreaID() == 1) {
-		rotate(0, 10);
-		drawFrame();
-		_gfx->flipBuffer();
-		g_system->updateScreen();
-		g_system->delayMillis(20);
-		executeLocalGlobalConditions(false, true, false);
-		_gfx->flipBuffer();
-		g_system->updateScreen();
-		g_system->delayMillis(200);
-		return true;
+		if (_gameStateVars[kVariableActiveECDs] == 0) {
+			_gameStateControl = kFreescapeGameStateEnd;
+			_gameStateVars[kVariableDarkEnding] = kDarkEndingECDsDestroyed;
+		}
 	}
 	return false;
+}
+
+void DarkEngine::endGame() {
+	FreescapeEngine::endGame();
+
+	if (!_endGamePlayerEndArea)
+		return;
+
+	if (_gameStateControl == kFreescapeGameStateEnd) {
+
+		if (_gameStateVars[kVariableDarkEnding] == kDarkEndingECDsDestroyed) {
+			insertTemporaryMessage(_messagesList[19], INT_MIN);
+			executeLocalGlobalConditions(false, true, false);
+			_currentArea->_colorRemaps.clear();
+			_gfx->setColorRemaps(&_currentArea->_colorRemaps);
+			_gameStateVars[kVariableDarkEnding] = 0;
+		} else if (_gameStateVars[kVariableDarkEnding] == kDarkEndingEvathDestroyed) {
+			if (!_ticksFromEnd)
+				_ticksFromEnd = _ticks;
+			else if ((_ticks - _ticksFromEnd) / 15 >= 15) {
+				if (_gameStateVars[kVariableDarkEnding]) {
+					executeLocalGlobalConditions(false, true, false);
+					if (_gameStateVars[kVariableDarkEnding] == kDarkEndingEvathDestroyed)
+						insertTemporaryMessage(_messagesList[22], INT_MIN);
+
+					_currentArea->_colorRemaps.clear();
+					_gfx->setColorRemaps(&_currentArea->_colorRemaps);
+					_gameStateVars[kVariableDarkEnding] = 0;
+				}
+			}
+		}
+	}
+
+	if (_endGameKeyPressed && _gameStateVars[kVariableDarkEnding] == 0) {
+		_gameStateControl = kFreescapeGameStateRestart;
+	}
+	_endGameKeyPressed = false;
 }
 
 void DarkEngine::gotoArea(uint16 areaID, int entranceID) {
@@ -513,11 +541,21 @@ void DarkEngine::gotoArea(uint16 areaID, int entranceID) {
 	if (areaID == _startArea && entranceID == _startEntrance) {
 		_yaw = 90;
 		_pitch = 0;
+		if (isSpectrum())
+			playSound(11, true);
+		else
+			playSound(9, true);
+	} else if (areaID == _endArea && entranceID == _endEntrance) {
+		_pitch = 10;
+	} else {
+		if (isSpectrum())
+			playSound(0x1c, false);
+		else
+			playSound(5, false);
 	}
 
 	debugC(1, kFreescapeDebugMove, "starting player position: %f, %f, %f", _position.x(), _position.y(), _position.z());
 	clearTemporalMessages();
-	playSound(5, false);
 	// Ignore sky/ground fields
 	_gfx->_keyColor = 0;
 	// Color remaps are not restored in Dark Side
@@ -534,15 +572,33 @@ void DarkEngine::gotoArea(uint16 areaID, int entranceID) {
 }
 
 void DarkEngine::pressedKey(const int keycode) {
-	if (keycode == Common::KEYCODE_j) {
+	// This code is duplicated in the DrillerEngine::pressedKey (except for the J case)
+	if (keycode == Common::KEYCODE_q) {
+		rotate(-_angleRotations[_angleRotationIndex], 0);
+	} else if (keycode == Common::KEYCODE_w) {
+		rotate(_angleRotations[_angleRotationIndex], 0);
+	} else if (keycode == Common::KEYCODE_s) {
+		increaseStepSize();
+	} else if (keycode ==  Common::KEYCODE_x) {
+		decreaseStepSize();
+	} else if (keycode == Common::KEYCODE_r) {
+		rise();
+	} else if (keycode == Common::KEYCODE_f) {
+		lower();
+	} else if (keycode == Common::KEYCODE_j) {
 		_flyMode = !_flyMode;
+		//debugC(1, kFreescapeDebugMedia, "raw %d, hz: %f", freq, hzFreq);
 
 		if (_flyMode && _gameStateVars[k8bitVariableEnergy] == 0) {
 			_flyMode = false;
 			insertTemporaryMessage(_messagesList[13], _countdown - 2);
-		} else if (_flyMode)
+		} else if (_flyMode) {
+			float hzFreq = 1193180.0f / 0xd537;
+			_speaker->play(Audio::PCSpeaker::kWaveFormSquare, hzFreq, -1);
+			_mixer->playStream(Audio::Mixer::kSFXSoundType, &_soundFxHandle, _speaker, -1, Audio::Mixer::kMaxChannelVolume / 2, 0, DisposeAfterUse::NO);
 			insertTemporaryMessage(_messagesList[11], _countdown - 2);
-		else {
+		} else {
+			_speaker->stop();
 			resolveCollisions(_position);
 			if (!_hasFallen)
 				insertTemporaryMessage(_messagesList[12], _countdown - 2);
@@ -551,6 +607,8 @@ void DarkEngine::pressedKey(const int keycode) {
 }
 
 void DarkEngine::updateTimeVariables() {
+	if (_gameStateControl != kFreescapeGameStatePlaying)
+		return;
 	// This function only executes "on collision" room/global conditions
 	int seconds, minutes, hours;
 	getTimeFromCountdown(seconds, minutes, hours);
@@ -582,6 +640,12 @@ void DarkEngine::updateTimeVariables() {
 void DarkEngine::borderScreen() {
 	if (_border) {
 		drawBorder();
+		// Modify and reload the border
+		_border->fillRect(_viewArea, _gfx->_texturePixelFormat.ARGBToColor(0xFF, 0, 0, 0));
+		delete _borderTexture;
+		_borderTexture = nullptr;
+		loadBorder();
+
 		if (isDemo()) {
 			drawFullscreenMessageAndWait(_messagesList[27]);
 			drawFullscreenMessageAndWait(_messagesList[28]);
@@ -595,6 +659,17 @@ void DarkEngine::borderScreen() {
 void DarkEngine::executePrint(FCLInstruction &instruction) {
 	uint16 index = instruction._source - 1;
 	debugC(1, kFreescapeDebugCode, "Printing message %d", index);
+
+	if (index == 239 && (isAmiga() || isAtariST())) {
+		// Total Eclipse easter egg in Dark Side (Amiga/Atari)
+		Common::String message;
+		for (int i = 60; i < 66; i++)
+			message += _messagesList[i];
+
+		drawFullscreenMessageAndWait(message);
+		return;
+	}
+
 	if (index > 127) {
 		index = _messagesList.size() - (index - 254) - 2;
 		drawFullscreenMessageAndWait(_messagesList[index]);
@@ -603,100 +678,33 @@ void DarkEngine::executePrint(FCLInstruction &instruction) {
 	insertTemporaryMessage(_messagesList[index], _countdown - 2);
 }
 
-void DarkEngine::drawFullscreenMessage(Common::String message, uint32 front, Graphics::Surface *surface) {
-	uint32 black = _gfx->_texturePixelFormat.ARGBToColor(0xFF, 0x00, 0x00, 0x00);
-	uint32 color = _gfx->_texturePixelFormat.ARGBToColor(0x00, 0x00, 0x00, 0x00);
-
-	surface->fillRect(_fullscreenViewArea, color);
-	surface->fillRect(_viewArea, black);
-	int x = 0;
-	int y = 0;
-	int letterPerLine = 0;
-	int numberOfLines = 0;
-
-	if (isDOS()) {
-		x = 50;
-		y = 32;
-		letterPerLine = 28;
-		numberOfLines = 10;
-	} else if (isSpectrum()) {
-		x = 60;
-		y = 35;
-		letterPerLine = 24;
-		numberOfLines = 12;
-	}
-
-	for (int i = 0; i < numberOfLines; i++) {
-		Common::String line = message.substr(letterPerLine * i, letterPerLine);
-		//debug("'%s' %d", line.c_str(), line.size());
-		drawStringInSurface(line, x, y, front, black, surface);
-		y = y + 8;
-	}
-
-	drawFullscreenSurface(surface);
-}
-
-void DarkEngine::drawFullscreenMessageAndWait(Common::String message) {
-	_savedScreen = _gfx->getScreenshot();
-	uint32 color = 0;
-	switch (_renderMode) {
-		case Common::kRenderCGA:
-			color = 1;
-			break;
-		case Common::kRenderZX:
-			color = 6;
-			break;
-		default:
-			color = 14;
-	}
-	uint8 r, g, b;
-	_gfx->readFromPalette(color, r, g, b);
-	uint32 front = _gfx->_texturePixelFormat.ARGBToColor(0xFF, r, g, b);
-
-	Graphics::Surface *surface = new Graphics::Surface();
-	surface->create(_screenW, _screenH, _gfx->_texturePixelFormat);
-
-	Common::Event event;
-	bool cont = true;
-	while (!shouldQuit() && cont) {
-		while (g_system->getEventManager()->pollEvent(event)) {
-
-			// Events
-			switch (event.type) {
-			case Common::EVENT_KEYDOWN:
-				if (event.kbd.keycode == Common::KEYCODE_SPACE) {
-					cont = false;
-				}
-				break;
-			case Common::EVENT_SCREEN_CHANGED:
-				_gfx->computeScreenViewport();
-				break;
-
-			default:
-				break;
-			}
-		}
-		drawBorder();
-		if (_currentArea)
-			drawUI();
-		drawFullscreenMessage(message, front, surface);
-		_gfx->flipBuffer();
-		g_system->updateScreen();
-		g_system->delayMillis(15); // try to target ~60 FPS
-	}
-
-	_savedScreen->free();
-	delete _savedScreen;
-	surface->free();
-	delete surface;
-}
-
 void DarkEngine::drawBinaryClock(Graphics::Surface *surface, int xPosition, int yPosition, uint32 front, uint32 back) {
 	int number = _ticks / 2;
+
+	if (_gameStateControl == kFreescapeGameStatePlaying)
+		number = _ticks / 2;
+	else if (_gameStateControl == kFreescapeGameStateEnd) {
+		if (_gameStateVars[kVariableDarkEnding] == 0)
+			number = (1 << 15) - 1;
+		else
+			number = 1 << (_ticks - _ticksFromEnd) / 15;
+	} else
+		return;
+
+	int maxBits = isAtariST() || isAmiga() ? 14 : 15;
+	/*if (number >= 1 << maxBits)
+		number = (1 << maxBits) - 1;*/
+
 	int bits = 0;
-	while (bits <= 15) {
-		int y = yPosition - (7 * bits);
-		surface->drawLine(xPosition, y, xPosition + 3, y, number & 1 ? front : back);
+	while (bits <= maxBits) {
+		int y = 0;
+		if (isAmiga() || isAtariST()) {
+			y = yPosition - (3 * bits);
+			surface->fillRect(Common::Rect(xPosition, y - 2, xPosition + 4, y), number & 1 ? front : back);
+		} else {
+			y = yPosition - (7 * bits);
+			surface->drawLine(xPosition, y, xPosition + 3, y, number & 1 ? front : back);
+		}
 		number = number >> 1;
 		bits++;
 	}
@@ -716,6 +724,12 @@ void DarkEngine::drawIndicator(Graphics::Surface *surface, int xPosition, int yP
 }
 
 void DarkEngine::drawSensorShoot(Sensor *sensor) {
+	if (_gameStateControl == kFreescapeGameStatePlaying) {
+		// Avoid playing new sounds, so the endgame can progress
+		if (isSpectrum())
+			playSound(2, true);
+	}
+
 	Math::Vector3d target;
 	target = _position;
 	target.y() = target.y() - _playerHeight;
@@ -746,47 +760,61 @@ void DarkEngine::drawInfoMenu() {
 		default:
 			color = 14;
 	}
-	uint8 r, g, b;
-	_gfx->readFromPalette(color, r, g, b);
-	uint32 front = _gfx->_texturePixelFormat.ARGBToColor(0xFF, r, g, b);
-	uint32 black = _gfx->_texturePixelFormat.ARGBToColor(0xFF, 0x00, 0x00, 0x00);
 
+	Texture *menuTexture = nullptr;
 	Graphics::Surface *surface = new Graphics::Surface();
 	surface->create(_screenW, _screenH, _gfx->_texturePixelFormat);
 
-	surface->fillRect(Common::Rect(88, 48, 231, 103), black);
-	surface->frameRect(Common::Rect(88, 48, 231, 103), front);
+	if (isAmiga() || isAtariST()) {
+		uint32 white = _gfx->_texturePixelFormat.ARGBToColor(0xFF, 0xFF, 0xFF, 0xFF);
+		uint32 black = _gfx->_texturePixelFormat.ARGBToColor(0xFF, 0x00, 0x00, 0x00);
 
-	surface->frameRect(Common::Rect(90, 50, 229, 101), front);
+		drawString(kDarkFontSmall, "L-LOAD  S-SAVE ESC-ABORT", 32, 145, white, white, black, surface);
+		drawString(kDarkFontSmall, "OR USE THE ICONS.  OTHER", 32, 151, white, white, black, surface);
+		drawString(kDarkFontSmall, "KEYS WILL CONTINUE  GAME", 32, 157, white, white, black, surface);
+	} else {
+		uint8 r, g, b;
+		_gfx->readFromPalette(color, r, g, b);
+		uint32 front = _gfx->_texturePixelFormat.ARGBToColor(0xFF, r, g, b);
+		uint32 black = _gfx->_texturePixelFormat.ARGBToColor(0xFF, 0x00, 0x00, 0x00);
 
-	drawStringInSurface("L-LOAD S-SAVE", 105, 56, front, black, surface);
-	if (isSpectrum())
-		drawStringInSurface("1-TERMINATE", 105, 64, front, black, surface);
-	else
-		drawStringInSurface("ESC-TERMINATE", 105, 64, front, black, surface);
+		surface->fillRect(Common::Rect(88, 48, 231, 103), black);
+		surface->frameRect(Common::Rect(88, 48, 231, 103), front);
 
-	drawStringInSurface("T-TOGGLE", 128, 81, front, black, surface);
-	drawStringInSurface("SOUND ON/OFF", 113, 88, front, black, surface);
+		surface->frameRect(Common::Rect(90, 50, 229, 101), front);
+
+		drawStringInSurface("L-LOAD S-SAVE", 105, 56, front, black, surface);
+		if (isSpectrum())
+			drawStringInSurface("1-TERMINATE", 105, 64, front, black, surface);
+		else
+			drawStringInSurface("ESC-TERMINATE", 105, 64, front, black, surface);
+
+		drawStringInSurface("T-TOGGLE", 128, 81, front, black, surface);
+		drawStringInSurface("SOUND ON/OFF", 113, 88, front, black, surface);
+	}
+	menuTexture = _gfx->createTexture(surface);
 
 	Common::Event event;
 	bool cont = true;
 	while (!shouldQuit() && cont) {
-		while (g_system->getEventManager()->pollEvent(event)) {
+		while (_eventManager->pollEvent(event)) {
 
 			// Events
 			switch (event.type) {
 				case Common::EVENT_KEYDOWN:
 				if (event.kbd.keycode == Common::KEYCODE_l) {
 					_gfx->setViewport(_fullscreenViewArea);
+					_eventManager->purgeKeyboardEvents();
 					loadGameDialog();
 					_gfx->setViewport(_viewArea);
 				} else if (event.kbd.keycode == Common::KEYCODE_s) {
 					_gfx->setViewport(_fullscreenViewArea);
+					_eventManager->purgeKeyboardEvents();
 					saveGameDialog();
 					_gfx->setViewport(_viewArea);
 				} else if (isDOS() && event.kbd.keycode == Common::KEYCODE_t) {
-					// TODO
-				} else if ((isDOS() || isCPC()) && event.kbd.keycode == Common::KEYCODE_ESCAPE) {
+					playSound(6, true);
+				} else if (!isSpectrum() && event.kbd.keycode == Common::KEYCODE_ESCAPE) {
 					_forceEndGame = true;
 					cont = false;
 				} else if (isSpectrum() && event.kbd.keycode == Common::KEYCODE_1) {
@@ -804,7 +832,7 @@ void DarkEngine::drawInfoMenu() {
 			}
 		}
 		drawFrame();
-		drawFullscreenSurface(surface);
+		_gfx->drawTexturedRect2D(_fullscreenViewArea, _fullscreenViewArea, menuTexture);
 
 		_gfx->flipBuffer();
 		g_system->updateScreen();
@@ -815,6 +843,8 @@ void DarkEngine::drawInfoMenu() {
 	delete _savedScreen;
 	surface->free();
 	delete surface;
+
+	delete menuTexture;
 	pauseToken.clear();
 }
 

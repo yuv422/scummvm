@@ -21,11 +21,11 @@
 
 #include "common/events.h"
 #include "common/system.h"
-#include "graphics/palette.h"
 #include "graphics/surface.h"
 
 #include "sci/sci.h"
 #include "sci/engine/state.h"
+#include "sci/graphics/gfxdrivers.h"
 #include "sci/graphics/screen.h"
 #include "sci/graphics/palette.h"
 #include "sci/graphics/transitions.h"
@@ -163,13 +163,11 @@ const GfxTransitionTranslateEntry *GfxTransitions::translateNumber (int16 number
 }
 
 void GfxTransitions::doit(Common::Rect picRect) {
-	const GfxTransitionTranslateEntry *translationEntry = _translationTable;
-
 	_picRect = picRect;
 
 	if (_translationTable) {
 		// We need to translate the ID
-		translationEntry = translateNumber(_number, _translationTable);
+		const GfxTransitionTranslateEntry *translationEntry = translateNumber(_number, _translationTable);
 		if (translationEntry) {
 			_number = translationEntry->newId;
 			_blackoutFlag = translationEntry->blackoutFlag;
@@ -183,7 +181,7 @@ void GfxTransitions::doit(Common::Rect picRect) {
 	if (_blackoutFlag) {
 		// We need to find out what transition we are supposed to use for
 		// blackout
-		translationEntry = translateNumber(_number, blackoutTransitionIDs);
+		const GfxTransitionTranslateEntry *translationEntry = translateNumber(_number, blackoutTransitionIDs);
 		if (translationEntry) {
 			doTransition(translationEntry->newId, true);
 		} else {
@@ -285,16 +283,14 @@ void GfxTransitions::copyRectToScreen(const Common::Rect rect, bool blackoutFlag
 	if (!blackoutFlag) {
 		_screen->copyRectToScreen(rect);
 	} else {
-		Graphics::Surface *surface = g_system->lockScreen();
 		if (!_screen->getUpscaledHires()) {
-			surface->fillRect(rect, 0);
+			_screen->gfxDriver()->clearRect(rect);
 		} else {
 			Common::Rect upscaledRect = rect;
 			_screen->adjustToUpscaledCoordinates(upscaledRect.top, upscaledRect.left);
 			_screen->adjustToUpscaledCoordinates(upscaledRect.bottom, upscaledRect.right);
-			surface->fillRect(upscaledRect, 0);
+			_screen->gfxDriver()->clearRect(rect);
 		}
-		g_system->unlockScreen();
 	}
 }
 

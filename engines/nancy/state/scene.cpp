@@ -30,6 +30,7 @@
 #include "engines/nancy/graphics.h"
 #include "engines/nancy/cursor.h"
 #include "engines/nancy/util.h"
+#include "engines/nancy/resource.h"
 
 #include "engines/nancy/state/scene.h"
 #include "engines/nancy/state/map.h"
@@ -89,7 +90,7 @@ void Scene::SceneSummary::read(Common::SeekableReadStream &stream) {
 	ser.syncAsUint16LE((uint32 &)fastMoveTimeDelta);
 	ser.skip(1); // CD required for scene
 
-	const BSUM *bootSummary = (const BSUM *)g_nancy->getEngineData("BSUM");
+	auto *bootSummary = GetEngineData(BSUM);
 	assert(bootSummary);
 
 	if (bootSummary->overrideMovementTimeDeltas) {
@@ -98,6 +99,14 @@ void Scene::SceneSummary::read(Common::SeekableReadStream &stream) {
 	}
 
 	delete[] buf;
+}
+
+void Scene::SceneSummary::readTerse(Common::SeekableReadStream &stream) {
+	char *buf = new char[0x32];
+	stream.read(buf, 0x32);
+	description = buf;
+	readFilename(stream, videoFile);
+	sound.readTerse(stream);
 }
 
 Scene::Scene() :
@@ -117,11 +126,14 @@ Scene::Scene() :
 		_clock(nullptr),
 		_actionManager(),
 		_difficulty(0),
+		_activeMovie(nullptr),
 		_activeConversation(nullptr),
 		_lightning(nullptr),
-		_destroyOnExit(false) {}
+		_destroyOnExit(false),
+		_isRunningAd(false),
+		_hotspotDebug(50) {}
 
-Scene::~Scene()  {
+Scene::~Scene() {
 	delete _helpButton;
 	delete _menuButton;
 	delete _viewportOrnaments;
@@ -170,12 +182,11 @@ void Scene::onStateEnter(const NancyState::NancyState prevState) {
 
 		_actionManager.onPause(false);
 
-		g_nancy->_graphicsManager->redrawAll();
+		g_nancy->_graphics->redrawAll();
 
 		if (getHeldItem() != -1) {
-			g_nancy->_cursorManager->setCursorItemID(getHeldItem());
+			g_nancy->_cursor->setCursorItemID(getHeldItem());
 		}
-
 
 		if (prevState == NancyState::kPause) {
 			g_nancy->_sound->pauseAllSounds(false);
@@ -190,7 +201,10 @@ void Scene::onStateEnter(const NancyState::NancyState prevState) {
 }
 
 bool Scene::onStateExit(const NancyState::NancyState nextState) {
-	g_nancy->_graphicsManager->screenshotScreen(_lastScreenshot);
+	if (_state == kRun) {
+		// Exiting the state outside the kRun state means we've encountered an error
+		g_nancy->_graphics->screenshotScreen(_lastScreenshot);
+	}
 
 	if (nextState != NancyState::kPause) {
 		_timers.pushedPlayTime = g_nancy->getTotalPlayTime();
@@ -215,7 +229,7 @@ bool Scene::onStateExit(const NancyState::NancyState nextState) {
 }
 
 void Scene::changeScene(const SceneChangeDescription &sceneDescription) {
-	if (sceneDescription.sceneID == 9999 || _state == kLoad) {
+	if (sceneDescription.sceneID == kNoScene || _state == kLoad) {
 		return;
 	}
 
@@ -223,15 +237,38 @@ void Scene::changeScene(const SceneChangeDescription &sceneDescription) {
 	_state = kLoad;
 }
 
-void Scene::pushScene() {
-	_sceneState.pushedScene = _sceneState.currentScene;
-	_sceneState.isScenePushed = true;
+void Scene::pushScene(int16 itemID) {
+	if (itemID == -1) {
+		_sceneState.pushedScene = _sceneState.currentScene;
+		_sceneState.isScenePushed = true;
+	} else {
+		if (_sceneState.isInvScenePushed) {
+			// Re-add current pushed item
+			addItemToInventory(_sceneState.pushedInvItemID);
+		} else {
+			// Only set this when another item hasn't been pushed, otherwise
+			// the player will never be able to exit
+			_sceneState.pushedInvScene = _sceneState.currentScene;
+		}
+
+		_sceneState.isInvScenePushed = true;
+		_sceneState.pushedInvItemID = itemID;
+	}
 }
 
-void Scene::popScene() {
-	_sceneState.pushedScene.continueSceneSound = true;
-	changeScene(_sceneState.pushedScene);
-	_sceneState.isScenePushed = false;
+void Scene::popScene(bool inventory) {
+	if (!inventory || _sceneState.pushedInvItemID == -1) {
+		_sceneState.pushedScene.continueSceneSound = true;
+		changeScene(_sceneState.pushedScene);
+		_sceneState.isScenePushed = false;
+	} else {
+		_sceneState.pushedInvScene.continueSceneSound = true;
+		changeScene(_sceneState.pushedInvScene);
+		_sceneState.isInvScenePushed = false;
+		addItemToInventory(_sceneState.pushedInvItemID);
+		_sceneState.pushedInvItemID = kEvNoEvent;
+		_sceneState.pushedInvScene.sceneID = kNoScene;
+	}
 }
 
 void Scene::setPlayerTime(Time time, byte relative) {
@@ -243,7 +280,7 @@ void Scene::setPlayerTime(Time time, byte relative) {
 		_timers.playerTime = _timers.playerTime.getDays() * 86400000 + time;
 	}
 
-	const BSUM *bootSummary = (const BSUM *)g_nancy->getEngineData("BSUM");
+	auto *bootSummary = GetEngineData(BSUM);
 	assert(bootSummary);
 
 	_timers.playerTimeNextMinute = g_nancy->getTotalPlayTime() + bootSummary->playerTimeMinuteLength;
@@ -258,9 +295,21 @@ byte Scene::getPlayerTOD() const {
 		} else {
 			return kPlayerDuskDawn;
 		}
-	} else {
+	} else if (g_nancy->getGameType() <= kGameTypeNancy5) {
 		// nancy2 and up removed dusk/dawn
 		if (_timers.playerTime.getHours() >= 6 && _timers.playerTime.getHours() < 18) {
+			return kPlayerDay;
+		} else {
+			return kPlayerNight;
+		}
+	} else {
+		// nancy6 added the day start/end times (in minutes) to BSUM
+		auto *bootSummary = GetEngineData(BSUM);
+		assert(bootSummary);
+
+		uint16 minutes = _timers.playerTime.getHours() * 60 + _timers.playerTime.getMinutes();
+
+		if (minutes >= bootSummary->dayStartMinutes && minutes < bootSummary->dayEndMinutes) {
 			return kPlayerDay;
 		} else {
 			return kPlayerNight;
@@ -268,31 +317,59 @@ byte Scene::getPlayerTOD() const {
 	}
 }
 
-void Scene::addItemToInventory(uint16 id) {
-	_flags.items[id] = g_nancy->_true;
-	if (_flags.heldItem == id) {
-		setHeldItem(-1);
+void Scene::addItemToInventory(int16 id) {
+	if (id == -1) {
+		return;
 	}
-	
-	g_nancy->_sound->playSound("BUOK");
 
-	_inventoryBox.addItem(id);
+	if (_flags.items[id] == g_nancy->_false) {
+		_flags.items[id] = g_nancy->_true;
+		if (_flags.heldItem == id) {
+			setHeldItem(-1);
+		}
+
+		g_nancy->_sound->playSound("BUOK");
+
+		_inventoryBox.addItem(id);
+	}
 }
 
-void Scene::removeItemFromInventory(uint16 id, bool pickUp) {
-	_flags.items[id] = g_nancy->_false;
-
-	if (pickUp) {
-		setHeldItem(id);
+void Scene::removeItemFromInventory(int16 id, bool pickUp) {
+	if (id == -1) {
+		return;
 	}
-	
-	g_nancy->_sound->playSound("BUOK");
 
-	_inventoryBox.removeItem(id);
+	if (_flags.items[id] == g_nancy->_true || getHeldItem() == id) {
+		_flags.items[id] = g_nancy->_false;
+
+		if (pickUp) {
+			setHeldItem(id);
+		} else if (getHeldItem() == id) {
+			setHeldItem(-1);
+		}
+
+		g_nancy->_sound->playSound("BUOK");
+
+		_inventoryBox.removeItem(id);
+	}
 }
 
-void Scene::setHeldItem(int16 id)  {
-	_flags.heldItem = id; g_nancy->_cursorManager->setCursorItemID(id);
+void Scene::setHeldItem(int16 id) {
+	_flags.heldItem = id; g_nancy->_cursor->setCursorItemID(id);
+}
+
+void Scene::setNoHeldItem() {
+	if (getHeldItem() != -1) {
+		addItemToInventory(getHeldItem());
+	}
+}
+
+byte Scene::hasItem(int16 id) const {
+	if (getHeldItem() == id) {
+		return g_nancy->_true;
+	} else {
+		return _flags.items[id];
+	}
 }
 
 void Scene::installInventorySoundOverride(byte command, const SoundDescription &sound, const Common::String &caption, uint16 itemID) {
@@ -325,9 +402,13 @@ void Scene::installInventorySoundOverride(byte command, const SoundDescription &
 	}
 }
 
-void Scene::playItemCantSound(int16 itemID) {
+void Scene::playItemCantSound(int16 itemID, bool notHoldingSound) {
+	if (ConfMan.getBool("subtitles") && g_nancy->getGameType() >= kGameTypeNancy2) {
+		_textbox.clear();
+	}
+
 	// Improvement: nancy2 never shows the caption text, even though it exists in the data; we show it
-	const INV *inventoryData = (const INV *)g_nancy->getEngineData("INV");
+	auto *inventoryData = GetEngineData(INV);
 	assert(inventoryData);
 
 	if (itemID < 0) {
@@ -360,13 +441,13 @@ void Scene::playItemCantSound(int16 itemID) {
 				// Play the default "I can't" sound
 				const INV::ItemDescription item = inventoryData->itemDescriptions[itemID];
 
-				if (item.generalCantSound.name.size()) {
+				if (notHoldingSound && item.cantSoundNotHolding.name.size()) {
 					// This field only exists in nancy2
-					g_nancy->_sound->loadSound(item.generalCantSound);
-					g_nancy->_sound->playSound(item.generalCantSound);
+					g_nancy->_sound->loadSound(item.cantSoundNotHolding);
+					g_nancy->_sound->playSound(item.cantSoundNotHolding);
 
 					if (ConfMan.getBool("subtitles")) {
-						_textbox.addTextLine(item.generalCantText, inventoryData->captionAutoClearTime);
+						_textbox.addTextLine(item.cantTextNotHolding, inventoryData->captionAutoClearTime);
 					}
 				} else if (inventoryData->cantSound.name.size()) {
 					g_nancy->_sound->loadSound(inventoryData->cantSound);
@@ -385,13 +466,13 @@ void Scene::playItemCantSound(int16 itemID) {
 		// No override installed
 		const INV::ItemDescription item = inventoryData->itemDescriptions[itemID];
 
-		if (item.specificCantSound.name.size()) {
+		if (item.cantSound.name.size()) {
 			// The inventory data contains a custom "can't" sound for this item
-			g_nancy->_sound->loadSound(item.specificCantSound);
-			g_nancy->_sound->playSound(item.specificCantSound);
+			g_nancy->_sound->loadSound(item.cantSound);
+			g_nancy->_sound->playSound(item.cantSound);
 
 			if (ConfMan.getBool("subtitles")) {
-				_textbox.addTextLine(item.specificCantText, inventoryData->captionAutoClearTime);
+				_textbox.addTextLine(item.cantText, inventoryData->captionAutoClearTime);
 			}
 		} else if (inventoryData->cantSound.name.size()) {
 			// No custom sound, play default "can't" inside inventory data. Should (?) be unreachable
@@ -482,6 +563,7 @@ void Scene::registerGraphics() {
 	_viewport.registerGraphics();
 	_textbox.registerGraphics();
 	_inventoryBox.registerGraphics();
+	_hotspotDebug.registerGraphics();
 
 	if (_menuButton) {
 		_menuButton->registerGraphics();
@@ -532,13 +614,22 @@ void Scene::synchronize(Common::Serializer &ser) {
 
 		g_nancy->_sound->stopAllSounds();
 
-		load();
+		load(true);
 	}
 
 	ser.syncAsUint16LE(_sceneState.pushedScene.sceneID);
 	ser.syncAsUint16LE(_sceneState.pushedScene.frameID);
 	ser.syncAsUint16LE(_sceneState.pushedScene.verticalOffset);
 	ser.syncAsByte(_sceneState.isScenePushed);
+
+	// Inventory scene "stack" was introduced in nancy7
+	if (g_nancy->getGameType() >= kGameTypeNancy7) {
+		ser.syncAsUint16LE(_sceneState.pushedInvScene.sceneID);
+		ser.syncAsUint16LE(_sceneState.pushedInvScene.frameID);
+		ser.syncAsUint16LE(_sceneState.pushedInvScene.verticalOffset);
+		ser.syncAsByte(_sceneState.isInvScenePushed);
+		ser.syncAsUint16LE(_sceneState.pushedInvItemID);
+	}
 
 	// hardcoded number of logic conditions, check if there can ever be more/less
 	for (uint i = 0; i < 30; ++i) {
@@ -572,7 +663,11 @@ void Scene::synchronize(Common::Serializer &ser) {
 
 	ser.syncArray(_flags.items.data(), g_nancy->getStaticData().numItems, Common::Serializer::Byte);
 	ser.syncAsSint16LE(_flags.heldItem);
-	g_nancy->_cursorManager->setCursorItemID(_flags.heldItem);
+	g_nancy->_cursor->setCursorItemID(_flags.heldItem);
+
+	if (g_nancy->getGameType() >= kGameTypeNancy7) {
+		ser.syncArray(_flags.disabledItems.data(), g_nancy->getStaticData().numItems, Common::Serializer::Byte);
+	}
 
 	ser.syncAsUint32LE((uint32 &)_timers.lastTotalTime);
 	ser.syncAsUint32LE((uint32 &)_timers.sceneTime);
@@ -585,6 +680,11 @@ void Scene::synchronize(Common::Serializer &ser) {
 	g_nancy->setTotalPlayTime((uint32)_timers.lastTotalTime);
 
 	ser.syncArray(_flags.eventFlags.data(), g_nancy->getStaticData().numEventFlags, Common::Serializer::Byte);
+
+	// Clear generic flags
+	for (uint16 id : g_nancy->getStaticData().genericEventFlags) {
+		_flags.eventFlags[id] = g_nancy->_false;
+	}
 
 	// Skip empty sceneCount array
 	ser.skip(2001 * 2, 0, 2);
@@ -649,16 +749,24 @@ void Scene::synchronize(Common::Serializer &ser) {
 		}
 	}
 
-	g_nancy->_graphicsManager->suppressNextDraw();
+	_isRunningAd = false;
+	ConfMan.removeKey("restore_after_ad", Common::ConfigManager::kTransientDomain);
+
+	g_nancy->_graphics->suppressNextDraw();
 }
 
 UI::Clock *Scene::getClock() {
-	return g_nancy->getGameType() != kGameTypeNancy5 ? (UI::Clock *)_clock : nullptr;
+	auto *clok = GetEngineData(CLOK);
+	if (!clok || clok->clockIsDisabled || clok->clockIsDay) {
+		return nullptr;
+	} else {
+		return (UI::Clock *)_clock;
+	}
 }
 
 void Scene::init() {
-	const BSUM *bootSummary = (const BSUM *)g_nancy->getEngineData("BSUM");
-	const HINT *hintData = (const HINT *)g_nancy->getEngineData("HINT");
+	auto *bootSummary = GetEngineData(BSUM);
+	auto *hintData = GetEngineData(HINT);
 	assert(bootSummary);
 
 	_flags.eventFlags.resize(g_nancy->getStaticData().numEventFlags, g_nancy->_false);
@@ -666,6 +774,7 @@ void Scene::init() {
 	_flags.sceneCounts.clear();
 
 	_flags.items.resize(g_nancy->getStaticData().numItems, g_nancy->_false);
+	_flags.disabledItems.resize(_flags.items.size(), 0);
 
 	_timers.lastTotalTime = 0;
 	_timers.playerTime = bootSummary->startTimeHours * 3600000;
@@ -675,7 +784,13 @@ void Scene::init() {
 	_timers.playerTimeNextMinute = 0;
 	_timers.pushedPlayTime = 0;
 
-	changeScene(bootSummary->firstScene);
+	if (ConfMan.hasKey("load_ad", Common::ConfigManager::kTransientDomain)) {
+		changeScene(bootSummary->adScene);
+		ConfMan.removeKey("load_ad", Common::ConfigManager::kTransientDomain);
+		_isRunningAd = true;
+	} else {
+		changeScene(bootSummary->firstScene);
+	}
 
 	if (hintData) {
 		_hintsRemaining.clear();
@@ -685,9 +800,9 @@ void Scene::init() {
 
 	initStaticData();
 
-	if (ConfMan.hasKey("save_slot")) {
+	if (!_isRunningAd && ConfMan.hasKey("save_slot", Common::ConfigManager::kTransientDomain)) {
 		// Load savefile directly from the launcher
-		int saveSlot = ConfMan.getInt("save_slot");
+		int saveSlot = ConfMan.getInt("save_slot", Common::ConfigManager::kTransientDomain);
 		if (saveSlot >= 0 && saveSlot <= g_nancy->getMetaEngine()->getMaximumSaveSlot()) {
 			g_nancy->loadGameState(saveSlot);
 		}
@@ -699,12 +814,30 @@ void Scene::init() {
 		_state = kLoad;
 	}
 
+	// Set relevant event flag when player has won the game at least once
+	if (ConfMan.get("PlayerWonTheGame", ConfMan.getActiveDomainName()) == "AcedTheGame") {
+		setEventFlag(g_nancy->getStaticData().wonGameFlagID, g_nancy->_true);
+	}
+
 	if (g_nancy->getGameType() == kGameTypeVampire) {
 		_lightning = new Misc::Lightning();
 	}
 
+	Common::Rect vpPos = _viewport.getScreenPosition();
+	_hotspotDebug._drawSurface.create(vpPos.width(), vpPos.height(), g_nancy->_graphics->getScreenPixelFormat());
+	_hotspotDebug.moveTo(vpPos);
+	_hotspotDebug.setTransparent(true);
+
 	registerGraphics();
-	g_nancy->_graphicsManager->redrawAll();
+	g_nancy->_graphics->redrawAll();
+}
+
+void Scene::setActiveMovie(Action::PlaySecondaryMovie *activeMovie) {
+	_activeMovie = activeMovie;
+}
+
+Action::PlaySecondaryMovie *Scene::getActiveMovie() {
+	return _activeMovie;
 }
 
 void Scene::setActiveConversation(Action::ConversationSound *activeConversation) {
@@ -726,6 +859,11 @@ void Scene::specialEffect(byte type, uint16 fadeToBlackTime, uint16 frameTime) {
 	_specialEffects.back().init();
 }
 
+void Scene::specialEffect(byte type, uint16 totalTime, uint16 fadeToBlackTime, Common::Rect rect) {
+	_specialEffects.push(Misc::SpecialEffect(type, totalTime, fadeToBlackTime, rect));
+	_specialEffects.back().init();
+}
+
 PuzzleData *Scene::getPuzzleData(const uint32 tag) {
 	// Lazy initialization ensures both init() and synchronize() will not need
 	// to care about which puzzles a specific game has
@@ -742,28 +880,35 @@ PuzzleData *Scene::getPuzzleData(const uint32 tag) {
 	}
 }
 
-void Scene::load() {
+void Scene::load(bool fromSaveFile) {
 	if (_specialEffects.size()) {
 		_specialEffects.front().onSceneChange();
 	}
 
 	clearSceneData();
+	g_nancy->_graphics->suppressNextDraw();
 
 	// Scene IDs are prefixed with S inside the cif tree; e.g 100 -> S100
-	Common::String sceneName = Common::String::format("S%u", _sceneState.nextScene.sceneID);
-	IFF sceneIFF(sceneName);
+	Common::Path sceneName(Common::String::format("S%u", _sceneState.nextScene.sceneID));
+	IFF *sceneIFF = g_nancy->_resource->loadIFF(sceneName);
 
-	if (!sceneIFF.load()) {
-		error("Faled to load IFF %s", sceneName.c_str());
+	if (!sceneIFF) {
+		error("Faled to load IFF %s", sceneName.toString().c_str());
 	}
 
-	Common::SeekableReadStream *sceneSummaryChunk = sceneIFF.getChunkStream("SSUM");
+	Common::SeekableReadStream *sceneSummaryChunk = sceneIFF->getChunkStream("SSUM");
+	if (sceneSummaryChunk) {
+		_sceneState.summary.read(*sceneSummaryChunk);
+	} else {
+		sceneSummaryChunk = sceneIFF->getChunkStream("TSUM");
+		if (sceneSummaryChunk) {
+			_sceneState.summary.readTerse(*sceneSummaryChunk);
+		}
+	}
 
 	if (!sceneSummaryChunk) {
 		error("Invalid IFF Chunk SSUM");
 	}
-
-	_sceneState.summary.read(*sceneSummaryChunk);
 
 	delete sceneSummaryChunk;
 
@@ -785,9 +930,11 @@ void Scene::load() {
 	// Search for Action Records, maximum for a scene is 30
 	Common::SeekableReadStream *actionRecordChunk = nullptr;
 
-	while (actionRecordChunk = sceneIFF.getChunkStream("ACT", _actionManager._records.size()), actionRecordChunk != nullptr) {
+	uint numRecords = 0;
+	while (actionRecordChunk = sceneIFF->getChunkStream("ACT", numRecords), actionRecordChunk != nullptr) {
 		_actionManager.addNewActionRecord(*actionRecordChunk);
 		delete actionRecordChunk;
+		++numRecords;
 	}
 
 	if (_sceneState.currentScene.paletteID == -1) {
@@ -799,7 +946,7 @@ void Scene::load() {
 						_sceneState.currentScene.verticalOffset,
 						_sceneState.summary.panningType,
 						_sceneState.summary.videoFormat,
-						_sceneState.summary.palettes.size() ? _sceneState.summary.palettes[(byte)_sceneState.currentScene.paletteID] : Common::String());
+						_sceneState.summary.palettes.size() ? _sceneState.summary.palettes[(byte)_sceneState.currentScene.paletteID] : Common::Path());
 
 	if (_viewport.getFrameCount() <= 1) {
 		_viewport.disableEdges(kLeft | kRight);
@@ -828,12 +975,15 @@ void Scene::load() {
 	_inventorySoundOverrides.clear();
 
 	_timers.sceneTime = 0;
-
-	_flags.sceneCounts.getOrCreateVal(_sceneState.currentScene.sceneID)++;
-
 	g_nancy->_sound->recalculateSoundEffects();
-	g_nancy->_graphicsManager->suppressNextDraw();
 
+	// Increment the number of times we've visited this scene, unless we're
+	// loading from a save
+	if (!fromSaveFile) {
+		_flags.sceneCounts.getOrCreateVal(_sceneState.currentScene.sceneID)++;
+	}
+
+	delete sceneIFF;
 	_state = kStartSound;
 }
 
@@ -845,18 +995,6 @@ void Scene::run() {
 	}
 
 	Time currentPlayTime = g_nancy->getTotalPlayTime();
-
-	if (_specialEffects.size()) {
-		if (_specialEffects.front().isInitialized()) {
-			if (_specialEffects.front().isDone()) {
-				_specialEffects.pop();
-				g_nancy->_graphicsManager->redrawAll();
-			}
-		} else {
-			_specialEffects.front().afterSceneChange();
-		}
-	}
-
 	Time deltaTime = currentPlayTime - _timers.lastTotalTime;
 	_timers.lastTotalTime = currentPlayTime;
 
@@ -868,7 +1006,7 @@ void Scene::run() {
 
 	// Calculate the in-game time (playerTime)
 	if (currentPlayTime > _timers.playerTimeNextMinute) {
-		const BSUM *bootSummary = (const BSUM *)g_nancy->getEngineData("BSUM");
+		auto *bootSummary = GetEngineData(BSUM);
 		assert(bootSummary);
 
 		_timers.playerTime += 60000; // Add a minute
@@ -888,10 +1026,22 @@ void Scene::run() {
 		_lightning->run();
 	}
 
+	// Do this after the first records are processed to fix the text in nancy3 intro
+	if (_specialEffects.size()) {
+		if (_specialEffects.front().isInitialized()) {
+			if (_specialEffects.front().isDone()) {
+				_specialEffects.pop();
+				g_nancy->_graphics->redrawAll();
+			}
+		} else {
+			_specialEffects.front().afterSceneChange();
+		}
+	}
+
 	g_nancy->_sound->soundEffectMaintenance();
 
 	if (_state == kLoad) {
-		g_nancy->_graphicsManager->suppressNextDraw();
+		g_nancy->_graphics->suppressNextDraw();
 	}
 }
 
@@ -900,16 +1050,24 @@ void Scene::handleInput() {
 
 	// Warp the mouse below the inactive zone during dialogue scenes
 	if (_activeConversation != nullptr) {
-		const Common::Rect &inactiveZone = g_nancy->_cursorManager->getPrimaryVideoInactiveZone();
-		const Common::Point cursorHotspot = g_nancy->_cursorManager->getCurrentCursorHotspot();
-		Common::Point adjustedMousePos = input.mousePos;
-		adjustedMousePos.y -= cursorHotspot.y;
+		const Common::Rect &inactiveZone = g_nancy->_cursor->getPrimaryVideoInactiveZone();
 
-		if (inactiveZone.bottom > adjustedMousePos.y) {
-			input.mousePos.y = inactiveZone.bottom + cursorHotspot.y;
-			g_system->warpMouse(input.mousePos.x, input.mousePos.y);
+		if (g_nancy->getGameType() == kGameTypeVampire) {
+			const Common::Point cursorHotspot = g_nancy->_cursor->getCurrentCursorHotspot();
+			Common::Point adjustedMousePos = input.mousePos;
+			adjustedMousePos.y -= cursorHotspot.y;
+
+			if (inactiveZone.bottom > adjustedMousePos.y) {
+				input.mousePos.y = inactiveZone.bottom + cursorHotspot.y;
+				g_nancy->_cursor->warpCursor(input.mousePos);
+			}
+		} else {
+			if (inactiveZone.bottom > input.mousePos.y) {
+				input.mousePos.y = inactiveZone.bottom;
+				g_nancy->_cursor->warpCursor(input.mousePos);
+			}
 		}
-	} else {
+	} else if (!_activeMovie) {
 		// Check if player has pressed esc
 		if (input.input & NancyInput::kOpenMainMenu) {
 			g_nancy->setState(NancyState::kMainMenu);
@@ -927,7 +1085,7 @@ void Scene::handleInput() {
 	for (uint16 id : g_nancy->getStaticData().mapAccessSceneIDs) {
 		if ((int)_sceneState.currentScene.sceneID == id) {
 			if (_mapHotspot.contains(input.mousePos)) {
-				g_nancy->_cursorManager->setCursorType(g_nancy->getGameType() == kGameTypeVampire ? CursorManager::kHotspot : CursorManager::kHotspotArrow);
+				g_nancy->_cursor->setCursorType(g_nancy->getGameType() == kGameTypeVampire ? CursorManager::kHotspot : CursorManager::kHotspotArrow);
 
 				if (input.input & NancyInput::kLeftMouseButtonUp) {
 					requestStateChange(NancyState::kMap);
@@ -960,51 +1118,54 @@ void Scene::handleInput() {
 
 	_actionManager.handleInput(input);
 
-	if (_menuButton) {
-		_menuButton->handleInput(input);
+	// Menu/help are disabled when a movie is active
+	if (!_activeMovie) {
+		if (_menuButton) {
+			_menuButton->handleInput(input);
 
-		if (_menuButton->_isClicked) {
-			if (_buttonPressActivationTime == 0) {
-				const BSUM *bootSummary = (const BSUM *)g_nancy->getEngineData("BSUM");
-				assert(bootSummary);
+			if (_menuButton->_isClicked) {
+				if (_buttonPressActivationTime == 0) {
+					auto *bootSummary = GetEngineData(BSUM);
+					assert(bootSummary);
 
-				g_nancy->_sound->playSound("BUOK");
-				_buttonPressActivationTime = g_system->getMillis() + bootSummary->buttonPressTimeDelay;
-			} else if (g_system->getMillis() > _buttonPressActivationTime) {
-				_menuButton->_isClicked = false;
-				requestStateChange(NancyState::kMainMenu);
-				_buttonPressActivationTime = 0;
+					g_nancy->_sound->playSound("BUOK");
+					_buttonPressActivationTime = g_system->getMillis() + bootSummary->buttonPressTimeDelay;
+				} else if (g_system->getMillis() > _buttonPressActivationTime) {
+					_menuButton->_isClicked = false;
+					requestStateChange(NancyState::kMainMenu);
+					_buttonPressActivationTime = 0;
+				}
 			}
 		}
-	}
 
-	if (_helpButton) {
-		_helpButton->handleInput(input);
+		if (_helpButton) {
+			_helpButton->handleInput(input);
 
-		if (_helpButton->_isClicked) {
-			if (_buttonPressActivationTime == 0) {
-				const BSUM *bootSummary = (const BSUM *)g_nancy->getEngineData("BSUM");
-				assert(bootSummary);
+			if (_helpButton->_isClicked) {
+				if (_buttonPressActivationTime == 0) {
+					auto *bootSummary = GetEngineData(BSUM);
+					assert(bootSummary);
 
-				g_nancy->_sound->playSound("BUOK");
-				_buttonPressActivationTime = g_system->getMillis() + bootSummary->buttonPressTimeDelay;
-			} else if (g_system->getMillis() > _buttonPressActivationTime) {
-				_helpButton->_isClicked = false;
-				requestStateChange(NancyState::kHelp);
-				_buttonPressActivationTime = 0;
+					g_nancy->_sound->playSound("BUOK");
+					_buttonPressActivationTime = g_system->getMillis() + bootSummary->buttonPressTimeDelay;
+				} else if (g_system->getMillis() > _buttonPressActivationTime) {
+					_helpButton->_isClicked = false;
+					requestStateChange(NancyState::kHelp);
+					_buttonPressActivationTime = 0;
+				}
 			}
 		}
 	}
 }
 
 void Scene::initStaticData() {
-	const BSUM *bootSummary = (const BSUM *)g_nancy->getEngineData("BSUM");
+	auto *bootSummary = GetEngineData(BSUM);
 	assert(bootSummary);
 
 	const ImageChunk *fr0 = (const ImageChunk *)g_nancy->getEngineData("FR0");
 	assert(fr0);
 
-	const MAP *mapData = (const MAP *)g_nancy->getEngineData("MAP");
+	auto *mapData = GetEngineData(MAP);
 
 	_frame.init(fr0->imageName);
 	_viewport.init();
@@ -1018,8 +1179,8 @@ void Scene::initStaticData() {
 		_mapHotspot = mapData->buttonDest;
 	}
 
-	_menuButton = new UI::Button(5, g_nancy->_graphicsManager->_object0, bootSummary->menuButtonSrc, bootSummary->menuButtonDest, bootSummary->menuButtonHighlightSrc);
-	_helpButton = new UI::Button(5, g_nancy->_graphicsManager->_object0, bootSummary->helpButtonSrc, bootSummary->helpButtonDest, bootSummary->helpButtonHighlightSrc);
+	_menuButton = new UI::Button(5, g_nancy->_graphics->_object0, bootSummary->menuButtonSrc, bootSummary->menuButtonDest, bootSummary->menuButtonHighlightSrc);
+	_helpButton = new UI::Button(5, g_nancy->_graphics->_object0, bootSummary->helpButtonSrc, bootSummary->helpButtonDest, bootSummary->helpButtonHighlightSrc);
 	g_nancy->setMouseEnabled(true);
 
 	// Init ornaments and clock (TVD only)
@@ -1037,15 +1198,20 @@ void Scene::initStaticData() {
 		_clock->init();
 	}
 
+	// Init just the clock (nancy2 and up; nancy1 has no clock, only a map button)
 	if (g_nancy->getGameType() >= kGameTypeNancy2) {
-		if (g_nancy->getGameType() == kGameTypeNancy5) {
-			// Nancy 5 uses a custom "clock" that mostly just indicates the in-game day
+		auto *clok = GetEngineData(CLOK);
+		if (clok->clockIsDay) {
+			// nancy5 uses a different "clock" that mostly just indicates the in-game day
 			_clock = new UI::Nancy5Clock();
-		} else {
+			_clock->init();
+		} else if (!clok->clockIsDisabled) {
 			_clock = new UI::Clock();
+			_clock->init();
+		} else {
+			// In nancy7 the clock is entirely disabled
+			_clock = nullptr;
 		}
-		
-		_clock->init();
 	}
 
 	_state = kLoad;
@@ -1064,7 +1230,16 @@ void Scene::clearSceneData() {
 		_lightning->endLightning();
 	}
 
-	_textbox.clear();
+	if (_textbox.hasBeenDrawn()) {
+		// Improvement: the dog portrait scenes in nancy7 queue a piece of text,
+		// then immediately change the scene. This makes the text disappear instantly;
+		// instead, we check if the textbox has been drawn, and don't clear it if it hasn't.
+		// Hopefully this doesn't cause issues with earlier games.
+		_textbox.clear();
+	}
+
+	_activeConversation = nullptr;
+	_activeMovie = nullptr;
 }
 
 void Scene::clearPuzzleData() {

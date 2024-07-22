@@ -82,12 +82,17 @@ public:
 	void handleMouseMoved(int x, int y, int button) override;
 	bool handleKeyDown(Common::KeyState state) override;
 	bool handleKeyUp(Common::KeyState state) override;
+	void handleOtherEvent(const Common::Event& evt) override;
 	void reflowLayout() override;
 
+	void moveCaretToStart(bool shiftPressed);
+	void moveCaretToEnd(bool shiftPressed);
 	bool setCaretPos(int newPos);
 	void setSelectionOffset(int newOffset);
 
 protected:
+	void drawWidget() override;
+
 	virtual void startEditMode() = 0;
 	virtual void endEditMode() = 0;
 	virtual void abortEditMode() = 0;
@@ -99,7 +104,7 @@ protected:
 	virtual Common::Rect getEditRect() const = 0;
 	virtual int getCaretOffset() const;
 	virtual int getSelectionCarretOffset() const;
-	void drawCaret(bool erase);
+	void drawCaret(bool erase, bool useRelativeCoordinates = false);
 	bool adjustOffset();
 	void makeCaretVisible();
 
@@ -110,7 +115,7 @@ protected:
 	virtual bool isCharAllowed(Common::u32char_type_t c) const;
 	bool tryInsertChar(Common::u32char_type_t c, int pos);
 
-	int caretVisualPos(int logicalPos);
+	int caretVisualPos(int logicalPos) const;
 	int caretLogicalPos() const;
 
 	void clearSelection();

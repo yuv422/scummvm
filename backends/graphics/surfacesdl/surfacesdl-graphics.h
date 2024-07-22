@@ -114,6 +114,7 @@ public:
 	int16 getOverlayWidth() const override { return _videoMode.overlayWidth; }
 
 	void setMouseCursor(const void *buf, uint w, uint h, int hotspotX, int hotspotY, uint32 keycolor, bool dontScale = false, const Graphics::PixelFormat *format = NULL, const byte *mask = NULL) override;
+	void setMouseCursor(const void *buf, uint w, uint h, int hotspotX, int hotspotY, uint32 keycolor, bool dontScale, const Graphics::PixelFormat *format, const byte *mask, bool disableKeyColor);
 	void setCursorPalette(const byte *colors, uint start, uint num) override;
 
 #ifdef USE_OSD
@@ -219,7 +220,7 @@ protected:
 	SDL_Surface *_overlayscreen;
 	bool _useOldSrc;
 	Graphics::PixelFormat _overlayFormat;
-	bool _isDoubleBuf;
+	bool _isDoubleBuf, _isHwPalette;
 
 	enum {
 		kTransactionNone = 0,
@@ -262,8 +263,8 @@ protected:
 		bool aspectRatioCorrection;
 		AspectRatio desiredAspectRatio;
 		bool filtering;
-		bool isHwPalette;
 
+		int mode;
 #if SDL_VERSION_ATLEAST(2, 0, 0)
 		int stretchMode;
 #endif
@@ -286,6 +287,7 @@ protected:
 			// desiredAspectRatio set to (0, 0) by AspectRatio constructor
 			filtering = false;
 
+			mode = GFX_SURFACESDL;
 #if SDL_VERSION_ATLEAST(2, 0, 0)
 			stretchMode = 0;
 #endif
@@ -383,6 +385,7 @@ protected:
 #else
 	byte _mouseKeyColor;
 #endif
+	bool _disableMouseKeyColor;
 	byte _mappedMouseKeyColor;
 	bool _cursorDontScale;
 	bool _cursorPaletteDisabled;
@@ -433,7 +436,7 @@ protected:
 	void setFilteringMode(bool enable);
 	void setVSync(bool enable);
 
-	bool saveScreenshot(const Common::String &filename) const override;
+	bool saveScreenshot(const Common::Path &filename) const override;
 	virtual void setGraphicsModeIntern();
 	virtual void getDefaultResolution(uint &w, uint &h);
 

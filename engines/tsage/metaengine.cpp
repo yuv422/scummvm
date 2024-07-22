@@ -48,8 +48,8 @@ Common::Language TSageEngine::getLanguage() const {
 	return _gameDescription->desc.language;
 }
 
-Common::String TSageEngine::getPrimaryFilename() const {
-	return Common::String(_gameDescription->desc.filesDescriptions[0].fileName);
+Common::Path TSageEngine::getPrimaryFilename() const {
+	return Common::Path(_gameDescription->desc.filesDescriptions[0].fileName);
 }
 
 } // End of namespace TsAGE
@@ -58,7 +58,7 @@ enum {
 	MAX_SAVES = 100
 };
 
-class TSageMetaEngine : public AdvancedMetaEngine {
+class TSageMetaEngine : public AdvancedMetaEngine<TsAGE::tSageGameDescription> {
 public:
 	const char *getName() const override {
 		return "tsage";
@@ -80,8 +80,8 @@ public:
 		}
 	}
 
-	Common::Error createInstance(OSystem *syst, Engine **engine, const ADGameDescription *desc) const override {
-		*engine = new TsAGE::TSageEngine(syst, (const TsAGE::tSageGameDescription *)desc);
+	Common::Error createInstance(OSystem *syst, Engine **engine, const TsAGE::tSageGameDescription *desc) const override {
+		*engine = new TsAGE::TSageEngine(syst, desc);
 		return Common::kNoError;
 	}
 

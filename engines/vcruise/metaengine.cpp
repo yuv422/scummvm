@@ -80,12 +80,34 @@ static const ADExtraGuiOptionsMap optionsList[] = {
 			0
 		}
 	},
+	{
+		GAMEOPTION_USE_4BIT_GRAPHICS,
+		{
+			_s("Use 16-color graphics"),
+			_s("Uses 16-color graphics."),
+			"vcruise_use_4bit",
+			false,
+			0,
+			0
+		}
+	},
+	{
+		GAMEOPTION_PRELOAD_SOUNDS,
+		{
+			_s("Preload sounds"),
+			_s("Preload sounds. May improve performance on slow hard drives."),
+			"vcruise_preload_sounds",
+			false,
+			0,
+			0
+		}
+	},
 	AD_EXTRA_GUI_OPTIONS_TERMINATOR
 };
 
 } // End of namespace VCruise
 
-class VCruiseMetaEngine : public AdvancedMetaEngine {
+class VCruiseMetaEngine : public AdvancedMetaEngine<VCruise::VCruiseGameDescription> {
 public:
 	const char *getName() const override {
 		return "vcruise";
@@ -96,7 +118,7 @@ public:
 	}
 
 	bool hasFeature(MetaEngineFeature f) const override;
-	Common::Error createInstance(OSystem *syst, Engine **engine, const ADGameDescription *desc) const override;
+	Common::Error createInstance(OSystem *syst, Engine **engine, const VCruise::VCruiseGameDescription *desc) const override;
 
 	Common::Array<Common::Keymap *> initKeymaps(const char *target) const override;
 };
@@ -112,7 +134,7 @@ bool VCruiseMetaEngine::hasFeature(MetaEngineFeature f) const {
 	return checkExtendedSaves(f);
 }
 
-Common::Error VCruiseMetaEngine::createInstance(OSystem *syst, Engine **engine, const ADGameDescription *desc) const {
+Common::Error VCruiseMetaEngine::createInstance(OSystem *syst, Engine **engine, const VCruise::VCruiseGameDescription *desc) const {
 	*engine = new VCruise::VCruiseEngine(syst, reinterpret_cast<const VCruise::VCruiseGameDescription *>(desc));
 	return Common::kNoError;
 }
@@ -184,6 +206,10 @@ Common::Array<Common::Keymap *> VCruiseMetaEngine::initKeymaps(const char *targe
 
 	act = new Common::Action("VCRUISE_SKIP_ANIMATION", _("Skip current animation"));
 	act->setCustomEngineActionEvent(VCruise::kKeymappedEventSkipAnimation);
+	keymap->addAction(act);
+
+	act = new Common::Action("VCRUISE_PUT_ITEM", _("Cycle item in scene (debug cheat)"));
+	act->setCustomEngineActionEvent(VCruise::kKeymappedEventPutItem);
 	keymap->addAction(act);
 
 	return Common::Keymap::arrayOf(keymap);

@@ -54,7 +54,7 @@ Events::~Events() {
 	delete _cursorImages;
 }
 
-void Events::loadCursors(const Common::String &filename) {
+void Events::loadCursors(const Common::Path &filename) {
 	hideCursor();
 	delete _cursorImages;
 
@@ -119,7 +119,6 @@ void Events::setCursor(const Graphics::Surface &src, int hotspotX, int hotspotY)
 
 		tempSurface.free();
 	}
-	showCursor();
 }
 
 void Events::setCursor(CursorId cursorId, const Common::Point &cursorPos, const Graphics::Surface &surface) {

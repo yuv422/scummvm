@@ -29,7 +29,7 @@
 #define AGS_ENGINE_GFX_GRAPHICS_DRIVER_H
 
 //#include "math/matrix.h"
-#include "ags/lib/std/memory.h"
+#include "common/std/memory.h"
 #include "ags/lib/allegro.h" // RGB, PALETTE
 #include "ags/shared/gfx/gfx_def.h"
 #include "ags/engine/gfx/gfx_defines.h"
@@ -97,12 +97,14 @@ typedef void (*GFXDRV_CLIENTCALLBACKINITGFX)(void *data);
 
 class IGraphicsDriver {
 public:
-	virtual const char *GetDriverName() = 0;
+	// Gets graphic driver's identifier
 	virtual const char *GetDriverID() = 0;
+	// Gets graphic driver's "friendly name"
+	virtual const char *GetDriverName() = 0;
 	virtual void SetTintMethod(TintMethod method) = 0;
 	// Initialize given display mode
 	virtual bool SetDisplayMode(const DisplayMode &mode) = 0;
-	// Updates previously set display mode, accomodating to the new screen size
+	// Updates previously set display mode, accommodating to the new screen size
 	virtual void UpdateDeviceScreen(const Size &screen_size) = 0;
 	// Gets if a graphics mode was initialized
 	virtual bool IsModeSet() const = 0;

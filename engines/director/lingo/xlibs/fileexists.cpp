@@ -43,9 +43,9 @@
 namespace Director {
 
 const char *FileExists::xlibName = "FileExists";
-const char *FileExists::fileNames[] = {
-	"FileExists",
-	0
+const XlibFileDesc FileExists::fileNames[] = {
+	{ "FileExists",	nullptr },
+	{ nullptr,		nullptr },
 };
 
 static BuiltinProto builtins[] = {
@@ -53,11 +53,11 @@ static BuiltinProto builtins[] = {
 	{ nullptr, nullptr, 0, 0, 0, VOIDSYM }
 };
 
-void FileExists::open(int type) {
+void FileExists::open(ObjectType type, const Common::Path &path) {
 	g_lingo->initBuiltIns(builtins);
 }
 
-void FileExists::close(int type) {
+void FileExists::close(ObjectType type) {
 	g_lingo->cleanupBuiltIns(builtins);
 }
 
@@ -72,9 +72,9 @@ void FileExists::m_fileexists(int nargs) {
 	}
 	Common::String filename = lastPathComponent(path, g_director->_dirSeparator);
 	if (!(saves->exists(filename))) {
-		Common::File *f = new Common::File;
+		Common::File file;
 		Common::Path location = findPath(origpath);
-		if (location.empty() || !f->open(location)) {
+		if (location.empty() || !file.open(location)) {
 			g_lingo->push(Datum(false));
 			return;
 		}

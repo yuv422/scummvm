@@ -34,6 +34,7 @@
 #include "scumm/he/intern_he.h"
 #include "scumm/he/logic_he.h"
 #endif
+#include "scumm/macgui/macgui.h"
 #include "scumm/resource.h"
 #include "scumm/scumm_v0.h"
 #include "scumm/scumm_v6.h"
@@ -104,6 +105,14 @@ void ScummEngine_v80he::parseEvent(Common::Event event) {
 #endif
 
 void ScummEngine::parseEvent(Common::Event event) {
+	// Handle Macintosh events before scaling the mouse coordinates.
+	//
+	// TODO: Don't allow menu while message banner is active. Don't allow
+	// message banner while menu is active.
+
+	if (_macGui && _macGui->handleEvent(event))
+		return;
+
 	switch (event.type) {
 	case Common::EVENT_CUSTOM_ENGINE_ACTION_START:
 		if (event.customType >= kScummActionCount) {
@@ -181,8 +190,10 @@ void ScummEngine::parseEvent(Common::Event event) {
 		// remap keypad keys to always have a corresponding ASCII value.
 		// Normally, keypad keys would only have an ASCII value when
 		// NumLock is enabled. This fixes fighting in Indy 3 (Trac #11227)
-		if (_keyPressed.keycode >= Common::KEYCODE_KP0 && _keyPressed.keycode <= Common::KEYCODE_KP9) {
-			_keyPressed.ascii = (_keyPressed.keycode - Common::KEYCODE_KP0) + '0';
+
+		if (event.kbd.keycode >= Common::KEYCODE_KP0 && event.kbd.keycode <= Common::KEYCODE_KP9) {
+			event.kbd.ascii = (event.kbd.keycode - Common::KEYCODE_KP0) + '0';
+			event.kbd.flags = Common::KBD_NUM;
 		}
 
 		if (event.kbd.ascii >= 512) {
@@ -233,7 +244,7 @@ void ScummEngine::parseEvent(Common::Event event) {
 				_mouse.y = _mouse.y * 4 / 7;
 			}
 
-		} else if (_macScreen || (_useCJKMode && _textSurfaceMultiplier == 2) || _renderMode == Common::kRenderCGA_BW || _enableEGADithering) {
+		} else if (_textSurfaceMultiplier == 2 || _renderMode == Common::kRenderCGA_BW || _enableEGADithering) {
 			_mouse.x >>= 1;
 			_mouse.y >>= 1;
 		}
@@ -270,6 +281,7 @@ void ScummEngine::parseEvent(Common::Event event) {
 		break;
 	case Common::EVENT_RETURN_TO_LAUNCHER:
 	case Common::EVENT_QUIT:
+	{
 		// Some backends send a key stroke event and the quit
 		// event which was triggered by the keystroke. Clear the key.
 		clearClickedStatus();
@@ -284,7 +296,21 @@ void ScummEngine::parseEvent(Common::Event event) {
 				getEventManager()->resetQuit();
 				getEventManager()->resetReturnToLauncher();
 				if (!_messageBannerActive) {
-					queryQuit(exitType);
+					if (_macGui) {
+						if (!(ConfMan.hasKey("confirm_exit") && ConfMan.getBool("confirm_exit")) ||
+							_macGui->runQuitDialog()) {
+							_quitByGUIPrompt = true;
+							if (exitType) {
+								Common::Event fakeEvent;
+								fakeEvent.type = Common::EVENT_RETURN_TO_LAUNCHER;
+								getEventManager()->pushEvent(fakeEvent);
+							} else {
+								quitGame();
+							}
+						}
+					} else {
+						queryQuit(exitType);
+					}
 					_closeBannerAndQueryQuitFlag = false;
 				} else {
 					_closeBannerAndQueryQuitFlag = true;
@@ -295,6 +321,7 @@ void ScummEngine::parseEvent(Common::Event event) {
 			}
 		}
 		break;
+	}
 	default:
 		break;
 	}
@@ -520,7 +547,7 @@ void ScummEngine_v8::processKeyboard(Common::KeyState lastKeyHit) {
 void ScummEngine_v7::processKeyboard(Common::KeyState lastKeyHit) {
 	if (isUsingOriginalGUI()) {
 		if (lastKeyHit.keycode == Common::KEYCODE_b &&
-			(lastKeyHit.hasFlags(Common::KBD_CTRL) || lastKeyHit.hasFlags(Common::KBD_SHIFT))) {
+			((lastKeyHit.hasFlags(Common::KBD_CTRL) && _game.id != GID_DIG) || lastKeyHit.hasFlags(Common::KBD_SHIFT))) {
 			int curBufferCount = _imuseDigital->roundRobinSetBufferCount();
 			// "iMuse buffer count changed to %d"
 			showBannerAndPause(0, 90, getGUIString(gsIMuseBuffer), curBufferCount);
@@ -610,7 +637,7 @@ void ScummEngine::waitForBannerInput(int32 waitTime, Common::KeyState &ks, bool 
 		}
 	} else {
 		while (!validKey && !leftBtnClicked && !rightBtnClicked && !(handleMouseWheel && _mouseWheelFlag)) {
-			waitForTimer(1); // Allow the engine to update the screen and fetch new inputs...
+			waitForTimer(1, true); // Allow the engine to update the screen and fetch new inputs...
 
 			if (_game.version > 2 && _game.version < 7 && (_guiCursorAnimCounter++ & 16)) {
 				_guiCursorAnimCounter = 0;
@@ -908,6 +935,24 @@ void ScummEngine::processKeyboard(Common::KeyState lastKeyHit) {
 	bool optionKeysEnabled = !isUsingOriginalGUI();
 	bool isSegaCD = _game.platform == Common::kPlatformSegaCD;
 	bool isNES = _game.platform == Common::kPlatformNES;
+	bool inSaveRoom = false;
+
+	// The following check is used by v3 games which have writable savegame names
+	// and also support some key combinations which in our case are mapped to SHIFT-<letter>
+	// The originals don't do this, because they use either CTRL or ALT as their key modifier,
+	// and those key modifiers serve other functions within the ScummVM backend.
+	if (_game.version == 3) {
+		int saveRoom = -1;
+		if (_game.id == GID_ZAK) {
+			saveRoom = 50;
+		} else if (_game.id == GID_INDY3) {
+			saveRoom = 14;
+		} else if (_game.id == GID_LOOM) {
+			saveRoom = 70;
+		}
+
+		inSaveRoom = _currentRoom == saveRoom;
+	}
 
 	// In FM-TOWNS games F8 / restart is always enabled
 	if (_game.platform == Common::kPlatformFMTowns)
@@ -968,7 +1013,14 @@ void ScummEngine::processKeyboard(Common::KeyState lastKeyHit) {
 		restartKeyPressed &= !isSegaCD && !isNES;
 
 		if (restartKeyPressed) {
-			queryRestart();
+			if (_macGui) {
+				if (_macGui->runRestartDialog()) {
+					restart();
+				}
+			} else {
+				queryRestart();
+			}
+
 			return;
 		}
 
@@ -1130,6 +1182,16 @@ void ScummEngine::processKeyboard(Common::KeyState lastKeyHit) {
 			return;
 		}
 
+		if (enhancementEnabled(kEnhUIUX) && _game.id == GID_LOOM &&
+			mainmenuKeyEnabled && (lastKeyHit.keycode == Common::KEYCODE_d && lastKeyHit.hasFlags(Common::KBD_CTRL))) {
+			// Drafts menu
+			if (_macGui) {
+				_macGui->runDraftsInventory();
+			} else {
+				showDraftsInventory();
+			}
+		}
+
 		if (snapScrollKeyEnabled) {
 			if ((_game.version == 2 && lastKeyHit.keycode == Common::KEYCODE_s && lastKeyHit.hasFlags(Common::KBD_SHIFT)) ||
 				(_game.version == 3 && lastKeyHit.keycode == Common::KEYCODE_i && lastKeyHit.hasFlags(Common::KBD_ALT)) ||
@@ -1220,7 +1282,7 @@ void ScummEngine::processKeyboard(Common::KeyState lastKeyHit) {
 			}
 
 			if ((_game.version > 2 && _game.version < 5)) {
-				if (lastKeyHit.keycode == Common::KEYCODE_s && lastKeyHit.hasFlags(Common::KBD_SHIFT)) {
+				if (lastKeyHit.keycode == Common::KEYCODE_s && lastKeyHit.hasFlags(Common::KBD_SHIFT) && !inSaveRoom) {
 					_internalSpeakerSoundsAreOn ^= 1;
 
 					if (_internalSpeakerSoundsAreOn) {

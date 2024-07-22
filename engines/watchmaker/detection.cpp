@@ -50,14 +50,25 @@ static const ADGameDescription gameDescriptions[] = {
 		GUIO1(GUIO_NOMIDI)
 	},
 
+	// The Watchmaker Italian Retail
+	{
+		"watchmaker",
+		nullptr,
+		AD_ENTRY1s("Data.wm", "3650195f1983363b5676214a7596d85d", 6032308),
+		Common::IT_ITA,
+		Common::kPlatformWindows,
+		ADGF_NO_FLAGS,
+		GUIO1(GUIO_NOMIDI)
+	},
+
 	AD_TABLE_END_MARKER
 };
 
 } // End of namespace Watchmaker
 
-class WatchmakerMetaEngineDetection : public AdvancedMetaEngineDetection {
+class WatchmakerMetaEngineDetection : public AdvancedMetaEngineDetection<ADGameDescription> {
 public:
-	WatchmakerMetaEngineDetection() : AdvancedMetaEngineDetection(Watchmaker::gameDescriptions, sizeof(ADGameDescription), watchmakerGames) {
+	WatchmakerMetaEngineDetection() : AdvancedMetaEngineDetection(Watchmaker::gameDescriptions, watchmakerGames) {
 	}
 
 	const char *getName() const override {

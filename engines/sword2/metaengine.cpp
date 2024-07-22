@@ -22,20 +22,17 @@
  */
 
 #include "engines/advancedDetector.h"
-#include "engines/obsolete.h"
 
 #include "common/config-manager.h"
 #include "common/events.h"
 #include "common/file.h"
 #include "common/fs.h"
-#include "common/gui_options.h"
 #include "common/savefile.h"
 #include "common/system.h"
 #include "common/translation.h"
 
 #include "sword2/sword2.h"
 #include "sword2/saveload.h"
-#include "sword2/obsolete.h"
 
 namespace Sword2 {
 
@@ -56,7 +53,7 @@ static const ADExtraGuiOptionsMap optionsList[] = {
 
 } // End of namespace Sword2
 
-class Sword2MetaEngine : public AdvancedMetaEngine {
+class Sword2MetaEngine : public AdvancedMetaEngine<ADGameDescription> {
 public:
 	const char *getName() const override {
 		return "sword2";
@@ -72,10 +69,6 @@ public:
 	int getMaximumSaveSlot() const override;
 	void removeSaveState(const char *target, int slot) const override;
 
-	Common::Error createInstance(OSystem *syst, Engine **engine) override {
-		Engines::upgradeTargetIfNecessary(obsoleteGameIDsTable);
-		return AdvancedMetaEngine::createInstance(syst, engine);
-	}
 	Common::Error createInstance(OSystem *syst, Engine **engine, const ADGameDescription *desc) const override;
 };
 

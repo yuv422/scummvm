@@ -23,7 +23,6 @@
 #include "common/random.h"
 
 #include "graphics/managed_surface.h"
-#include "graphics/palette.h"
 
 #include "mtropolis/assets.h"
 #include "mtropolis/audio_player.h"
@@ -102,6 +101,15 @@ const Common::Array<Common::SharedPtr<Modifier> > &BehaviorModifier::getModifier
 void BehaviorModifier::appendModifier(const Common::SharedPtr<Modifier> &modifier) {
 	_children.push_back(modifier);
 	modifier->setParent(getSelfReference());
+}
+
+void BehaviorModifier::removeModifier(const Modifier *modifier) {
+	for (Common::Array<Common::SharedPtr<Modifier> >::iterator it = _children.begin(), itEnd = _children.end(); it != itEnd; ++it) {
+		if (it->get() == modifier) {
+			_children.erase(it);
+			return;
+		}
+	}
 }
 
 IModifierContainer *BehaviorModifier::getMessagePropagationContainer() {
@@ -450,6 +458,18 @@ VThreadState SaveAndRestoreModifier::consumeMessage(Runtime *runtime, const Comm
 	}
 
 	return kVThreadError;
+}
+
+void SaveAndRestoreModifier::linkInternalReferences(ObjectLinkingScope *scope) {
+	Modifier::linkInternalReferences(scope);
+
+	_saveOrRestoreValue.linkInternalReferences(scope);
+}
+
+void SaveAndRestoreModifier::visitInternalReferences(IStructuralReferenceVisitor *visitor) {
+	Modifier::visitInternalReferences(visitor);
+
+	_saveOrRestoreValue.visitInternalReferences(visitor);
 }
 
 Common::SharedPtr<Modifier> SaveAndRestoreModifier::shallowClone() const {
@@ -1406,7 +1426,7 @@ VThreadState VectorMotionModifier::consumeMessage(Runtime *runtime, const Common
 	if (_enableWhen.respondsTo(msg->getEvent())) {
 		DynamicValue vec = _vec.produceValue(msg->getValue());
 
-		if (vec.getType() != DynamicValueTypes::kVector) {
+		if (!vec.convertToType(DynamicValueTypes::kVector, vec)) {
 #ifdef MTROPOLIS_DEBUG_ENABLE
 			if (Debugger *debugger = runtime->debugGetDebugger())
 				debugger->notify(kDebugSeverityError, "Vector value was not actually a vector");
@@ -1448,7 +1468,7 @@ void VectorMotionModifier::trigger(Runtime *runtime) {
 	if (_vec.getSourceType() == DynamicValueSourceTypes::kVariableReference) {
 		DynamicValue vec = _vec.produceValue(DynamicValue());
 
-		if (vec.getType() == DynamicValueTypes::kVector)
+		if (vec.convertToType(DynamicValueTypes::kVector, vec))
 			_resolvedVector = vec.getVector();
 	}
 
@@ -2805,6 +2825,15 @@ const Common::Array<Common::SharedPtr<Modifier> > &CompoundVariableModifier::get
 void CompoundVariableModifier::appendModifier(const Common::SharedPtr<Modifier> &modifier) {
 	_children.push_back(modifier);
 	modifier->setParent(getSelfReference());
+}
+
+void CompoundVariableModifier::removeModifier(const Modifier *modifier) {
+	for (Common::Array<Common::SharedPtr<Modifier> >::iterator it = _children.begin(), itEnd = _children.end(); it != itEnd; ++it) {
+		if (it->get() == modifier) {
+			_children.erase(it);
+			return;
+		}
+	}
 }
 
 void CompoundVariableModifier::visitInternalReferences(IStructuralReferenceVisitor *visitor) {

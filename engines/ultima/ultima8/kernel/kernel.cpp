@@ -43,7 +43,7 @@ static const uint16 CRU_PROC_TYPE_ALL = 0xc;
 
 Kernel::Kernel() : _loading(false), _tickNum(0), _paused(0),
 		_runningProcess(nullptr), _frameByFrame(false) {
-	debugN(MM_INFO, "Creating Kernel...\n");
+	debug(1, "Creating Kernel...");
 
 	_kernel = this;
 	_pIDs = new idMan(1, 32766, 128);
@@ -52,7 +52,7 @@ Kernel::Kernel() : _loading(false), _tickNum(0), _paused(0),
 
 Kernel::~Kernel() {
 	reset();
-	debugN(MM_INFO, "Destroying Kernel...\n");
+	debug(1, "Destroying Kernel...");
 
 	_kernel = nullptr;
 
@@ -60,7 +60,7 @@ Kernel::~Kernel() {
 }
 
 void Kernel::reset() {
-	debugN(MM_INFO, "Resetting Kernel...\n");
+	debug(1, "Resetting Kernel...");
 
 	for (ProcessIterator it = _processes.begin(); it != _processes.end(); ++it) {
 		Process *p = *it;
@@ -103,7 +103,7 @@ ProcId Kernel::addProcess(Process *proc, bool dispose) {
 	assert(proc->_pid != 0 && proc->_pid != 0xFFFF);
 
 #if 0
-	debug(MM_INFO, "[Kernel] Adding process %p, pid = %u type %s",
+	debug(1, "[Kernel] Adding process %p, pid = %u type %s",
 		proc, proc->_pid, proc->GetClassType()._className);
 #endif
 
@@ -125,7 +125,7 @@ ProcId Kernel::addProcessExec(Process *proc, bool dispose) {
 	assert(proc->_pid != 0 && proc->_pid != 0xFFFF);
 
 #if 0
-	debug(MM_INFO, "[Kernel] Adding process %p, pid = %u type %s",
+	debug(1, "[Kernel] Adding process %p, pid = %u type %s",
 		proc, proc->_pid, proc->GetClassType()._className);
 #endif
 
@@ -352,11 +352,30 @@ void Kernel::killProcessesNotOfType(ObjId objid, uint16 processtype, bool fail) 
 }
 
 void Kernel::killAllProcessesNotOfTypeExcludeCurrent(uint16 processtype, bool fail) {
+	Common::HashMap<ProcId, bool> procsToSave;
+	Common::Array<ProcId> queue;
+
+	// Create a list of all the processes and their waiting parents that we can't kill.
+	if (_runningProcess) {
+		queue.push_back(_runningProcess->_pid);
+		while (!queue.empty()) {
+			ProcId procToSave = queue.back();
+			queue.pop_back();
+			if (!procsToSave.contains(procToSave)) {
+				Process *p = getProcess(procToSave);
+				if (p) {
+					procsToSave[procToSave] = true;
+					queue.push_back(p->_waiting);
+				}
+			}
+		}
+	}
+
 	for (ProcessIterator it = _processes.begin(); it != _processes.end(); ++it) {
 		Process *p = *it;
 
 		// Don't kill the running process
-		if (p == _runningProcess)
+		if (procsToSave.contains(p->_pid))
 			continue;
 
 		if ((p->_type != processtype) &&

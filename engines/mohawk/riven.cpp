@@ -22,7 +22,6 @@
 #include "common/config-manager.h"
 #include "common/debug-channels.h"
 #include "common/events.h"
-#include "common/gui_options.h"
 #include "common/keyboard.h"
 #include "common/translation.h"
 #include "common/system.h"
@@ -92,7 +91,7 @@ MohawkEngine_Riven::MohawkEngine_Riven(OSystem *syst, const MohawkGameDescriptio
 	// file. The following directories allow Riven to be played directly
 	// from the DVD.
 
-	const Common::FSNode gameDataDir(ConfMan.get("path"));
+	const Common::FSNode gameDataDir(ConfMan.getPath("path"));
 	SearchMan.addSubDirectoryMatching(gameDataDir, "all");
 	SearchMan.addSubDirectoryMatching(gameDataDir, "data");
 	SearchMan.addSubDirectoryMatching(gameDataDir, "exe");
@@ -280,11 +279,11 @@ void MohawkEngine_Riven::processInput() {
 				} else if (!isGameVariant(GF_25TH)) {
 					openMainMenuDialog();
 				}
-					
+
 				if (!isGameVariant(GF_DEMO) && hasGameEnded()) {
 					// Attempt to autosave before exiting
 					saveAutosaveIfEnabled();
-				}	
+				}
 				break;
 			case kRivenActionPlayIntroVideos:
 				// Play the intro videos in the demo
@@ -537,7 +536,7 @@ void MohawkEngine_Riven::loadLanguageDatafile(char prefix, uint16 stackId) {
 		return;
 	}
 
-	Common::String languageDatafile = Common::String::format("%c_data_%s.mhk", prefix, languageDesc->archiveSuffix);
+	Common::Path languageDatafile(Common::String::format("%c_data_%s.mhk", prefix, languageDesc->archiveSuffix));
 
 	MohawkArchive *mhk = new MohawkArchive();
 	if (mhk->openFile(languageDatafile)) {
@@ -754,8 +753,11 @@ bool MohawkEngine_Riven::isZipVisitedCard(const Common::String &hotspotName) con
 	return foundMatch;
 }
 
-bool MohawkEngine_Riven::canLoadGameStateCurrently() {
+bool MohawkEngine_Riven::canLoadGameStateCurrently(Common::U32String *msg) {
 	if (isGameVariant(GF_DEMO)) {
+		if (msg)
+			*msg = _("This game does not support loading");
+
 		return false;
 	}
 
@@ -766,8 +768,15 @@ bool MohawkEngine_Riven::canLoadGameStateCurrently() {
 	return true;
 }
 
-bool MohawkEngine_Riven::canSaveGameStateCurrently() {
-	return canLoadGameStateCurrently() && isGameStarted();
+bool MohawkEngine_Riven::canSaveGameStateCurrently(Common::U32String *msg) {
+	if (isGameVariant(GF_DEMO)) {
+		if (msg)
+			*msg = _("This game does not support saving");
+
+		return false;
+	}
+
+	return canLoadGameStateCurrently(msg) && isGameStarted();
 }
 
 bool MohawkEngine_Riven::hasGameEnded() const {

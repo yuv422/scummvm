@@ -40,6 +40,8 @@ BaseMacWindow::BaseMacWindow(int id, bool editable, MacWindowManager *wm) :
 	_type = kWindowUnknown;
 
 	_visible = true;
+
+	_draggable = true;
 }
 
 void BaseMacWindow::setVisible(bool visible, bool silent) { _visible = visible; _wm->setFullRefresh(true); }
@@ -98,7 +100,7 @@ void MacWindow::resize(int w, int h) {
 	_dims.setWidth(w);
 	_dims.setHeight(h);
 	updateInnerDims();
-	
+
 	rebuildSurface();
 }
 
@@ -239,6 +241,9 @@ void MacWindow::updateInnerDims() {
 		_innerDims = _dims;
 		_innerDims.grow(-kBorderWidth);
 	}
+	// Prevent negative dimensions
+	_innerDims.right = MAX(_innerDims.left, _innerDims.right);
+	_innerDims.bottom = MAX(_innerDims.top, _innerDims.bottom);
 }
 
 void MacWindow::updateOuterDims() {
@@ -260,6 +265,8 @@ void MacWindow::updateOuterDims() {
 }
 
 void MacWindow::drawBorder() {
+	resizeBorderSurface();
+
 	_borderIsDirty = false;
 
 	ManagedSurface *g = &_borderSurface;
@@ -292,7 +299,7 @@ void MacWindow::setTitle(const Common::String &title) {
 		_shadowedTitle = title;
 		return;
 	}
-	
+
 	_title = title;
 	_borderIsDirty = true;
 	_macBorder.setTitle(title, _borderSurface.w, _wm);
@@ -356,14 +363,17 @@ void MacWindow::loadBorder(Common::SeekableReadStream &file, uint32 flags, Borde
 	_macBorder.loadBorder(file, flags, offsets);
 }
 
-void MacWindow::setBorder(Graphics::TransparentSurface *surface, uint32 flags, BorderOffsets offsets) {
+void MacWindow::setBorder(Graphics::ManagedSurface *surface, uint32 flags, BorderOffsets offsets) {
 	_macBorder.setBorder(surface, flags, offsets);
 }
 
 void MacWindow::resizeBorderSurface() {
 	updateOuterDims();
-	_borderSurface.free();
-	_borderSurface.create(_dims.width(), _dims.height(), _wm->_pixelformat);
+
+	if (_borderSurface.w != _dims.width() || _borderSurface.h != _dims.height()) {
+		_borderSurface.free();
+		_borderSurface.create(_dims.width(), _dims.height(), _wm->_pixelformat);
+	}
 }
 
 void MacWindow::setCloseable(bool closeable) {
@@ -472,7 +482,7 @@ bool MacWindow::processEvent(Common::Event &event) {
 			_wm->_hoveredWidget = nullptr;
 		}
 
-		if (_beingDragged) {
+		if (_beingDragged && _draggable) {
 			_dims.translate(event.mouse.x - _draggedX, event.mouse.y - _draggedY);
 			updateInnerDims();
 

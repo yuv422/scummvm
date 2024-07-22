@@ -72,7 +72,7 @@ bool rSetZBufferState(bool state) {
 /* -----------------25/06/99 11.14-------------------
  *  Renderizza il cielo senza considerare lo zbuffer
  * --------------------------------------------------*/
-void RenderSky(void) {
+void RenderSky() {
 	unsigned int    i;
 	bool            hres;
 	gBatchBlock     *bb;
@@ -122,7 +122,7 @@ void RenderSky(void) {
 /* -----------------31/05/99 10.19-------------------
  *          Renderizza la Geometria
  * --------------------------------------------------*/
-void RenderGeometry(void) {
+void RenderGeometry() {
 	signed short int LastViewMatrixNum, LastTexture1, LastTexture2;
 	gBatchBlock *bb;
 	bool hres = false;
@@ -395,10 +395,10 @@ void RenderGeometry(void) {
 /* -----------------31/05/99 10.55-------------------
  *              Renderizza la scena
  * --------------------------------------------------*/
-bool rRenderScene(void) {
+bool rRenderScene() {
 	unsigned int    i, j;
 	bool            hres;
-	static unsigned int dwFrameCount = 0;
+	//static unsigned int dwFrameCount = 0;
 
 	g_renderer->setRenderState(RenderState::LIGHT, false);
 	g_renderer->setRenderState(RenderState::CLIP, true);
@@ -560,7 +560,7 @@ bool rRenderScene(void) {
 //	NumBatchBlocksLightmaps=0;
 	NumBatchBlocksSky = 0;
 
-	dwFrameCount++;
+	//dwFrameCount++;
 
 	return TRUE;
 	// End the scene.

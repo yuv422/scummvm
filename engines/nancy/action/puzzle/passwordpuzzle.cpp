@@ -32,9 +32,13 @@
 namespace Nancy {
 namespace Action {
 
+PasswordPuzzle::~PasswordPuzzle() {
+	g_nancy->_input->setVKEnabled(false);
+}
+
 void PasswordPuzzle::init() {
-	_drawSurface.create(_screenPosition.width(), _screenPosition.height(), g_nancy->_graphicsManager->getInputPixelFormat());
-	_drawSurface.clear(g_nancy->_graphicsManager->getTransColor());
+	_drawSurface.create(_screenPosition.width(), _screenPosition.height(), g_nancy->_graphics->getInputPixelFormat());
+	_drawSurface.clear(g_nancy->_graphics->getTransColor());
 
 	setTransparent(true);
 
@@ -53,29 +57,28 @@ void PasswordPuzzle::readData(Common::SeekableReadStream &stream) {
 
 	uint numNames = 1;
 	uint numPasswords = 1;
-	char buf[20];
+	char buf[33];
+	uint fieldSize = s.getVersion() <= kGameTypeNancy5 ? 20 : 33; // nancy6 changed the size of text fields to 33
 
 	s.syncAsUint16LE(numNames, kGameTypeNancy4);
 	_names.resize(numNames);
 	for (uint i = 0; i < numNames; ++i) {
-		stream.read(buf, 20);
-		buf[19] = '\0';
+		stream.read(buf, fieldSize);
+		buf[fieldSize - 1] = '\0';
 		_names[i] = buf;
-
-		_maxNameLength = MAX(_maxNameLength, _names[i].size());
 	}
-	s.skip((5 - numNames) * 20, kGameTypeNancy4);
+	s.skip((5 - numNames) * fieldSize, kGameTypeNancy4);
 
 	s.syncAsUint16LE(numPasswords, kGameTypeNancy4);
 	_passwords.resize(numPasswords);
 	for (uint i = 0; i < numPasswords; ++i) {
-		stream.read(buf, 20);
+		stream.read(buf, fieldSize);
 		buf[19] = '\0';
 		_passwords[i] = buf;
-
-		_maxPasswordLength = MAX(_maxPasswordLength, _passwords[i].size());
 	}
-	s.skip((5 - numPasswords) * 20, kGameTypeNancy4);
+	s.skip((5 - numPasswords) * fieldSize, kGameTypeNancy4);
+
+	_maxStringLength = g_nancy->getGameType() < kGameTypeNancy6 ? 12 : 31;
 
 	_solveExitScene.readData(stream);
 	_solveSound.readNormal(stream);
@@ -90,7 +93,7 @@ void PasswordPuzzle::execute() {
 	case kBegin:
 		init();
 		registerGraphics();
-		g_system->setFeatureState(OSystem::kFeatureVirtualKeyboard, true);
+		g_nancy->_input->setVKEnabled(true);
 		_nextBlinkTime = g_nancy->getTotalPlayTime() + _cursorBlinkTime;
 		_state = kRun;
 		// fall through
@@ -178,9 +181,14 @@ void PasswordPuzzle::execute() {
 			break;
 		}
 
-		g_system->setFeatureState(OSystem::kFeatureVirtualKeyboard, false);
+		g_nancy->_input->setVKEnabled(false);
 		finishExecution();
 	}
+}
+
+void PasswordPuzzle::onPause(bool paused) {
+	g_nancy->_input->setVKEnabled(!paused);
+	RenderActionRecord::onPause(paused);
 }
 
 void PasswordPuzzle::handleInput(NancyInput &input) {
@@ -189,7 +197,7 @@ void PasswordPuzzle::handleInput(NancyInput &input) {
 	}
 
 	if (NancySceneState.getViewport().convertViewportToScreen(_exitHotspot).contains(input.mousePos)) {
-		g_nancy->_cursorManager->setCursorType(g_nancy->_cursorManager->_puzzleExitCursor);
+		g_nancy->_cursor->setCursorType(g_nancy->_cursor->_puzzleExitCursor);
 
 		if (input.input & NancyInput::kLeftMouseButtonUp) {
 			_state = kActionTrigger;
@@ -199,28 +207,27 @@ void PasswordPuzzle::handleInput(NancyInput &input) {
 	for (uint i = 0; i < input.otherKbdInput.size(); ++i) {
 		Common::KeyState &key = input.otherKbdInput[i];
 		Common::String &activeField = _passwordFieldIsActive ? _playerPasswordInput : _playerNameInput;
-		uint &maxLength = _passwordFieldIsActive ? _maxPasswordLength : _maxNameLength;
 		if (key.keycode == Common::KEYCODE_BACKSPACE) {
 			if (activeField.size() && activeField.lastChar() == '-' ? activeField.size() > 1 : true) {
 				if (activeField.lastChar() == '-') {
-					activeField.deleteChar(activeField.size() -2);
+					activeField.deleteChar(activeField.size() - 2);
 				} else {
 					activeField.deleteLastChar();
 				}
 
 				drawText();
 			}
-		} else if (key.keycode == Common::KEYCODE_RETURN) {
+		} else if (key.keycode == Common::KEYCODE_RETURN || key.keycode == Common::KEYCODE_KP_ENTER) {
 			_playerHasHitReturn = true;
 		} else if (Common::isAlnum(key.ascii) || Common::isSpace(key.ascii)) {
 			if (activeField.size() && activeField.lastChar() == '-') {
-				if (activeField.size() <= maxLength + 2) {
+				if (activeField.size() <= _maxStringLength + 1) {
 					activeField.deleteLastChar();
 					activeField += key.ascii;
 					activeField += '-';
 				}
 			} else {
-				if (activeField.size() <= maxLength + 1) {
+				if (activeField.size() <= _maxStringLength) {
 					activeField += key.ascii;
 				}
 			}
@@ -231,8 +238,8 @@ void PasswordPuzzle::handleInput(NancyInput &input) {
 }
 
 void PasswordPuzzle::drawText() {
-	_drawSurface.clear(g_nancy->_graphicsManager->getTransColor());
-	const Graphics::Font *font = g_nancy->_graphicsManager->getFont(_fontID);
+	_drawSurface.clear(g_nancy->_graphics->getTransColor());
+	const Graphics::Font *font = g_nancy->_graphics->getFont(_fontID);
 
 	Common::Rect bounds = _nameBounds;
 	bounds = NancySceneState.getViewport().convertViewportToScreen(bounds);

@@ -90,7 +90,7 @@ struct EngineDesc {
 	/**
 	 * Whether the engine should be included in the build or not.
 	 */
-	bool enable;
+	bool enable = false;
 
 	/**
 	 * Features required for this engine.
@@ -241,30 +241,20 @@ struct BuildSetup {
 	StringList defines;   ///< List of all defines for the build.
 	StringList testDirs;  ///< List of all folders containing tests
 
-	bool devTools;             ///< Generate project files for the tools
-	bool tests;                ///< Generate project files for the tests
-	bool runBuildEvents;       ///< Run build events as part of the build (generate revision number and copy engine/theme data & needed files to the build folder
-	bool createInstaller;      ///< Create installer after the build
-	bool useSDL2;              ///< Whether to use SDL2 or not.
-	bool useStaticDetection;   ///< Whether to link detection features inside the executable or not.
-	bool useWindowsUnicode;    ///< Whether to use Windows Unicode APIs or ANSI APIs.
-	bool useXCFramework;       ///< Whether to use Apple XCFrameworks instead of static libraries
-	bool useVcpkg;             ///< Whether to load libraries from vcpkg or SCUMMVM_LIBS
+	bool devTools = false;             ///< Generate project files for the tools
+	bool tests = false;                ///< Generate project files for the tests
+	bool runBuildEvents = false;       ///< Run build events as part of the build (generate revision number and copy engine/theme data & needed files to the build folder
+	bool createInstaller = false;      ///< Create installer after the build
+	bool useSDL2 = true;               ///< Whether to use SDL2 or not.
+	bool useStaticDetection = true;    ///< Whether to link detection features inside the executable or not.
+	bool useWindowsUnicode = true;     ///< Whether to use Windows Unicode APIs or ANSI APIs.
+	bool useWindowsSubsystem = false;  ///< Whether to use Windows subsystem or Console subsystem (default: Console)
+	bool useXCFramework = false;       ///< Whether to use Apple XCFrameworks instead of static libraries
+	bool useVcpkg = false;             ///< Whether to load libraries from vcpkg or SCUMMVM_LIBS
+	bool win32 = false;                ///< Target is Windows
 
-	BuildSetup() {
-		devTools = false;
-		tests = false;
-		runBuildEvents = false;
-		createInstaller = false;
-		useSDL2 = true;
-		useStaticDetection = true;
-		useWindowsUnicode = true;
-		useXCFramework = false;
-		useVcpkg = false;
-	}
-
-	bool featureEnabled(std::string feature) const;
-	Feature getFeature(std::string feature) const;
+	bool featureEnabled(const std::string &feature) const;
+	Feature getFeature(const std::string &feature) const;
 };
 
 /**
@@ -312,6 +302,20 @@ enum MSVC_Architecture {
 
 std::string getMSVCArchName(MSVC_Architecture arch);
 std::string getMSVCConfigName(MSVC_Architecture arch);
+
+enum EngineDataGroup {
+	kEngineDataGroupNormal,
+	kEngineDataGroupCore,
+	kEngineDataGroupBig,
+
+	kEngineDataGroupCount,
+};
+
+struct EngineDataGroupResolution {
+	EngineDataGroup engineDataGroup;
+	const char *mkFilePath;
+	const char *winHeaderPath;
+};
 
 /**
  * Creates a list of all supported versions of Visual Studio.
@@ -410,6 +414,21 @@ void splitFilename(const std::string &fileName, std::string &name, std::string &
 void splitPath(const std::string &path, std::string &dir, std::string &file);
 
 /**
+ * Calculates the include path and PCH file path (without the base directory).
+ *
+ * @param filePath Path to the source file.
+ * @param pchIncludeRoot Path to the PCH inclusion root directory (ending with separator).
+ * @param pchDirs List of PCH directories.
+ * @param pchExclude List of PCH exclusions.
+ * @param separator Path separator
+ * @param outPchIncludePath Output path to be used by #include directives.
+ * @param outPchFilePath Output file path.
+ * @param outPchFileName Output file name.
+ * @return True if the file path uses PCH, false if not.
+ */
+bool calculatePchPaths(const std::string &sourceFilePath, const std::string &pchIncludeRoot, const StringList &pchDirs, const StringList &pchExclude, char separator, std::string &outPchIncludePath, std::string &outPchFilePath, std::string &outPchFileName);
+
+/**
  * Returns the basename of a path.
  * examples:
  *   a/b/c/d.ext -> d.ext
@@ -483,6 +502,11 @@ struct FileNode {
 
 class ProjectProvider {
 public:
+	struct EngineDataGroupDef {
+		StringList dataFiles;
+		std::string winHeaderPath;
+	};
+
 	typedef std::map<std::string, std::string> UUIDMap;
 
 	/**
@@ -519,6 +543,8 @@ protected:
 	UUIDMap _engineUuidMap; ///< List of (project name, UUID) pairs
 	UUIDMap _allProjUuidMap;
 
+	EngineDataGroupDef _engineDataGroupDefs[kEngineDataGroupCount];
+
 	/**
 	 *  Create workspace/solution file
 	 *
@@ -551,7 +577,7 @@ protected:
 	 * @param excludeList Files to exclude (must have "moduleDir" as prefix).
 	 */
 	virtual void createProjectFile(const std::string &name, const std::string &uuid, const BuildSetup &setup, const std::string &moduleDir,
-	                               const StringList &includeList, const StringList &excludeList) = 0;
+								   const StringList &includeList, const StringList &excludeList, const std::string &pchIncludeRoot, const StringList &pchDirs, const StringList &pchExclude) = 0;
 
 	/**
 	 * Writes file entries for the specified directory node into
@@ -564,7 +590,8 @@ protected:
 	 * @param filePrefix Generic prefix to all files of the node.
 	 */
 	virtual void writeFileListToProject(const FileNode &dir, std::ostream &projectFile, const int indentation,
-	                                    const std::string &objPrefix, const std::string &filePrefix) = 0;
+										const std::string &objPrefix, const std::string &filePrefix,
+										const std::string &pchIncludeRoot, const StringList &pchDirs, const StringList &pchExclude) = 0;
 
 	/**
 	 * Output a list of project references to the file stream
@@ -588,7 +615,8 @@ protected:
 	 * @param filePrefix Prefix to use for relative path arguments.
 	 */
 	void addFilesToProject(const std::string &dir, std::ostream &projectFile,
-	                       const StringList &includeList, const StringList &excludeList,
+						   const StringList &includeList, const StringList &excludeList,
+						   const std::string &pchIncludeRoot, const StringList &pchDirs, const StringList &pchExclude,
 	                       const std::string &filePrefix);
 
 	/**
@@ -602,7 +630,17 @@ protected:
 	 * @param includeList Reference to a list, where included files should be added.
 	 * @param excludeList Reference to a list, where excluded files should be added.
 	 */
-	void createModuleList(const std::string &moduleDir, const StringList &defines, StringList &testDirs, StringList &includeList, StringList &excludeList, bool forDetection = false) const;
+	void createModuleList(const std::string &moduleDir, const StringList &defines, StringList &testDirs, StringList &includeList, StringList &excludeList, StringList &pchDirs, StringList &pchExclude, bool forDetection = false) const;
+
+	/**
+	 * Creates a list of data files from a specified .mk file
+	 *
+	 * @param makeFilePath Path to the engine data makefile.
+	 * @param defines List of set defines.
+	 * @param outDataFiles Output list of data files.
+	 * @param outWinHeaderPath Output Windows resource header path.
+	 */
+	void createDataFilesList(EngineDataGroup engineDataGroup, const std::string &baseDir, const StringList &defines, StringList &outDataFiles, std::string &outWinHeaderPath) const;
 
 	/**
 	 * Creates an UUID for every enabled engine of the
@@ -652,6 +690,11 @@ private:
 	 * @param setup Description of the desired build.
 	 */
 	void createEnginePluginsTable(const BuildSetup &setup);
+
+	/**
+	 * Creates resource embed files
+	 */
+	void createResourceEmbeds(const BuildSetup &setup) const;
 };
 
 } // namespace CreateProjectTool

@@ -54,6 +54,8 @@ class CommandSender;
 class GuiObject;
 class RadiobuttonGroup;
 class RadiobuttonWidget;
+class PathWidget;
+class ScrollContainerWidget;
 class OptionsContainerWidget;
 
 class OptionsDialog : public Dialog {
@@ -80,7 +82,7 @@ protected:
 	Common::String _domain;
 
 	ButtonWidget *_soundFontButton;
-	StaticTextWidget *_soundFont;
+	PathWidget *_soundFont;
 	ButtonWidget *_soundFontClearButton;
 
 	virtual void build();
@@ -119,9 +121,10 @@ protected:
 	TabWidget *_tabWidget;
 	int _graphicsTabId;
 	int _midiTabId;
-	int _pathsTabId;
 
-	StaticTextWidget *_shader;
+	ScrollContainerWidget *_pathsContainer;
+
+	PathWidget *_shader;
 	ButtonWidget *_shaderClearButton;
 	ButtonWidget *_updateShadersButton = nullptr;
 
@@ -275,20 +278,20 @@ protected:
 
 	void addMIDIControls(GuiObject *boss, const Common::String &prefix);
 
-	StaticTextWidget *_savePath;
+	PathWidget       *_savePath;
 	ButtonWidget	 *_savePathClearButton;
-	StaticTextWidget *_themePath;
+	PathWidget       *_themePath;
 	ButtonWidget	 *_themePathClearButton;
-	StaticTextWidget *_iconPath;
+	PathWidget       *_iconPath;
 	ButtonWidget	 *_iconPathClearButton;
 #ifdef USE_DLC
-	StaticTextWidget *_dlcPath;
+	PathWidget       *_dlcPath;
 	ButtonWidget	 *_dlcPathClearButton;
 #endif
-	StaticTextWidget *_extraPath;
+	PathWidget       *_extraPath;
 	ButtonWidget	 *_extraPathClearButton;
 #ifdef DYNAMIC_MODULES
-	StaticTextWidget *_pluginsPath;
+	PathWidget       *_pluginsPath;
 	ButtonWidget	 *_pluginsPathClearButton;
 #endif
 	StaticTextWidget *_browserPath;
@@ -365,9 +368,10 @@ protected:
 	void setupCloudTab();
 	void shiftWidget(Widget *widget, const char *widgetName, int32 xOffset, int32 yOffset);
 
-	void storageSavesSyncedCallback(Cloud::Storage::BoolResponse response);
-	void storageErrorCallback(Networking::ErrorResponse response);
+	void storageSavesSyncedCallback(const Cloud::Storage::BoolResponse &response);
+	void storageErrorCallback(const Networking::ErrorResponse &response);
 #endif // USE_LIBCURL
+#endif // USE_CLOUD
 
 #ifdef USE_SDL_NET
 	//
@@ -376,7 +380,7 @@ protected:
 	ButtonWidget	 *_runServerButton;
 	StaticTextWidget *_serverInfoLabel;
 	ButtonWidget	 *_rootPathButton;
-	StaticTextWidget *_rootPath;
+	PathWidget       *_rootPath;
 	ButtonWidget	 *_rootPathClearButton;
 	StaticTextWidget *_serverPortDesc;
 	EditTextWidget   *_serverPort;
@@ -389,7 +393,6 @@ protected:
 	void reflowNetworkTabLayout();
 #endif // USE_SDL_NET
 
-#endif // USE_CLOUD
 	//
 	// Accessibility controls
 	//

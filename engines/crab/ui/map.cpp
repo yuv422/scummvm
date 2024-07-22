@@ -42,7 +42,7 @@ using namespace pyrodactyl::input;
 //------------------------------------------------------------------------
 // Purpose: Load stuff that can't be modified by the user
 //------------------------------------------------------------------------
-void Map::load(const Common::String &filename, pyrodactyl::event::Info &info) {
+void Map::load(const Common::Path &filename, pyrodactyl::event::Info &info) {
 	XMLDoc conf(filename);
 	if (conf.ready()) {
 		rapidxml::xml_node<char> *node = conf.doc()->first_node("map");
@@ -125,9 +125,9 @@ void Map::draw(pyrodactyl::event::Info &info) {
 
 			// If we're outside the right edge, we need to cull the width and height
 			if (X + r.w > _pos.x + _camera.w)
-				r.w = _pos.x + _camera.w - X;
+				r.w = ABS(_pos.x + _camera.w - X); // abs to fix crash incase _pos.x + _camera.w < X
 			if (Y + r.h > _pos.y + _camera.h)
-				r.h = _pos.y + _camera.h - Y;
+				r.h = ABS(_pos.y + _camera.h - Y); // abs to fix crash incase _pos.y + _camera.h < Y
 
 			_imgOverlay.draw(X, Y, &r);
 		}

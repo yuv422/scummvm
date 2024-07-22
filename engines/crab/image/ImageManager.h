@@ -38,6 +38,8 @@
 #include "crab/image/Image.h"
 #include "crab/TMX/TMXTileSet.h"
 
+#include "common/hashmap.h"
+
 namespace Crab {
 
 // We use this object as the key for all image assets
@@ -85,7 +87,7 @@ public:
 	// image related stuff
 
 	// Load all images specified in an xml file in a map
-	void loadMap(const Common::String &filename, const MapID &mapid = MAP_CURRENT);
+	void loadMap(const Common::Path &filename, const MapID &mapid = MAP_CURRENT);
 
 	void getTexture(const ImageKey &id, Image &data);
 	Image &getTexture(const ImageKey &id);

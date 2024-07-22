@@ -25,6 +25,7 @@
 #include "zvision/scripting/control.h"
 
 #include "common/list.h"
+#include "common/path.h"
 #include "common/rect.h"
 
 namespace Video {
@@ -86,7 +87,7 @@ public:
 	bool process(uint32 deltaTimeInMillis) override;
 
 private:
-	void parseLevFile(const Common::String &fileName);
+	void parseLevFile(const Common::Path &fileName);
 	/**
 	 * Calculates the angle a vector makes with the negative y-axis
 	 *

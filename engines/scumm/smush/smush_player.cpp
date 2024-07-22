@@ -28,7 +28,7 @@
 #include "audio/mixer.h"
 
 #include "graphics/cursorman.h"
-#include "graphics/palette.h"
+#include "graphics/paletteman.h"
 
 #include "scumm/file.h"
 #include "scumm/imuse_digi/dimuse_engine.h"
@@ -247,6 +247,10 @@ SmushPlayer::SmushPlayer(ScummEngine_v7 *scumm, IMuseDigital *imuseDigital, Insa
 	_paused = false;
 	_pauseStartTime = 0;
 	_pauseTime = 0;
+
+	memset(_pal, 0, sizeof(_pal));
+	memset(_deltaPal, 0, sizeof(_deltaPal));
+	memset(_shiftedDeltaPal, 0, sizeof(_shiftedDeltaPal));
 
 	for (int i = 0; i < 4; i++)
 		_iactTable[i] = 0;
@@ -669,7 +673,12 @@ void SmushPlayer::handleTextResource(uint32 subType, int32 subSize, Common::Seek
 }
 
 const char *SmushPlayer::getString(int id) {
-	return _strings->get(id);
+	if (_strings != nullptr) {
+		return _strings->get(id);
+	} else {
+		warning("Couldn't load string with id {%d}, are you maybe missing a TRS subtitle file?", id);
+		return nullptr;
+	}
 }
 
 bool SmushPlayer::readString(const char *file) {
@@ -694,36 +703,31 @@ void SmushPlayer::readPalette(byte *out, Common::SeekableReadStream &in) {
 	in.read(out, 0x300);
 }
 
-static byte delta_color(byte org_color, int16 delta_color) {
-	int t = (org_color * 129 + delta_color) / 128;
-	return CLIP(t, 0, 255);
-}
-
 void SmushPlayer::handleDeltaPalette(int32 subSize, Common::SeekableReadStream &b) {
 	debugC(DEBUG_SMUSH, "SmushPlayer::handleDeltaPalette()");
 
-	if (subSize == 0x300 * 3 + 4) {
+	b.readUint16LE();
+	uint16 xpalCommand = b.readUint16LE();
 
+	if (xpalCommand == 256) {
 		b.readUint16LE();
-		b.readUint16LE();
-
-		for (int i = 0; i < 0x300; i++) {
-			_deltaPal[i] = b.readUint16LE();
+		for (int i = 0; i < 768; ++i) {
+			_shiftedDeltaPal[i] += _deltaPal[i];
+			
+			_pal[i] = CLIP<int32>(_shiftedDeltaPal[i] >> 7, 0, 255);
 		}
-		readPalette(_pal, b);
-		setDirtyColors(0, 255);
-	} else if (subSize == 6) {
 
-		b.readUint16LE();
-		b.readUint16LE();
-		b.readUint16LE();
-
-		for (int i = 0; i < 0x300; i++) {
-			_pal[i] = delta_color(_pal[i], _deltaPal[i]);
-		}
 		setDirtyColors(0, 255);
 	} else {
-		error("SmushPlayer::handleDeltaPalette() Wrong size for DeltaPalette");
+		for (int j = 0; j < 768; ++j) {
+			_shiftedDeltaPal[j] = _pal[j] << 7;
+			_deltaPal[j] = b.readUint16LE();
+		}
+
+		if (xpalCommand == 512)
+			readPalette(_pal, b);
+
+		setDirtyColors(0, 255);
 	}
 }
 
@@ -1020,7 +1024,7 @@ void SmushPlayer::parseNextFrame() {
 			delete _base;
 
 			ScummFile *tmp = new ScummFile(_vm);
-			if (!g_scumm->openFile(*tmp, _seekFile))
+			if (!g_scumm->openFile(*tmp, Common::Path(_seekFile)))
 				error("SmushPlayer: Unable to open file %s", _seekFile.c_str());
 			_base = tmp;
 			_base->readUint32BE();

@@ -41,11 +41,11 @@ static const GLfloat bitmapVertices[] = {
 	1.0, 1.0,
 };
 
-Renderer *CreateGfxOpenGLShader(int screenW, int screenH, Common::RenderMode renderMode) {
-	return new OpenGLShaderRenderer(screenW, screenH, renderMode);
+Renderer *CreateGfxOpenGLShader(int screenW, int screenH, Common::RenderMode renderMode, bool authenticGraphics) {
+	return new OpenGLShaderRenderer(screenW, screenH, renderMode, authenticGraphics);
 }
 
-OpenGLShaderRenderer::OpenGLShaderRenderer(int screenW, int screenH, Common::RenderMode renderMode) : Renderer(screenW, screenH, renderMode) {
+OpenGLShaderRenderer::OpenGLShaderRenderer(int screenW, int screenH, Common::RenderMode renderMode, bool authenticGraphics) : Renderer(screenW, screenH, renderMode, authenticGraphics) {
 	_verts = nullptr;
 	_triangleShader = nullptr;
 	_triangleVBO = 0;
@@ -96,7 +96,6 @@ void OpenGLShaderRenderer::init() {
 	_bitmapShader->enableVertexAttribute("position", _bitmapVBO, 2, GL_FLOAT, GL_TRUE, 2 * sizeof(float), 0);
 	_bitmapShader->enableVertexAttribute("texcoord", _bitmapVBO, 2, GL_FLOAT, GL_TRUE, 2 * sizeof(float), 0);
 
-	glDisable(GL_LIGHTING);
 	glDisable(GL_TEXTURE_2D);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_SCISSOR_TEST);
@@ -138,11 +137,13 @@ void OpenGLShaderRenderer::drawTexturedRect2D(const Common::Rect &screenRect, co
 	_bitmapShader->unbind();
 }
 
-void OpenGLShaderRenderer::updateProjectionMatrix(float fov, float nearClipPlane, float farClipPlane) {
-	float aspectRatio = _screenW / (float)_screenH;
+void OpenGLShaderRenderer::updateProjectionMatrix(float fov, float yminValue, float ymaxValue, float nearClipPlane, float farClipPlane) {
+	// Determining xmaxValue and ymaxValue still needs some work for matching the 3D view in freescape games
+	/*float aspectRatio = _screenW / (float)_screenH;
 	float xmaxValue = nearClipPlane * tan(Common::deg2rad(fov) / 2);
 	float ymaxValue = xmaxValue / aspectRatio;
-	_projectionMatrix = Math::makeFrustumMatrix(xmaxValue, -xmaxValue, -ymaxValue, ymaxValue, nearClipPlane, farClipPlane);
+	_projectionMatrix = Math::makeFrustumMatrix(xmaxValue, -xmaxValue, -ymaxValue, ymaxValue, nearClipPlane, farClipPlane);*/
+	_projectionMatrix = Math::makeFrustumMatrix(1.5, -1.5, yminValue, ymaxValue, nearClipPlane, farClipPlane);
 }
 
 void OpenGLShaderRenderer::positionCamera(const Math::Vector3d &pos, const Math::Vector3d &interest) {
@@ -165,10 +166,9 @@ void OpenGLShaderRenderer::positionCamera(const Math::Vector3d &pos, const Math:
 void OpenGLShaderRenderer::renderSensorShoot(byte color, const Math::Vector3d sensor, const Math::Vector3d target, const Common::Rect viewArea) {
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ZERO);
-	glColor3ub(255, 255, 255);
+	useColor(255, 255, 255);
 
 	glLineWidth(20);
-	glEnableClientState(GL_VERTEX_ARRAY);
 	copyToVertexArray(0, sensor);
 	copyToVertexArray(1, target);
 
@@ -176,9 +176,7 @@ void OpenGLShaderRenderer::renderSensorShoot(byte color, const Math::Vector3d se
 	glBufferData(GL_ARRAY_BUFFER, 8 * 3 * sizeof(float), _verts, GL_DYNAMIC_DRAW);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
 
-	glVertexPointer(3, GL_FLOAT, 0, _verts);
 	glDrawArrays(GL_LINES, 0, 2);
-	glDisableClientState(GL_VERTEX_ARRAY);
 	glLineWidth(1);
 
 	glDisable(GL_BLEND);
@@ -190,7 +188,62 @@ float remap(float f, float s) {
 	return 2. * f / s - 1;
 }
 
-void OpenGLShaderRenderer::renderPlayerShoot(byte color, const Common::Point position, const Common::Rect viewArea) {
+void OpenGLShaderRenderer::renderPlayerShootBall(byte color, const Common::Point _position, int frame, const Common::Rect viewArea) {
+	uint8 r, g, b;
+
+	Math::Matrix4 identity;
+	identity(0, 0) = 1.0;
+	identity(1, 1) = 1.0;
+	identity(2, 2) = 1.0;
+	identity(3, 3) = 1.0;
+
+	_triangleShader->use();
+	_triangleShader->setUniform("useStipple", false);
+	_triangleShader->setUniform("mvpMatrix", identity);
+
+	if (_renderMode == Common::kRenderCGA || _renderMode == Common::kRenderZX) {
+		r = g = b = 255;
+	} else {
+		r = g = b = 255;
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ZERO);
+	}
+
+	glDisable(GL_DEPTH_TEST);
+	glDepthMask(GL_FALSE);
+
+	useColor(r, g, b);
+
+	int triangleAmount = 20;
+	float twicePi = (float)(2.0 * M_PI);
+	float coef = (9 - frame) / 9.0;
+	float radius = (1 - coef) * 4.0;
+
+	Common::Point position(_position.x, _screenH - _position.y);
+
+	Common::Point initial_position(viewArea.left + viewArea.width() / 2 + 2, _screenH - (viewArea.height() + viewArea.top));
+	Common::Point ball_position = coef * position + (1 - coef) * initial_position;
+
+	glEnableClientState(GL_VERTEX_ARRAY);
+	copyToVertexArray(0, Math::Vector3d(remap(ball_position.x, _screenW), remap(ball_position.y, _screenH), 0));
+
+	for(int i = 0; i <= triangleAmount; i++) {
+		float x = remap(ball_position.x + (radius * cos(i *  twicePi / triangleAmount)), _screenW);
+		float y = remap(ball_position.y + (radius * sin(i * twicePi / triangleAmount)), _screenH);
+		copyToVertexArray(i + 1, Math::Vector3d(x, y, 0));
+	}
+
+	glBindBuffer(GL_ARRAY_BUFFER, _triangleVBO);
+	glBufferData(GL_ARRAY_BUFFER, (triangleAmount + 2) * 3 * sizeof(float), _verts, GL_DYNAMIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
+	glDrawArrays(GL_TRIANGLE_FAN, 0, (triangleAmount + 2));
+
+	glDisable(GL_BLEND);
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_TRUE);
+}
+
+void OpenGLShaderRenderer::renderPlayerShootRay(byte color, const Common::Point position, const Common::Rect viewArea) {
 	uint8 r, g, b;
 
 	Math::Matrix4 identity;
@@ -242,6 +295,58 @@ void OpenGLShaderRenderer::renderPlayerShoot(byte color, const Common::Point pos
 	glDepthMask(GL_TRUE);
 }
 
+void OpenGLShaderRenderer::drawCelestialBody(Math::Vector3d position, float radius, byte color) {
+	uint8 r1, g1, b1, r2, g2, b2;
+	byte *stipple = nullptr;
+	getRGBAt(color, 0, r1, g1, b1, r2, g2, b2, stipple);
+
+	useColor(r1, g1, b1);
+
+	int triangleAmount = 20;
+	float twicePi = (float)(2.0 * M_PI);
+	float adj = 1.25; // Perspective correction
+
+	// Quick billboard effect inspired from this code:
+	// http://www.lighthouse3d.com/opengl/billboarding/index.php?billCheat
+	/*Math::Matrix4 mvpMatrix = _mvpMatrix;
+
+	for(int i = 2; i < 4; i++)
+		for(int j = 2; j < 4; j++ ) {
+			if (i == 2)
+				continue;
+			if (i == j)
+				_mvpMatrix.setValue(i, j, 1.0);
+			else
+				_mvpMatrix.setValue(i, j, 0.0);
+		}*/
+
+	_triangleShader->use();
+	_triangleShader->setUniform("useStipple", false);
+	_triangleShader->setUniform("mvpMatrix", _mvpMatrix);
+
+	glDisable(GL_DEPTH_TEST);
+	glDepthMask(GL_FALSE);
+
+	glEnableClientState(GL_VERTEX_ARRAY);
+	copyToVertexArray(0, position);
+
+	for(int i = 0; i <= triangleAmount; i++) {
+		float x = position.x();
+		float y = position.y() + (radius * cos(i *  twicePi / triangleAmount));
+		float z = position.z() + (adj * radius * sin(i * twicePi / triangleAmount));
+		copyToVertexArray(i + 1, Math::Vector3d(x, y, z));
+	}
+
+	glBindBuffer(GL_ARRAY_BUFFER, _triangleVBO);
+	glBufferData(GL_ARRAY_BUFFER, (triangleAmount + 2) * 3 * sizeof(float), _verts, GL_DYNAMIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
+	glDrawArrays(GL_TRIANGLE_FAN, 0, (triangleAmount + 2));
+
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_TRUE);
+	//_mvpMatrix = mvpMatrix;
+}
+
 void OpenGLShaderRenderer::renderCrossair(const Common::Point crossairPosition) {
 	Math::Matrix4 identity;
 	identity(0, 0) = 1.0;
@@ -261,9 +366,9 @@ void OpenGLShaderRenderer::renderCrossair(const Common::Point crossairPosition) 
 
 	useColor(255, 255, 255);
 
-	glLineWidth(8); // It will not work in every OpenGL implementation since the
+	glLineWidth(MAX(2, g_system->getWidth() / 192)); // It will not work in every OpenGL implementation since the
 					 // spec doesn't require support for line widths other than 1
-	glEnableClientState(GL_VERTEX_ARRAY);
+
 	copyToVertexArray(0, Math::Vector3d(remap(crossairPosition.x - 3, _screenW), remap(_screenH - crossairPosition.y, _screenH), 0));
 	copyToVertexArray(1, Math::Vector3d(remap(crossairPosition.x - 1, _screenW), remap(_screenH - crossairPosition.y, _screenH), 0));
 
@@ -329,6 +434,14 @@ void OpenGLShaderRenderer::renderFace(const Common::Array<Math::Vector3d> &verti
 	glDrawArrays(GL_TRIANGLES, 0, vi + 3);
 }
 
+void OpenGLShaderRenderer::depthTesting(bool enabled) {
+	if (enabled) {
+		glEnable(GL_DEPTH_TEST);
+	} else {
+		glDisable(GL_DEPTH_TEST);
+	}
+}
+
 void OpenGLShaderRenderer::polygonOffset(bool enabled) {
 	if (enabled) {
 		glEnable(GL_POLYGON_OFFSET_FILL);
@@ -344,15 +457,13 @@ void OpenGLShaderRenderer::setStippleData(byte *data) {
 	if (!data)
 		return;
 
-	for (int i = 0; i < 8; i++) {
-		byte b = data[i];
-		for (int j = 0; j < 8; j++) {
-			//debug("%d", 8*i + j);
-			_variableStippleArray[i + 8*j] = b & 0x1;
-			b = b >> 1;
-		}
+	int stippleData[128];
+
+	for (int i = 0; i < 128; i++) {
+		stippleData[i] = 0;
+		stippleData[i] = data[i];
 	}
-	_triangleShader->setUniform("stipple", 64, (const int*)&_variableStippleArray);
+	_triangleShader->setUniform("stipple", 128, (const int*)&stippleData);
 }
 
 void OpenGLShaderRenderer::useStipple(bool enabled) {

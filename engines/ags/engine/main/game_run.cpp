@@ -23,7 +23,7 @@
 // Game loop
 //
 
-#include "ags/lib/std/limits.h"
+#include "common/std/limits.h"
 #include "ags/engine/ac/button.h"
 #include "ags/shared/ac/common.h"
 #include "ags/engine/ac/character_extras.h"
@@ -94,8 +94,7 @@ static void ProperExit() {
 
 static void game_loop_check_problems_at_start() {
 	if ((_G(in_enters_screen) != 0) & (_G(displayed_room) == _G(starting_room)))
-		quit("!A text script run in the Player Enters Screen event caused the\n"
-		     "screen to be updated. If you need to use Wait(), do so in After Fadein");
+		quit("!A text script run in the Player Enters Screen event caused the screen to be updated. If you need to use Wait(), do so in After Fadein");
 	if ((_G(in_enters_screen) != 0) && (_G(done_es_error) == 0)) {
 		debug_script_warn("Wait() was used in Player Enters Screen - use Enters Screen After Fadein instead");
 		_G(done_es_error) = 1;
@@ -196,8 +195,9 @@ static void check_mouse_controls() {
 	if ((_G(wasbutdown) > kMouseNone) && (ags_misbuttondown(_G(wasbutdown)))) {
 		gui_on_mouse_hold(_G(wasongui), _G(wasbutdown));
 	} else if ((_G(wasbutdown) > kMouseNone) && (!ags_misbuttondown(_G(wasbutdown)))) {
-		gui_on_mouse_up(_G(wasongui), _G(wasbutdown));
-		_G(wasbutdown) = kMouseNone;
+		eAGSMouseButton mouse_btn_up = _G(wasbutdown);
+		_G(wasbutdown) = kMouseNone; // reset before event, avoid recursive call of "mouse up"
+		gui_on_mouse_up(_G(wasongui), mouse_btn_up);
 	}
 
 	eAGSMouseButton mbut;
@@ -210,7 +210,7 @@ static void check_mouse_controls() {
 		} else if ((_GP(play).wait_counter != 0) && (_GP(play).key_skip_wait & SKIP_MOUSECLICK) != 0) {
 			_GP(play).SetWaitSkipResult(SKIP_MOUSECLICK, mbut);
 		} else if (_GP(play).text_overlay_on > 0) {
-			if (_GP(play).cant_skip_speech & SKIP_MOUSECLICK) {
+			if (_GP(play).speech_skip_style & SKIP_MOUSECLICK) {
 				remove_screen_overlay(_GP(play).text_overlay_on);
 				_GP(play).SetWaitSkipResult(SKIP_MOUSECLICK, mbut);
 			}
@@ -438,7 +438,7 @@ static void check_keyboard_controls() {
 	}
 
 	// skip speech if desired by Speech.SkipStyle
-	if ((_GP(play).text_overlay_on > 0) && (_GP(play).cant_skip_speech & SKIP_KEYPRESS) && !IsAGSServiceKey(ki.Key)) {
+	if ((_GP(play).text_overlay_on > 0) && (_GP(play).speech_skip_style & SKIP_KEYPRESS) && !IsAGSServiceKey(ki.Key)) {
 		// only allow a key to remove the overlay if the icon bar isn't up
 		if (IsGamePaused() == 0) {
 			// check if it requires a specific keypress

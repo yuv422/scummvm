@@ -25,6 +25,7 @@
 #include "zvision/scripting/control.h"
 
 #include "common/array.h"
+#include "common/path.h"
 #include "common/rect.h"
 
 namespace Video {
@@ -52,7 +53,7 @@ public:
 	bool process(uint32 deltaTimeInMillis) override;
 
 private:
-	void readHsFile(const Common::String &fileName);
+	void readHsFile(const Common::Path &fileName);
 };
 
 } // End of namespace ZVision

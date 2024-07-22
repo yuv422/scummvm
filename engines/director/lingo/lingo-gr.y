@@ -75,15 +75,14 @@
 #include "director/lingo/lingo-the.h"
 
 extern int yylex();
-extern int yyparse();
 
 using namespace Director;
 
 static void yyerror(const char *s) {
 	LingoCompiler *compiler = g_lingo->_compiler;
 	compiler->_hadError = true;
-	warning("######################  LINGO: %s at line %d col %d in %s id: %d",
-		s, compiler->_linenumber, compiler->_colnumber, scriptType2str(compiler->_assemblyContext->_scriptType),
+	warning("%s  LINGO: %s at line %d col %d in %s id: %d",
+		(g_director->_noFatalLingoError ? "####" : "######################"), s, compiler->_linenumber, compiler->_colnumber, scriptType2str(compiler->_assemblyContext->_scriptType),
 		compiler->_assemblyContext->_id);
 	if (compiler->_lines[2] != compiler->_lines[1])
 		warning("# %3d: %s", compiler->_linenumber - 2, Common::String(compiler->_lines[2], compiler->_lines[1] - 1).c_str());
@@ -138,7 +137,7 @@ static void checkEnd(Common::String *token, Common::String *expect, bool require
 %token<s> tVARID tSTRING tSYMBOL
 %token<s> tENDCLAUSE
 %token tCAST tFIELD tSCRIPT tWINDOW
-%token tDELETE tDOWN tELSE tEXIT tFRAME tGLOBAL tGO tHILITE tIF tIN tINTO tMACRO
+%token tDELETE tDOWN tELSE tEXIT tFRAME tGLOBAL tGO tHILITE tIF tIN tINTO tMACRO tRETURN
 %token tMOVIE tNEXT tOF tPREVIOUS tPUT tREPEAT tSET tTHEN tTO tWHEN
 %token tWITH tWHILE tFACTORY tOPEN tPLAY tINSTANCE
 %token tGE tLE tEQ tNEQ tAND tOR tNOT tMOD
@@ -200,12 +199,13 @@ static void checkEnd(Common::String *token, Common::String *expect, bool require
 // %nonassoc tVARID
 
 %destructor { delete $$; } <s>
+%destructor { delete $$; } <node>
 
 %%
 
 // TOP-LEVEL STUFF
 
-script: scriptpartlist					{ g_lingo->_compiler->_assemblyAST = new ScriptNode($scriptpartlist); } ;
+script: scriptpartlist					{ g_lingo->_compiler->_assemblyAST = Common::SharedPtr<Node>(new ScriptNode($scriptpartlist)); $$ = nullptr; } ;
 
 scriptpartlist: scriptpart[item]				{
 		NodeList *list = new NodeList;
@@ -368,6 +368,7 @@ ID: CMDID
 	| tPLAY			{ $$ = new Common::String("play"); }
 	| tPROPERTY		{ $$ = new Common::String("property"); }
 	| tPUT			{ $$ = new Common::String("put"); }
+	| tRETURN		{ $$ = new Common::String("return"); }
 	| tSET			{ $$ = new Common::String("set"); }
 	| tTELL			{ $$ = new Common::String("tell"); }
 	| tTHEN			{ $$ = new Common::String("then"); }
@@ -424,6 +425,8 @@ proc: CMDID cmdargs '\n'				{ $$ = new CmdNode($CMDID, $cmdargs, g_lingo->_compi
 	| tNEXT tREPEAT '\n'				{ $$ = new NextRepeatNode(); }
 	| tEXIT tREPEAT '\n'				{ $$ = new ExitRepeatNode(); }
 	| tEXIT '\n'						{ $$ = new ExitNode(); }
+	| tRETURN '\n'						{ $$ = new ReturnNode(nullptr); }
+	| tRETURN expr '\n'					{ $$ = new ReturnNode($expr); }
 	| tDELETE chunk '\n'				{ $$ = new DeleteNode($chunk); }
 	| tHILITE chunk '\n'				{ $$ = new HiliteNode($chunk); }
 	| tASSERTERROR stmtoneliner			{ $$ = new AssertErrorNode($stmtoneliner); }

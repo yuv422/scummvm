@@ -22,7 +22,7 @@
 #ifndef AGS_SHARED_GUI_GUI_TEXTBOX_H
 #define AGS_SHARED_GUI_GUI_TEXTBOX_H
 
-#include "ags/lib/std/vector.h"
+#include "common/std/vector.h"
 #include "ags/shared/gui/gui_object.h"
 #include "ags/shared/util/string.h"
 
@@ -38,6 +38,7 @@ public:
 	bool IsBorderShown() const;
 
 	// Operations
+	Rect CalcGraphicRect(bool clipped) override;
 	void Draw(Bitmap *ds, int x = 0, int y = 0) override;
 	void SetShowBorder(bool on);
 

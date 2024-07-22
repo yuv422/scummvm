@@ -4,20 +4,31 @@ MODULE_OBJS = \
   action/actionmanager.o \
   action/actionrecord.o \
   action/arfactory.o \
+  action/autotext.o \
+  action/datarecords.o \
+  action/inventoryrecords.o \
   action/navigationrecords.o \
   action/soundrecords.o \
   action/miscrecords.o \
   action/conversation.o \
+  action/interactivevideo.o \
   action/overlay.o \
   action/secondarymovie.o \
   action/secondaryvideo.o \
+  action/puzzle/assemblypuzzle.o \
+  action/puzzle/bballpuzzle.o \
+  action/puzzle/bulpuzzle.o \
   action/puzzle/bombpuzzle.o \
   action/puzzle/collisionpuzzle.o \
+  action/puzzle/cubepuzzle.o \
+  action/puzzle/hamradiopuzzle.o \
   action/puzzle/leverpuzzle.o \
   action/puzzle/mazechasepuzzle.o \
+  action/puzzle/mouselightpuzzle.o \
   action/puzzle/orderingpuzzle.o \
   action/puzzle/overridelockpuzzle.o \
   action/puzzle/passwordpuzzle.o \
+  action/puzzle/peepholepuzzle.o \
   action/puzzle/raycastpuzzle.o \
   action/puzzle/riddlepuzzle.o \
   action/puzzle/rippedletterpuzzle.o \
@@ -26,10 +37,12 @@ MODULE_OBJS = \
   action/puzzle/setplayerclock.o \
   action/puzzle/sliderpuzzle.o \
   action/puzzle/soundequalizerpuzzle.o \
+  action/puzzle/spigotpuzzle.o \
   action/puzzle/tangrampuzzle.o \
   action/puzzle/telephone.o \
   action/puzzle/towerpuzzle.o \
   action/puzzle/turningpuzzle.o \
+  action/puzzle/twodialpuzzle.o \
   ui/fullscreenimage.o \
   ui/animatedbutton.o \
   ui/button.o \
@@ -48,8 +61,11 @@ MODULE_OBJS = \
   state/savedialog.o \
   state/scene.o \
   state/setupmenu.o \
+  misc/hypertext.o \
   misc/lightning.o \
+  misc/mousefollow.o \
   misc/specialeffect.o \
+  cif.o \
   commontypes.o \
   console.o \
   cursor.o \

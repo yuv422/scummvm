@@ -49,10 +49,10 @@ X		mDispose												--Dispose of memory allocation
 namespace Director {
 
 const char *HitMap::xlibName = "HitMap";
-const char *HitMap::fileNames[] = {
-	"HitMap",
-	"maskXobj",
-	0
+const XlibFileDesc HitMap::fileNames[] = {
+	{ "HitMap",		nullptr },
+	{ "maskXobj",	nullptr },
+	{ nullptr,		nullptr },
 };
 
 static MethodProto xlibMethods[] = {
@@ -61,7 +61,7 @@ static MethodProto xlibMethods[] = {
 	{ nullptr, nullptr, 0, 0, 0 }
 };
 
-void HitMap::open(int type) {
+void HitMap::open(ObjectType type, const Common::Path &path) {
 	if (type == kXObj) {
 		HitMapObject::initMethods(xlibMethods);
 		HitMapObject *xobj = new HitMapObject(kXObj);
@@ -69,7 +69,7 @@ void HitMap::open(int type) {
 	}
 }
 
-void HitMap::close(int type) {
+void HitMap::close(ObjectType type) {
 	if (type == kXObj) {
 		HitMapObject::cleanupMethods();
 		g_lingo->_globalvars[xlibName] = Datum();

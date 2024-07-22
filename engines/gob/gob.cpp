@@ -17,6 +17,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ *
+ * This file is dual-licensed.
+ * In addition to the GPLv3 license mentioned above, this code is also
+ * licensed under LGPL 2.1. See LICENSES/COPYING.LGPL file for the
+ * full text of the license.
+ *
  */
 
 #include "common/debug-channels.h"
@@ -568,17 +574,6 @@ Common::Error GobEngine::initGameParts() {
 		break;
 
 	case kGameTypeDynasty:
-		_init     = new Init_v3(this);
-		_video    = new Video_v2(this);
-		_inter    = new Inter_v5(this);
-		_mult     = new Mult_v2(this);
-		_draw     = new Draw_v2(this);
-		_map      = new Map_v2(this);
-		_goblin   = new Goblin_v4(this);
-		_scenery  = new Scenery_v2(this);
-		_saveLoad = new SaveLoad(this);
-		break;
-
 	case kGameTypeDynastyWood:
 		_init     = new Init_v3(this);
 		_video    = new Video_v2(this);

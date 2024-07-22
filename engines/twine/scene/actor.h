@@ -77,7 +77,7 @@ struct StaticFlagsStruct {
 	// take smaller value for bound, or if not set take average for bound
 	uint32 bUseMiniZv : 1;                  // 0x008000 MINI_ZV - square on smaller dimension (if 3D object)
 	uint32 bHasInvalidPosition : 1;         // 0x010000
-	uint32 bNoElectricShock : 1;            // 0x020000
+	uint32 bNoElectricShock : 1;            // 0x020000 NO_CHOC
 	uint32 bHasSpriteAnim3D : 1;            // 0x040000
 	uint32 bNoPreClipping : 1;              // 0x080000
 	uint32 bHasZBuffer : 1;                 // 0x100000
@@ -86,22 +86,30 @@ struct StaticFlagsStruct {
 
 /** Actors dynamic flags structure */
 struct DynamicFlagsStruct {
-	uint16 bWaitHitFrame : 1;            // 0x0001 WAIT_HIT_FRAME - wait for hit frame
-	uint16 bIsHitting : 1;               // 0x0002 OK_HIT - hit frame anim
-	uint16 bAnimEnded : 1;               // 0x0004 ANIM_END - anim ended in the current loop (will be looped in the next engine loop)
-	uint16 bAnimNewFrame : 1;        // 0x0008 NEW_FRAME - new frame anim reached
-	uint16 bIsDrawn : 1;                 // 0x0010 WAS_DRAWN - actor has been drawn in this loop
-	uint16 bIsDead : 1;                  // 0x0020 OBJ_DEAD - is dead
-	uint16 bIsSpriteMoving : 1;          // 0x0040 AUTO_STOP_DOOR - door is opening or closing (wait to reach the destination position)
-	uint16 bIsRotationByAnim : 1;        // 0x0080 ANIM_MASTER_ROT - actor rotation is managed by its animaation not by the engine
-	uint16 bIsFalling : 1;               // 0x0100 FALLING - is falling on scene
-	uint16 bIsTargetable : 1;            // 0x0200
-	uint16 bIsBlinking : 1;              // 0x0400
-	uint16 bWasWalkingBeforeFalling : 1; // 0x0800
-	uint16 bUnk1000 : 1;                 // 0x1000
-	uint16 bUnk2000 : 1;                 // 0x2000
-	uint16 bUnk4000 : 1;                 // 0x4000
-	uint16 bUnk8000 : 1;                 // 0x8000
+	uint32 bWaitHitFrame : 1;            // 0x0001 WAIT_HIT_FRAME - wait for hit frame
+	uint32 bIsHitting : 1;               // 0x0002 OK_HIT - hit frame anim
+	uint32 bAnimEnded : 1;               // 0x0004 ANIM_END - anim ended in the current loop (will be looped in the next engine loop)
+	uint32 bAnimNewFrame : 1;            // 0x0008 NEW_FRAME - new frame anim reached
+	uint32 bIsDrawn : 1;                 // 0x0010 WAS_DRAWN - actor has been drawn in this loop
+	uint32 bIsDead : 1;                  // 0x0020 OBJ_DEAD - is dead
+	uint32 bIsSpriteMoving : 1;          // 0x0040 AUTO_STOP_DOOR - door is opening or closing (wait to reach the destination position)
+	uint32 bIsRotationByAnim : 1;        // 0x0080 ANIM_MASTER_ROT - actor rotation is managed by its animation not by the engine
+	uint32 bIsFalling : 1;               // 0x0100 FALLING - is falling on scene
+	uint32 bIsTargetable : 1;            // 0x0200 OK_SUPER_HIT (lba2)
+	uint32 bIsBlinking : 1;              // 0x0400 FRAME_SHIELD (lba2)
+	uint32 bWasWalkingBeforeFalling : 1; // 0x0800 DRAW_SHADOW (lba2) - bWasWalkingBeforeFalling in lba1
+	uint32 bUnk1000 : 1;                 // 0x1000 ANIM_MASTER_GRAVITY (lba2)
+	uint32 bUnk2000 : 1;                 // 0x2000 SKATING (lba2) Ouch! I slip in a forbidden collision
+	uint32 bUnk4000 : 1;                 // 0x4000 OK_RENVOIE (lba2) ready to send back a projectile
+	uint32 bUnk8000 : 1;                 // 0x8000 LEFT_JUMP (lba2) ready to jump from the left foot
+	uint32 bRIGHT_JUMP : 1;              // RIGHT_JUMP          (1<<16) // (lba2) ready to jump from the right foot
+	uint32 bWAIT_SUPER_HIT : 1;          // WAIT_SUPER_HIT      (1<<17) // (lba2) waiting for the end of the animation before giving another super hit
+	uint32 bTRACK_MASTER_ROT : 1;        // TRACK_MASTER_ROT    (1<<18) // (lba2) it's the track that manages the direction
+	uint32 bFLY_JETPACK : 1;             // FLY_JETPACK         (1<<19) // (lba2) flying with the Jetpack
+	uint32 bDONT_PICK_CODE_JEU : 1;      // DONT_PICK_CODE_JEU  (1<<20) // (lba2) Cheat - Conveyor Belt Zones
+	uint32 bMANUAL_INTER_FRAME : 1;      // MANUAL_INTER_FRAME  (1<<21) // (lba2) Manually performs the ObjectSetInterFrame()
+	uint32 bWAIT_COORD : 1;              // WAIT_COORD          (1<<22) // (lba2) waiting to have been displayed to pass the coordinates from one point to an extra
+	uint32 bCHECK_FALLING : 1;           // CHECK_FALLING       (1<<23) // (lba2) forces object to test FALLING during a frame
 };
 
 /**
@@ -134,7 +142,7 @@ struct BonusParameter {
  *
  * Such as characters, doors, moving plataforms, invisible actors, ...
  */
-class ActorStruct {
+class ActorStruct { // T_OBJET
 private:
 	ShapeType _col = ShapeType::kNone; // collision
 	bool _brickCausesDamage = false;
@@ -142,8 +150,8 @@ private:
 	EntityData _entityData;
 
 public:
-	StaticFlagsStruct _staticFlags;
-	DynamicFlagsStruct _dynamicFlags;
+	StaticFlagsStruct _staticFlags; // Flags
+	DynamicFlagsStruct _workFlags;  // WorkFlags
 
 	inline ShapeType brickShape() const { return _col; }
 	inline void setCollision(ShapeType shapeType) {
@@ -180,7 +188,7 @@ public:
 	BonusParameter _bonusParameter;
 	int32 _beta = 0; // facing angle of actor. Minumum is 0 (SW). Going counter clock wise (BETA in original sources)
 	int32 _speed = 40; // SRot - speed of movement
-	ControlMode _controlMode = ControlMode::kNoMove;
+	ControlMode _controlMode = ControlMode::kNoMove; // Move
 	int32 _delayInMillis = 0;
 	int32 _cropLeft = 0;      // Info
 	int32 _cropTop = 0;       // Info1
@@ -197,7 +205,7 @@ public:
 	IVec3 _oldPos; // OldPosX, OldPosY, OldPosZ
 
 	int32 _offsetTrack = -1;
-	uint8 *_moveScript = nullptr;
+	uint8 *_ptrTrack = nullptr;
 	int32 _moveScriptSize = 0;
 
 	int32 _offsetLife = 0;
@@ -205,9 +213,9 @@ public:
 	uint8 *_lifeScript = nullptr;
 	int32 _lifeScriptSize = 0;
 
-	int32 _labelIdx = 0;        // script label index
-	int32 _currentLabelPtr = 0; // pointer to LABEL offset
-	int32 _pausedTrackPtr = 0;
+	int32 _labelTrack = 0;       // script label index
+	int32 _offsetLabelTrack = 0; // pointer to LABEL offset
+	int32 _memoLabelTrack = 0;
 
 	/**
 	 * colliding actor id
@@ -227,6 +235,8 @@ public:
 	AnimType _flagAnim = AnimType::kAnimationTypeRepeat;
 	int32 _spriteActorRotation = 0;
 	uint8 _brickSound = 0U; // CodeJeu
+	int32 SampleAlways = 0; // lba2
+	uint8 SampleVolume = 0; // lba2
 
 	BoundingBox _boundingBox; // Xmin, YMin, Zmin, Xmax, Ymax, Zmax
 	ActorMoveStruct realAngle;
@@ -318,7 +328,7 @@ public:
 	 * Set hero behaviour
 	 * @param behaviour behaviour value to set
 	 */
-	void setBehaviour(HeroBehaviourType behaviour);
+	void setBehaviour(HeroBehaviourType behaviour); // SetComportement
 
 	/**
 	 * Initialize 3D actor
@@ -331,7 +341,7 @@ public:
 	 * Initialize actors
 	 * @param actorIdx actor index to init
 	 */
-	void initActor(int16 actorIdx);
+	void startInitObj(int16 actorIdx);
 
 	/**
 	 * Reset actor
@@ -349,10 +359,13 @@ public:
 	void hitObj(int32 actorIdx, int32 actorIdxAttacked, int32 strengthOfHit, int32 angle);
 
 	/** Process actor carrier */
-	void processActorCarrier(int32 actorIdx);
+	void processActorCarrier(int32 actorIdx); // CheckCarrier
 
 	/** Process actor extra bonus */
 	void giveExtraBonus(int32 actorIdx);
+
+	// Lba2
+	void posObjectAroundAnother(uint8 numsrc, uint8 numtopos); // PosObjetAroundAnother
 };
 
 } // namespace TwinE

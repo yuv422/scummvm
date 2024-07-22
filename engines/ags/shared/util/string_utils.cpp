@@ -22,7 +22,7 @@
 #include "ags/shared/util/string_utils.h"
 #include "ags/shared/util/utf8.h"
 #include "ags/shared/core/platform.h"
-#include "ags/lib/std/regex.h"
+#include "common/std/regex.h"
 #include "ags/shared/util/math.h"
 #include "ags/shared/util/stream.h"
 #include "ags/shared/util/string_compat.h"
@@ -198,6 +198,11 @@ void StrUtil::ReadCStr(char *buf, Stream *in, size_t buf_limit) {
 		*ptr = static_cast<char>(ichar);
 		ptr++;
 	}
+}
+
+void StrUtil::ReadCStrCount(char *buf, Stream *in, size_t count) {
+	in->Read(buf, count);
+	buf[count - 1] = 0; // for safety
 }
 
 char *StrUtil::ReadMallocCStrOrNull(Stream *in) {

@@ -151,10 +151,26 @@ void OSystem_iOS7::updateOutputSurface() {
 	});
 }
 
+void OSystem_iOS7::updateTouchMode() {
+#if TARGET_OS_IOS
+	execute_on_main_thread(^ {
+		[[iOS7AppDelegate iPhoneView] updateTouchMode];
+	});
+#endif
+}
+
 void OSystem_iOS7::virtualController(bool connect) {
 	execute_on_main_thread(^ {
 		[[iOS7AppDelegate iPhoneView] virtualController:connect];
 	});
+}
+
+bool OSystem_iOS7::isiOSAppOnMac() const {
+	__block bool isiOSAppOnMac = false;
+	execute_on_main_thread(^ {
+		isiOSAppOnMac = [[iOS7AppDelegate iPhoneView] isiOSAppOnMac];
+	});
+	return isiOSAppOnMac;
 }
 
 void OSystem_iOS7::setShowKeyboard(bool show) {

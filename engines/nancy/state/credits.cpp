@@ -69,7 +69,7 @@ bool Credits::onStateExit(const NancyState::NancyState nextState) {
 }
 
 void Credits::init() {
-	_creditsData = (const CRED *)g_nancy->getEngineData("CRED");
+	_creditsData = GetEngineData(CRED);
 	assert(_creditsData);
 
 	_background.init(_creditsData->imageName);
@@ -138,8 +138,8 @@ void Credits::drawTextSurface(uint id) {
 	Graphics::ManagedSurface image;
 	uint surfaceHeight = _textSurface.getBounds().height();
 	g_nancy->_resource->loadImage(_creditsData->textNames[id], image);
-	_fullTextSurface.create(image.w, image.h + (surfaceHeight * 2), g_nancy->_graphicsManager->getInputPixelFormat());
-	_fullTextSurface.setTransparentColor(g_nancy->_graphicsManager->getTransColor());
+	_fullTextSurface.create(image.w, image.h + (surfaceHeight * 2), g_nancy->_graphics->getInputPixelFormat());
+	_fullTextSurface.setTransparentColor(g_nancy->_graphics->getTransColor());
 	_fullTextSurface.clear(_fullTextSurface.getTransparentColor());
 	_fullTextSurface.blitFrom(image, Common::Point(0, surfaceHeight));
 

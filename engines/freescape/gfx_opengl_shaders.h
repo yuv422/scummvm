@@ -33,7 +33,7 @@ namespace Freescape {
 
 class OpenGLShaderRenderer : public Renderer {
 public:
-	OpenGLShaderRenderer(int screenW, int screenH, Common::RenderMode renderMode);
+	OpenGLShaderRenderer(int screenW, int screenH, Common::RenderMode renderMode, bool authenticGraphics);
 	virtual ~OpenGLShaderRenderer();
 
 	Math::Matrix4 _projectionMatrix;
@@ -69,10 +69,12 @@ public:
 	virtual void setViewport(const Common::Rect &rect) override;
 	virtual Common::Point nativeResolution() override;
 	virtual void positionCamera(const Math::Vector3d &pos, const Math::Vector3d &interest) override;
-	virtual void updateProjectionMatrix(float fov, float nearClipPlane, float farClipPlane) override;
+	virtual void updateProjectionMatrix(float fov, float yminValue, float ymaxValue, float nearClipPlane, float farClipPlane) override;
 
 	virtual void useColor(uint8 r, uint8 g, uint8 b) override;
 	virtual void polygonOffset(bool enabled) override;
+	virtual void depthTesting(bool enabled) override;
+
 	virtual void setStippleData(byte *data) override;
 	virtual void useStipple(bool enabled) override;
 
@@ -81,7 +83,10 @@ public:
 	virtual void drawTexturedRect2D(const Common::Rect &screenRect, const Common::Rect &textureRect, Texture *texture) override;
 
 	virtual void renderSensorShoot(byte color, const Math::Vector3d sensor, const Math::Vector3d player, const Common::Rect viewPort) override;
-	virtual void renderPlayerShoot(byte color, const Common::Point position, const Common::Rect viewPort) override;
+	virtual void renderPlayerShootBall(byte color, const Common::Point position, int frame, const Common::Rect viewPort) override;
+	virtual void renderPlayerShootRay(byte color, const Common::Point position, const Common::Rect viewPort) override;
+	void drawCelestialBody(Math::Vector3d position, float radius, uint8 color) override;
+
 	virtual void renderCrossair(const Common::Point crossairPosition) override;
 
 	virtual void renderFace(const Common::Array<Math::Vector3d> &vertices) override;

@@ -138,7 +138,7 @@ enum markdown_char_t {
 	MD_CHAR_SUPERSCRIPT,
 };
 
-static char_trigger markdown_char_ptrs[] = {
+static const char_trigger markdown_char_ptrs[] = {
 	NULL,
 	&char_emphasis,
 	&char_codespan,
@@ -687,7 +687,7 @@ static size_t char_codespan(SDDataBuffer *ob, SDMarkdown *rndr, byte *data, size
 
 /* char_escape • '\\' backslash escape */
 static size_t char_escape(SDDataBuffer *ob, SDMarkdown *rndr, byte *data, size_t offset, size_t size) {
-	static const char *escape_chars = "\\`*_{}[]()#+-.!:|&<>^~";
+	static const char *const escape_chars = "\\`*_{}[]()#+-.!:|&<>^~";
 	SDDataBuffer work = { 0, 0, 0, 0 };
 
 	if (size > 1) {
@@ -824,11 +824,12 @@ static size_t char_autolink_url(SDDataBuffer *ob, SDMarkdown *rndr, byte *data, 
 /* char_link • '[': parsing a link or an image */
 static size_t char_link(SDDataBuffer *ob, SDMarkdown *rndr, byte *data, size_t offset, size_t size) {
 	int is_img = (offset && data[-1] == '!'), level;
-	size_t i = 1, txt_e, link_b = 0, link_e = 0, title_b = 0, title_e = 0;
+	size_t i = 1, txt_e, link_b = 0, link_e = 0, title_b = 0, title_e = 0, ext_b = 0, ext_e = 0;
 	SDDataBuffer *content = 0;
 	SDDataBuffer *link = 0;
 	SDDataBuffer *title = 0;
 	SDDataBuffer *u_link = 0;
+	SDDataBuffer *ext = 0;
 	size_t org_work_size = rndr->_work_bufs[BUFFER_SPAN].size;
 	int text_has_nl = 0, ret = 0;
 	int in_title = 0, qtype = 0;
@@ -925,7 +926,30 @@ static size_t char_link(SDDataBuffer *ob, SDMarkdown *rndr, byte *data, size_t o
 		if (data[link_b] == '<') link_b++;
 		if (data[link_e - 1] == '>') link_e--;
 
-		/* building escaped link and title */
+		/* optional image extension */
+		if (is_img && i + 1 < size && data[i + 1] == '{') {
+			/* skipping initial whitespace and opening bracket */
+			i += 2;
+
+			while (i < size && _isspace(data[i]))
+				i++;
+
+			ext_b = i;
+
+			/* looking for extension end: '}" ) */
+			while (i < size && data[i] != '}')
+				i++;
+
+			if (i >= size) goto cleanup;
+
+			/* skipping whitespaces after extension */
+			ext_e = i - 1;
+			while (ext_e > ext_b && _isspace(data[ext_e]))
+				ext_e--;
+			ext_e++;
+		}
+
+		/* building escaped link, title and extension*/
 		if (link_e > link_b) {
 			link = rndr_newbuf(rndr, BUFFER_SPAN);
 			sd_bufput(link, data + link_b, link_e - link_b);
@@ -934,6 +958,11 @@ static size_t char_link(SDDataBuffer *ob, SDMarkdown *rndr, byte *data, size_t o
 		if (title_e > title_b) {
 			title = rndr_newbuf(rndr, BUFFER_SPAN);
 			sd_bufput(title, data + title_b, title_e - title_b);
+		}
+
+		if (ext_e > ext_b) {
+			ext = rndr_newbuf(rndr, BUFFER_SPAN);
+			sd_bufput(ext, data + ext_b, ext_e - ext_b);
 		}
 
 		i++;
@@ -1046,7 +1075,7 @@ static size_t char_link(SDDataBuffer *ob, SDMarkdown *rndr, byte *data, size_t o
 		if (ob->size && ob->data[ob->size - 1] == '!')
 			ob->size -= 1;
 
-		ret = rndr->_cb.image(ob, u_link, title, content, rndr->_opaque);
+		ret = rndr->_cb.image(ob, u_link, title, content, ext, rndr->_opaque);
 	} else {
 		ret = rndr->_cb.link(ob, u_link, title, content, rndr->_opaque);
 	}
@@ -2481,7 +2510,7 @@ void SDMarkdown::version(int *ver_major, int *ver_minor, int *ver_revision) {
 
 int sd_autolink_issafe(const byte *link, size_t link_len) {
 	static const size_t valid_uris_count = 5;
-	static const char *valid_uris[] = {
+	static const char *const valid_uris[] = {
 		"/", "http://", "https://", "ftp://", "mailto:"
 	};
 
@@ -2647,7 +2676,7 @@ size_t sd_autolink__email(size_t *rewind_p, SDDataBuffer *link, byte *data, size
 	int nb = 0, np = 0;
 
 	for (rewind = 0; rewind < max_rewind; ++rewind) {
-		byte c = data[-rewind - 1];
+		byte c = *(data - rewind - 1);
 
 		if (Common::isAlnum(c))
 			continue;
@@ -2696,7 +2725,7 @@ size_t sd_autolink__url(size_t *rewind_p, SDDataBuffer *link, byte *data, size_t
 	if (size < 4 || data[1] != '/' || data[2] != '/')
 		return 0;
 
-	while (rewind < max_rewind && Common::isAlpha(data[-rewind - 1]))
+	while (rewind < max_rewind && Common::isAlpha(*(data - rewind - 1)))
 		rewind++;
 
 	if (!sd_autolink_issafe(data - rewind, size + rewind))

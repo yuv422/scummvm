@@ -29,18 +29,22 @@
 #include "backends/platform/atari/osystem_atari.h"
 #include "common/rect.h"
 
-//! bit 0: rmb
-//! bit 1: lmb
-volatile uint8	g_atari_ikbd_mouse_buttons_state = 0;
-volatile int16	g_atari_ikbd_mouse_delta_x = 0;
-volatile int16	g_atari_ikbd_mouse_delta_y = 0;
-
 #define SCANCODES_SIZE 256
 volatile uint8	g_atari_ikbd_scancodes[SCANCODES_SIZE];
 uint16			g_atari_ikbd_scancodes_mask = SCANCODES_SIZE-1;
-volatile uint16	g_atari_ikbb_scancodes_head = 0;
-static uint16	g_atari_ikbb_scancodes_tail = 0;
+volatile uint16	g_atari_ikbd_scancodes_head = 0;
+static uint16	g_atari_ikbd_scancodes_tail = 0;
 
+//! bit 0: rmb
+//! bit 1: lmb
+#define MOUSEBUTTONS_SIZE 4
+volatile uint8	g_atari_ikbd_mousebuttons[MOUSEBUTTONS_SIZE];
+uint16			g_atari_ikbd_mousebuttons_mask = MOUSEBUTTONS_SIZE-1;
+volatile uint16	g_atari_ikbd_mousebuttons_head = 0;
+static uint16	g_atari_ikbd_mousebuttons_tail = 0;
+
+volatile int16	g_atari_ikbd_mouse_delta_x = 0;
+volatile int16	g_atari_ikbd_mouse_delta_y = 0;
 
 AtariEventSource::AtariEventSource() {
 	_system = dynamic_cast<OSystem_Atari*>(g_system);
@@ -56,7 +60,12 @@ AtariEventSource::AtariEventSource() {
 	_scancodeToKeycode[0x0e] = Common::KEYCODE_BACKSPACE;
 	_scancodeToKeycode[0x0f] = Common::KEYCODE_TAB;
 	_scancodeToKeycode[0x1c] = Common::KEYCODE_RETURN;
+	_scancodeToKeycode[0x1d] = Common::KEYCODE_LCTRL;	// Eiffel doesn't recognise RCTRL
+	_scancodeToKeycode[0x2a] = Common::KEYCODE_LSHIFT;
+	_scancodeToKeycode[0x36] = Common::KEYCODE_RSHIFT;
+	_scancodeToKeycode[0x38] = Common::KEYCODE_LALT;	// Eiffel doesn't recognise RALT
 	_scancodeToKeycode[0x39] = Common::KEYCODE_SPACE;
+	_scancodeToKeycode[0x3a] = Common::KEYCODE_CAPSLOCK;
 	_scancodeToKeycode[0x3b] = Common::KEYCODE_F1;
 	_scancodeToKeycode[0x3c] = Common::KEYCODE_F2;
 	_scancodeToKeycode[0x3d] = Common::KEYCODE_F3;
@@ -71,33 +80,38 @@ AtariEventSource::AtariEventSource() {
 	_scancodeToKeycode[0x46] = Common::KEYCODE_PAGEDOWN;	// Eiffel only
 	_scancodeToKeycode[0x47] = Common::KEYCODE_HOME;
 	_scancodeToKeycode[0x48] = Common::KEYCODE_UP;
+	_scancodeToKeycode[0x49] = Common::KEYCODE_PRINT;	// Eiffel only
 	_scancodeToKeycode[0x4a] = Common::KEYCODE_KP_MINUS;
 	_scancodeToKeycode[0x4b] = Common::KEYCODE_LEFT;
-	_scancodeToKeycode[0x4c] = Common::KEYCODE_LMETA;
+	_scancodeToKeycode[0x4c] = Common::KEYCODE_SCROLLOCK;	// Eiffel only (on Milan: AltGr!)
 	_scancodeToKeycode[0x4d] = Common::KEYCODE_RIGHT;
 	_scancodeToKeycode[0x4e] = Common::KEYCODE_KP_PLUS;
 	_scancodeToKeycode[0x4f] = Common::KEYCODE_PAUSE;	// Eiffel only
 	_scancodeToKeycode[0x50] = Common::KEYCODE_DOWN;
 	_scancodeToKeycode[0x52] = Common::KEYCODE_INSERT;
 	_scancodeToKeycode[0x53] = Common::KEYCODE_DELETE;
+	_scancodeToKeycode[0x54] = Common::KEYCODE_NUMLOCK;	// Eiffel only
 	_scancodeToKeycode[0x55] = Common::KEYCODE_END;	// Eiffel only
+	_scancodeToKeycode[0x56] = Common::KEYCODE_LMETA;	// Eiffel only
+	_scancodeToKeycode[0x57] = Common::KEYCODE_RMETA;	// Eiffel only
+	_scancodeToKeycode[0x58] = Common::KEYCODE_MENU;	// Eiffel only
 	_scancodeToKeycode[0x5b] = Common::KEYCODE_TILDE;	// Eiffel only
-	_scancodeToKeycode[0x61] = Common::KEYCODE_F12;	// UNDO
-	_scancodeToKeycode[0x62] = Common::KEYCODE_F11;	// HELP
-	_scancodeToKeycode[0x63] = Common::KEYCODE_SLASH;	// KEYPAD /
-	_scancodeToKeycode[0x64] = Common::KEYCODE_KP_DIVIDE;
-	_scancodeToKeycode[0x65] = Common::KEYCODE_KP_MULTIPLY;
-	_scancodeToKeycode[0x66] = Common::KEYCODE_KP_MULTIPLY;	// duplicate?
-	_scancodeToKeycode[0x67] = Common::KEYCODE_7;	// KEYPAD 7
-	_scancodeToKeycode[0x68] = Common::KEYCODE_8;	// KEYPAD 8
-	_scancodeToKeycode[0x69] = Common::KEYCODE_9;	// KEYPAD 9
-	_scancodeToKeycode[0x6a] = Common::KEYCODE_4;	// KEYPAD 4
-	_scancodeToKeycode[0x6b] = Common::KEYCODE_5;	// KEYPAD 5
-	_scancodeToKeycode[0x6c] = Common::KEYCODE_6;	// KEYPAD 6
-	_scancodeToKeycode[0x6d] = Common::KEYCODE_1;	// KEYPAD 1
-	_scancodeToKeycode[0x6e] = Common::KEYCODE_2;	// KEYPAD 2
-	_scancodeToKeycode[0x6f] = Common::KEYCODE_3;	// KEYPAD 3
-	_scancodeToKeycode[0x70] = Common::KEYCODE_0;	// KEYPAD 0
+	_scancodeToKeycode[0x61] = Common::KEYCODE_F12;	// UNDO (there's also Common::KEYCODE_UNDO available...)
+	_scancodeToKeycode[0x62] = Common::KEYCODE_F11;	// HELP (there's also Common::KEYCODE_HELP available...)
+	_scancodeToKeycode[0x63] = Common::KEYCODE_LEFTPAREN;	// KEYPAD (
+	_scancodeToKeycode[0x64] = Common::KEYCODE_RIGHTPAREN;	// KEYPAD )
+	_scancodeToKeycode[0x65] = Common::KEYCODE_KP_DIVIDE;	// KEYPAD /
+	_scancodeToKeycode[0x66] = Common::KEYCODE_KP_MULTIPLY;	// KEYPAD *
+	_scancodeToKeycode[0x67] = Common::KEYCODE_KP7;	// KEYPAD 7
+	_scancodeToKeycode[0x68] = Common::KEYCODE_KP8;	// KEYPAD 8
+	_scancodeToKeycode[0x69] = Common::KEYCODE_KP9;	// KEYPAD 9
+	_scancodeToKeycode[0x6a] = Common::KEYCODE_KP4;	// KEYPAD 4
+	_scancodeToKeycode[0x6b] = Common::KEYCODE_KP5;	// KEYPAD 5
+	_scancodeToKeycode[0x6c] = Common::KEYCODE_KP6;	// KEYPAD 6
+	_scancodeToKeycode[0x6d] = Common::KEYCODE_KP1;	// KEYPAD 1
+	_scancodeToKeycode[0x6e] = Common::KEYCODE_KP2;	// KEYPAD 2
+	_scancodeToKeycode[0x6f] = Common::KEYCODE_KP3;	// KEYPAD 3
+	_scancodeToKeycode[0x70] = Common::KEYCODE_KP0;	// KEYPAD 0
 	_scancodeToKeycode[0x71] = Common::KEYCODE_KP_PERIOD;
 	_scancodeToKeycode[0x72] = Common::KEYCODE_KP_ENTER;
 }
@@ -108,32 +122,33 @@ bool AtariEventSource::pollEvent(Common::Event &event) {
 
 	_system->update();
 
-	if ((g_atari_ikbd_mouse_buttons_state & 0x01) && !_oldRmbDown) {
-		event.type = Common::EVENT_RBUTTONDOWN;
-		event.mouse = _graphicsManager->getMousePosition();
-		_oldRmbDown = true;
-		return true;
-	}
+	if (g_atari_ikbd_mousebuttons_head != g_atari_ikbd_mousebuttons_tail) {
+		byte buttonState = g_atari_ikbd_mousebuttons[g_atari_ikbd_mousebuttons_tail++];
+		g_atari_ikbd_mousebuttons_tail &= MOUSEBUTTONS_SIZE-1;
 
-	if (!(g_atari_ikbd_mouse_buttons_state & 0x01) && _oldRmbDown) {
-		event.type = Common::EVENT_RBUTTONUP;
-		event.mouse = _graphicsManager->getMousePosition();
-		_oldRmbDown = false;
-		return true;
-	}
+		if (buttonState & 0x01) {
+			_rmbDown = true;
+			event.type = Common::EVENT_RBUTTONDOWN;
+			event.mouse = _graphicsManager->getMousePosition();
+			return true;
+		} else if (_rmbDown) {
+			_rmbDown = false;
+			event.type = Common::EVENT_RBUTTONUP;
+			event.mouse = _graphicsManager->getMousePosition();
+			return true;
+		}
 
-	if ((g_atari_ikbd_mouse_buttons_state & 0x02) && !_oldLmbDown) {
-		event.type = Common::EVENT_LBUTTONDOWN;
-		event.mouse = _graphicsManager->getMousePosition();
-		_oldLmbDown = true;
-		return true;
-	}
-
-	if (!(g_atari_ikbd_mouse_buttons_state & 0x02) && _oldLmbDown) {
-		event.type = Common::EVENT_LBUTTONUP;
-		event.mouse = _graphicsManager->getMousePosition();
-		_oldLmbDown = false;
-		return true;
+		if (buttonState & 0x02) {
+			_lmbDown = true;
+			event.type = Common::EVENT_LBUTTONDOWN;
+			event.mouse = _graphicsManager->getMousePosition();
+			return true;
+		} else if (_lmbDown) {
+			_lmbDown = false;
+			event.type = Common::EVENT_LBUTTONUP;
+			event.mouse = _graphicsManager->getMousePosition();
+			return true;
+		}
 	}
 
 	if (g_atari_ikbd_mouse_delta_x != 0 || g_atari_ikbd_mouse_delta_y != 0) {
@@ -150,9 +165,9 @@ bool AtariEventSource::pollEvent(Common::Event &event) {
 		return true;
 	}
 
-	if (g_atari_ikbb_scancodes_head != g_atari_ikbb_scancodes_tail) {
-		byte scancode = g_atari_ikbd_scancodes[g_atari_ikbb_scancodes_tail++];
-		g_atari_ikbb_scancodes_tail &= SCANCODES_SIZE-1;
+	if (g_atari_ikbd_scancodes_head != g_atari_ikbd_scancodes_tail) {
+		byte scancode = g_atari_ikbd_scancodes[g_atari_ikbd_scancodes_tail++];
+		g_atari_ikbd_scancodes_tail &= SCANCODES_SIZE-1;
 
 		bool pressed = !(scancode & 0x80);
 		scancode &= 0x7f;
@@ -171,6 +186,27 @@ bool AtariEventSource::pollEvent(Common::Event &event) {
 
 		if (scancode == 0x3a && pressed)
 			_capslockActive = !_capslockActive;
+
+		if (scancode == 0x4c && pressed)
+			_scrolllockActive = !_scrolllockActive;
+
+		if (scancode == 0x54 && pressed)
+			_numlockActive = !_numlockActive;
+
+		// Eiffel only
+		if (scancode == 0x37) {
+			if (pressed) {
+				_mmbDown = true;
+				event.type = Common::EVENT_MBUTTONDOWN;
+				event.mouse = _graphicsManager->getMousePosition();
+				return true;
+			} else if (_mmbDown) {
+				_mmbDown = false;
+				event.type = Common::EVENT_MBUTTONUP;
+				event.mouse = _graphicsManager->getMousePosition();
+				return true;
+			}
+		}
 
 		// Eiffel only
 		if (scancode == 0x59) {
@@ -264,6 +300,8 @@ bool AtariEventSource::pollEvent(Common::Event &event) {
 		event.kbd.flags |= _altActive ? Common::KBD_ALT : 0;
 		event.kbd.flags |= (_lshiftActive || _rshiftActive) ? Common::KBD_SHIFT : 0;
 		event.kbd.flags |= _capslockActive ? Common::KBD_CAPS : 0;
+		event.kbd.flags |= _scrolllockActive ? Common::KBD_SCRL : 0;
+		event.kbd.flags |= _numlockActive ? Common::KBD_NUM : 0;
 
 		return true;
 	}

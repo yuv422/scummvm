@@ -133,14 +133,14 @@ static const ADFileBasedFallback fileBasedFallback[] = {
 
 } // End of namespace Touche
 
-static const char *directoryGlobs[] = {
+static const char *const directoryGlobs[] = {
 	"database",
 	0
 };
 
-class ToucheMetaEngineDetection : public AdvancedMetaEngineDetection {
+class ToucheMetaEngineDetection : public AdvancedMetaEngineDetection<ADGameDescription> {
 public:
-	ToucheMetaEngineDetection() : AdvancedMetaEngineDetection(Touche::gameDescriptions, sizeof(ADGameDescription), toucheGames) {
+	ToucheMetaEngineDetection() : AdvancedMetaEngineDetection(Touche::gameDescriptions, toucheGames) {
 		_md5Bytes = 4096;
 		_maxScanDepth = 2;
 		_directoryGlobs = directoryGlobs;

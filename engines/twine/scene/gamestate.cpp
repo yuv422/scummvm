@@ -229,6 +229,10 @@ bool GameState::loadGame(Common::SeekableReadStream *file) {
 
 bool GameState::saveGame(Common::WriteStream *file) {
 	debug(2, "Save game");
+	if (!_engine->isLBA1()) {
+		warning("Saving not implemented for lba2");
+		return false;
+	}
 	if (_engine->_menuOptions->_saveGameName[0] == '\0') {
 		Common::strlcpy(_engine->_menuOptions->_saveGameName, "TwinEngineSave", sizeof(_engine->_menuOptions->_saveGameName));
 	}
@@ -296,7 +300,7 @@ int16 GameState::getChapter() const {
 	return _listFlagGame[253];
 }
 
-void GameState::setGameFlag(uint8 index, uint8 value) {
+void GameState::setGameFlag(uint8 index, int16 value) {
 	if (_listFlagGame[index] == value) {
 		return;
 	}
@@ -324,7 +328,7 @@ void GameState::doFoundObj(InventoryItems item) {
 	ScopedEngineFreeze freeze(_engine);
 	_engine->_grid->centerOnActor(_engine->_scene->_sceneHero);
 
-	_engine->exitSceneryView();
+	_engine->extInitSvga();
 	// Hide hero in scene
 	_engine->_scene->_sceneHero->_staticFlags.bIsHidden = 1;
 	_engine->_redraw->redrawEngineActions(true);
@@ -444,7 +448,9 @@ void GameState::doFoundObj(InventoryItems item) {
 
 		_engine->_text->playVoxSimple(_engine->_text->_currDialTextEntry);
 
+		// advance the timer to play animations
 		_engine->timerRef++;
+		debugC(3, kDebugLevels::kDebugTime, "FoundObj time: %i", _engine->timerRef);
 	}
 
 	while (_engine->_text->playVoxSimple(_engine->_text->_currDialTextEntry)) {
@@ -498,7 +504,7 @@ void GameState::processGameChoices(TextId choiceIdx) {
 void GameState::processGameoverAnimation() {
 	const int32 tmpLbaTime = _engine->timerRef;
 
-	_engine->exitSceneryView();
+	_engine->testRestoreModeSVGA(false);
 	// workaround to fix hero redraw after drowning
 	_engine->_scene->_sceneHero->_staticFlags.bIsHidden = 1;
 	_engine->_redraw->redrawEngineActions(true);
@@ -536,6 +542,7 @@ void GameState::processGameoverAnimation() {
 		_engine->_renderer->affObjetIso(0, 0, 0, LBAAngles::ANGLE_0, LBAAngles::ANGLE_0, LBAAngles::ANGLE_0, gameOverPtr, dummy);
 
 		_engine->timerRef++;
+		debugC(3, kDebugLevels::kDebugTime, "GameOver time: %i", _engine->timerRef);
 	}
 
 	_engine->_sound->playSample(Samples::Explode);

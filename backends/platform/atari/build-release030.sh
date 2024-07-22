@@ -6,22 +6,36 @@
 mkdir -p build-release030
 cd build-release030
 
+PLATFORM=m68k-atari-mintelf
+FASTCALL=false
+
 export ASFLAGS="-m68030"
 export CXXFLAGS="-m68030 -DDISABLE_FANCY_THEMES"
-export LDFLAGS="-m68030"
+export LDFLAGS="-m68030 -Wl,--msuper-memory"
+export PKG_CONFIG_LIBDIR="$(${PLATFORM}-gcc -print-sysroot)/usr/lib/m68020-60/pkgconfig"
+
+if $FASTCALL
+then
+	ASFLAGS="$ASFLAGS -mfastcall"
+	CXXFLAGS="$CXXFLAGS -mfastcall"
+	LDFLAGS="$LDFLAGS -mfastcall"
+fi
 
 if [ ! -f config.log ]
 then
 ../configure \
 	--backend=atari \
-	--host=m68k-atari-mint \
+	--host=${PLATFORM} \
 	--enable-release \
+	--disable-png \
+	--disable-enet \
 	--disable-mt32emu \
 	--disable-lua \
 	--disable-nuked-opl \
 	--disable-16bit \
 	--disable-highres \
 	--disable-scalers \
+	--disable-aspect \
 	--disable-translation \
 	--disable-eventrecorder \
 	--disable-tts \
@@ -29,16 +43,28 @@ then
 	--opengl-mode=none \
 	--enable-verbose-build \
 	--enable-text-console \
-	--disable-engine=hugo,director,cine
+	--disable-engine=hugo,director,cine,ultima \
+	--disable-detection-full
 fi
 
-make -j 16
+make -j$(getconf _NPROCESSORS_CONF)
 rm -rf dist-generic
 make dist-generic
 
+# create symbol file and strip
+${PLATFORM}-nm -C dist-generic/scummvm/scummvm.ttp | grep -vF ' .L' | grep ' [TtWV] ' | ${PLATFORM}-c++filt | sort -u > dist-generic/scummvm/scummvm.sym
+${PLATFORM}-strip -s dist-generic/scummvm/scummvm.ttp
+
 # remove unused files
-rm -f dist-generic/scummvm/data/*.zip dist-generic/scummvm/data/{gui-icons,achievements,macgui,shaders}.dat
+rm dist-generic/scummvm/data/*.zip dist-generic/scummvm/data/{achievements,encoding,gui-icons,macgui,shaders}.dat
 
 # readme.txt
 cp ../backends/platform/atari/readme.txt dist-generic/scummvm
 unix2dos dist-generic/scummvm/readme.txt
+
+cd dist-generic
+mv scummvm scummvm-2.9.0-atari-lite
+zip -r -9 scummvm-2.9.0-atari-lite.zip scummvm-2.9.0-atari-lite
+cd -
+
+mv dist-generic/scummvm-2.9.0-atari-lite.zip ..

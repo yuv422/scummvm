@@ -157,6 +157,7 @@ void b_saveMovie(int nargs);
 void b_showResFile(int nargs);
 void b_showXlib(int nargs);
 void b_xFactoryList(int nargs);
+void b_xtra(int nargs);
 
 void b_point(int nargs);
 void b_inside(int nargs);
@@ -166,6 +167,7 @@ void b_offsetRect(int nargs);
 void b_rect(int nargs);
 void b_union(int nargs);
 
+void b_member(int nargs);
 void b_window(int nargs);
 
 void b_beep(int nargs);
@@ -194,6 +196,7 @@ void b_numberofwords(int nargs);
 
 void b_scummvmassert(int nargs);
 void b_scummvmassertequal(int nargs);
+void b_scummvmNoFatalError(int nargs);
 
 // XCMD/XFCN (HyperCard), normally exposed
 void b_getVolumes(int nargs);

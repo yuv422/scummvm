@@ -23,6 +23,7 @@
 #define NANCY_ACTION_TANGRAMPUZZLE_H
 
 #include "engines/nancy/action/actionrecord.h"
+#include "engines/nancy/misc/mousefollow.h"
 
 namespace Nancy {
 namespace Action {
@@ -46,14 +47,13 @@ protected:
 	Common::String getRecordTypeName() const override { return "TangramPuzzle"; }
 	bool isViewportRelative() const override { return true; }
 
-	class Tile : public RenderObject {
+	class Tile : public Misc::MouseFollowObject {
 		friend class TangramPuzzle;
 	public:
 		Tile();
 		virtual ~Tile();
 
 		void drawMask();
-		void setZ(uint z);
 		void setHighlighted(bool highlighted);
 
 		Graphics::ManagedSurface _srcImage;
@@ -62,7 +62,7 @@ protected:
 		byte _id;
 		byte _rotation;
 		bool _isHighlighted;
-	
+
 	protected:
 		bool isViewportRelative() const override { return true; }
 	};
@@ -78,8 +78,8 @@ protected:
 
 	bool checkBuffer(const Tile &tile) const;
 
-	Common::String _tileImageName;
-	Common::String _maskImageName;
+	Common::Path _tileImageName;
+	Common::Path _maskImageName;
 
 	Common::Array<Common::Rect> _tileSrcs;
 	Common::Array<Common::Rect> _tileDests;

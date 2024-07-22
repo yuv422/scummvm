@@ -23,10 +23,12 @@
 #include "common/debug-channels.h"
 #include "common/events.h"
 
+#include "backends/keymapper/keymapper.h"
+
 #include "engines/util.h"
 
 #include "graphics/cursorman.h"
-#include "graphics/palette.h"
+#include "graphics/paletteman.h"
 
 #include "image/iff.h"
 
@@ -310,15 +312,19 @@ void CineEngine::showSplashScreen() {
 		uint32 now = g_system->getMillis();
 
 		while (!done && g_system->getMillis() - now < 2000) {
+			Common::Keymapper *keymapper = _eventMan->getKeymapper();
+			keymapper->getKeymap("intro-shortcuts")->setEnabled(true);
+
 			Common::Event event;
 			while (eventMan->pollEvent(event)) {
-				if (event.type == Common::EVENT_KEYDOWN && event.kbd.keycode == Common::KEYCODE_ESCAPE) {
+				if (event.type == Common::EVENT_CUSTOM_ENGINE_ACTION_START && event.customType == kActionExitSonyScreen) {
 					done = true;
 					break;
 				}
 				if (shouldQuit())
 					done = true;
 			}
+			keymapper->getKeymap("intro-shortcuts")->setEnabled(false);
 		}
 	}
 

@@ -34,11 +34,10 @@ enum ConditionType : byte { kEv = 0, kIn = 1, kDi = 2 };
 struct GameConstants {
 	uint16 numItems;
 	uint16 numEventFlags;
-	Common::Array<uint16> mapAccessSceneIDs;
 	Common::Array<uint16> genericEventFlags;
-	uint16 numNonItemCursors;
-	uint16 numCurtainAnimationFrames;
+	uint16 numCursorTypes;
 	uint32 logoEndAfter;
+	uint16 wonGameFlagID;
 };
 
 struct EventFlagDescription {
@@ -88,6 +87,11 @@ struct SoundChannelInfo {
 	Common::Array<byte> speechChannels; // 0 in the original engine
 	Common::Array<byte> musicChannels; // 1
 	Common::Array<byte> sfxChannels; // 2
+};
+
+struct PatchAssociation {
+	Common::Array<const char *> confManProps;
+	Common::Array<const char *> fileIDs;
 };
 
 #endif // CREATE_NANCY_TYPES_H

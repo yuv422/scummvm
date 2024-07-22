@@ -21,15 +21,11 @@
 
 #include "graphics/blit.h"
 #include "graphics/surface.h"
+#include "backends/platform/atari/dlmalloc.h"
 
 #include <cstdlib>	// malloc
 #include <cstring>	// memcpy, memset
 #include <mint/cookie.h>
-
-#include <mint/trap14.h>
-#define ct60_vm(mode, value) (long)trap_14_wwl((short)0xc60e, (short)(mode), (long)(value))
-#define ct60_vmalloc(value) ct60_vm(0, value)
-#define ct60_vmfree(value)  ct60_vm(1, value)
 
 #include "backends/graphics/atari/atari-graphics-superblitter.h"
 #include "common/textconsole.h"	// error
@@ -40,7 +36,7 @@
 #define SV_BLITTER_DST            ((volatile long*)0x80010060)
 // The amount of bytes that are to be copied in a horizontal line, minus 1
 #define SV_BLITTER_COUNT          ((volatile long*)0x80010064)
-// The amount of bytes that are to be added to the line start adress after a line has been copied, in order to reach the next one
+// The amount of bytes that are to be added to the line start address after a line has been copied, in order to reach the next one
 #define SV_BLITTER_SRC1_OFFSET    ((volatile long*)0x80010068)
 #define SV_BLITTER_SRC2_OFFSET    ((volatile long*)0x8001006C)
 #define SV_BLITTER_DST_OFFSET     ((volatile long*)0x80010070)
@@ -98,6 +94,7 @@ void unlockSuperBlitter() {
 
 // see atari-graphics.cpp
 extern bool g_unalignedPitch;
+extern mspace g_mspace;
 
 namespace Graphics {
 
@@ -119,41 +116,34 @@ void Surface::create(int16 width, int16 height, const PixelFormat &f) {
 
 	if (width && height) {
 #ifdef USE_SV_BLITTER
-		if (hasSuperVidel() && w >= 64 && h >= 64) {
-			pixels = (void *)ct60_vmalloc(height * pitch);
+		if (g_mspace) {
+			pixels = mspace_calloc(g_mspace, height * pitch, f.bytesPerPixel);
 
 			if (!pixels)
-				error("Not enough SVRAM to allocate a surface");
-
-			assert((uintptr)pixels >= 0xA0000000);
+				error("Not enough memory to allocate a surface");
+			else if (pixels <= (void *)0xA0000000)
+				warning("SuperVidel surface allocated in regular memory");
 		} else {
 #else
 		{
 #endif
-			// align buffer to a 16-byte boundary for move16 or C2P conversion
-			void *pixelsUnaligned = ::malloc(sizeof(uintptr) + (height * pitch) + ALIGN - 1);
-
-			if (!pixelsUnaligned)
+			pixels = ::calloc(height * pitch, f.bytesPerPixel);
+			if (!pixels)
 				error("Not enough memory to allocate a surface");
-
-			pixels = (void *)(((uintptr)pixelsUnaligned + sizeof(uintptr) + ALIGN - 1) & (-ALIGN));
-
-			// store the unaligned pointer for later free()
-			*((uintptr *)pixels - 1) = (uintptr)pixelsUnaligned;
+			else
+				assert(((uintptr)pixels & (ALIGN - 1)) == 0);
 		}
-
-		memset(pixels, 0, height * pitch);
 	}
 }
 
 void Surface::free() {
 #ifdef USE_SV_BLITTER
-	if (((uintptr)pixels & 0xFF000000) >= 0xA0000000)
-		ct60_vmfree(pixels);
+	if (g_mspace)
+		mspace_free(g_mspace, pixels);
 	else
 #endif
 	if (pixels)
-		::free((void *)*((uintptr *)pixels - 1));
+		::free(pixels);
 
 	pixels = nullptr;
 	w = h = pitch = 0;
@@ -202,15 +192,15 @@ void copyBlit(byte *dst, const byte *src,
 #ifdef USE_MOVE16
 		if (hasMove16() && ((uintptr)src & (ALIGN - 1)) == 0 && ((uintptr)dst & (ALIGN - 1)) == 0) {
 			__asm__ volatile(
-			"	move.l	%2,d0\n"
-			"	lsr.l	#4,d0\n"
+			"	move.l	%2,%%d0\n"
+			"	lsr.l	#4,%%d0\n"
 			"	beq.b	3f\n"
 
-			"	moveq	#0x0f,d1\n"
-			"	and.l	d0,d1\n"
-			"	neg.l	d1\n"
-			"	lsr.l	#4,d0\n"
-			"	jmp		(2f,pc,d1.l*4)\n"
+			"	moveq	#0x0f,%%d1\n"
+			"	and.l	%%d0,%%d1\n"
+			"	neg.l	%%d1\n"
+			"	lsr.l	#4,%%d0\n"
+			"	jmp		(2f,%%pc,%%d1.l*4)\n"
 			"1:\n"
 			"	move16	(%0)+,(%1)+\n"
 			"	move16	(%0)+,(%1)+\n"
@@ -229,14 +219,14 @@ void copyBlit(byte *dst, const byte *src,
 			"	move16	(%0)+,(%1)+\n"
 			"	move16	(%0)+,(%1)+\n"
 			"2:\n"
-			"	dbra	d0,1b\n"
+			"	dbra	%%d0,1b\n"
 			// handle also the unlikely case when 'dstPitch'
 			// is not divisible by 16 but 'src' and 'dst' are
 			"3:\n"
-			"	moveq	#0x0f,d0\n"
-			"	and.l	%2,d0\n"
-			"	neg.l	d0\n"
-			"	jmp		(4f,pc,d0.l*2)\n"
+			"	moveq	#0x0f,%%d0\n"
+			"	and.l	%2,%%d0\n"
+			"	neg.l	%%d0\n"
+			"	jmp		(4f,%%pc,%%d0.l*2)\n"
 			// only 15x move.b as 16 would be handled above
 			"	move.b	(%0)+,(%1)+\n"
 			"	move.b	(%0)+,(%1)+\n"
@@ -269,26 +259,26 @@ void copyBlit(byte *dst, const byte *src,
 		if (hasMove16() && ((uintptr)src & (ALIGN - 1)) == 0 && ((uintptr)dst & (ALIGN - 1)) == 0
 				&& (srcPitch & (ALIGN - 1)) == 0 && (dstPitch & (ALIGN - 1)) == 0) {
 			__asm__ volatile(
-			"	move.l	%2,d0\n"
+			"	move.l	%2,%%d0\n"
 
-			"	moveq	#0x0f,d1\n"
-			"	and.l	d0,d1\n"
-			"	neg.l	d1\n"
-			"	lea		(4f,pc,d1.l*2),a0\n"
-			"	move.l	a0,a1\n"
+			"	moveq	#0x0f,%%d1\n"
+			"	and.l	%%d0,%%d1\n"
+			"	neg.l	%%d1\n"
+			"	lea		(4f,%%pc,%%d1.l*2),%%a0\n"
+			"	move.l	%%a0,%%a1\n"
 
-			"	lsr.l	#4,d0\n"
+			"	lsr.l	#4,%%d0\n"
 			"	beq.b	3f\n"
 
-			"	moveq	#0x0f,d1\n"
-			"	and.l	d0,d1\n"
-			"	neg.l	d1\n"
-			"	lea		(2f,pc,d1.l*4),a0\n"
-			"	lsr.l	#4,d0\n"
-			"	move.l	d0,d1\n"
+			"	moveq	#0x0f,%%d1\n"
+			"	and.l	%%d0,%%d1\n"
+			"	neg.l	%%d1\n"
+			"	lea		(2f,%%pc,%%d1.l*4),%%a0\n"
+			"	lsr.l	#4,%%d0\n"
+			"	move.l	%%d0,%%d1\n"
 			"0:\n"
-			"	move.l	d1,d0\n"
-			"	jmp		(a0)\n"
+			"	move.l	%%d1,%%d0\n"
+			"	jmp		(%%a0)\n"
 			"1:\n"
 			"	move16	(%0)+,(%1)+\n"
 			"	move16	(%0)+,(%1)+\n"
@@ -307,10 +297,10 @@ void copyBlit(byte *dst, const byte *src,
 			"	move16	(%0)+,(%1)+\n"
 			"	move16	(%0)+,(%1)+\n"
 			"2:\n"
-			"	dbra	d0,1b\n"
+			"	dbra	%%d0,1b\n"
 			// handle (w * bytesPerPixel) % 16
 			"3:\n"
-			"	jmp		(a1)\n"
+			"	jmp		(%%a1)\n"
 			// only 15x move.b as 16 would be handled above
 			"	move.b	(%0)+,(%1)+\n"
 			"	move.b	(%0)+,(%1)+\n"

@@ -43,17 +43,22 @@ protected:
 
 	ScrollBarWidget *_verticalScroll;
 	int16 _scrolledX, _scrolledY;
+	int _mouseDownY = 0;
+	int _mouseDownStartY = 0;
+	int _innerMargin;
 	int _scrollbarWidth;
 	uint16 _limitH;
-	uint32 _reflowCmd;
 	int _textWidth;
+	int _textHeight;
 
-	Common::String _imageArchive;
+	Common::Path _imageArchive;
 
 public:
 	RichTextWidget(GuiObject *boss, int x, int y, int w, int h, bool scale, const Common::U32String &text, const Common::U32String &tooltip = Common::U32String());
 	RichTextWidget(GuiObject *boss, int x, int y, int w, int h, const Common::U32String &text, const Common::U32String &tooltip = Common::U32String());
 	RichTextWidget(GuiObject *boss, const Common::String &name, const Common::U32String &text, const Common::U32String &tooltip = Common::U32String());
+
+	~RichTextWidget();
 
 	void reflowLayout() override;
 	void draw() override;
@@ -61,13 +66,15 @@ public:
 	void handleCommand(CommandSender *sender, uint32 cmd, uint32 data) override;
 	void handleMouseWheel(int x, int y, int direction) override;
 	void handleMouseDown(int x, int y, int button, int clickCount) override;
+	void handleMouseUp(int x, int y, int button, int clickCount) override;
+	void handleMouseMoved(int x, int y, int button) override;
 	void handleTooltipUpdate(int x, int y) override;
 
 	void markAsDirty() override;
 
 	bool containsWidget(Widget *) const override;
 
-	void setImageArchive(Common::String fname) { _imageArchive = fname; }
+	void setImageArchive(const Common::Path &fname) { _imageArchive = fname; }
 
 protected:
 	void init();

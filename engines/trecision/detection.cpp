@@ -36,16 +36,16 @@ namespace Trecision {
 #define AD_NL_ENTRY(md5, size) \
 	{ \
 		{"data.nl", 0, md5, size}, \
-		{"nlanim.cd1", 0, nullptr, -1}, \
-		{"nlanim.cd2", 0, nullptr, -1}, \
-		{"nlanim.cd3", 0, nullptr, -1}, \
+		{"nlanim.cd1", 0, nullptr, AD_NO_SIZE}, \
+		{"nlanim.cd2", 0, nullptr, AD_NO_SIZE}, \
+		{"nlanim.cd3", 0, nullptr, AD_NO_SIZE}, \
 		AD_LISTEND \
 	}
 
 #define AD_NL_DEMO_ENTRY(md5, size) \
 	{ \
 		{"data.nl", 0, md5, size}, \
-		{"nlanim.cd1", 0, nullptr, -1}, \
+		{"nlanim.cd1", 0, nullptr, AD_NO_SIZE}, \
 		AD_LISTEND \
 	}
 
@@ -213,15 +213,15 @@ static const ADGameDescription gameDescriptions[] = {
 
 } // End of namespace Trecision
 
-static const char *directoryGlobs[] = {
+static const char *const directoryGlobs[] = {
 	"autorun",
 	"data",
 	0
 };
 
-class TrecisionMetaEngineDetection : public AdvancedMetaEngineDetection {
+class TrecisionMetaEngineDetection : public AdvancedMetaEngineDetection<ADGameDescription> {
 public:
-	TrecisionMetaEngineDetection() : AdvancedMetaEngineDetection(Trecision::gameDescriptions, sizeof(ADGameDescription), trecisionGames) {
+	TrecisionMetaEngineDetection() : AdvancedMetaEngineDetection(Trecision::gameDescriptions, trecisionGames) {
 		_maxScanDepth = 2;
 		_directoryGlobs = directoryGlobs;
 		_guiOptions = GUIO2(GUIO_NOMIDI, GAMEOPTION_ORIGINAL_SAVELOAD);

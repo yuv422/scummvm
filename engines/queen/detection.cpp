@@ -23,7 +23,6 @@
 
 #include "engines/advancedDetector.h"
 
-#include "common/gui_options.h"
 #include "common/file.h"
 
 #include "queen/defs.h"
@@ -475,9 +474,9 @@ static const QueenGameDescription gameDescriptions[] = {
 
 } // End of namespace Queen
 
-class QueenMetaEngineDetection : public AdvancedMetaEngineDetection {
+class QueenMetaEngineDetection : public AdvancedMetaEngineDetection<Queen::QueenGameDescription> {
 public:
-	QueenMetaEngineDetection() : AdvancedMetaEngineDetection(Queen::gameDescriptions, sizeof(Queen::QueenGameDescription), queenGames) {
+	QueenMetaEngineDetection() : AdvancedMetaEngineDetection(Queen::gameDescriptions, queenGames) {
 	}
 
 	const char *getName() const override {
@@ -529,6 +528,8 @@ ADDetectedGame QueenMetaEngineDetection::fallbackDetect(const FileMap &allFiles,
 				} else if (version.features & Queen::GF_TALKIE) {
 					desc.extra = "CD";
 					desc.guiOptions = GAMEOPTION_ALT_INTRO;
+					if (desc.language == Common::HE_ISR)
+						desc.guiOptions = GUIO2(GAMEOPTION_ALT_INTRO, GAMEOPTION_ALT_FONT);
 				}
 
 				return ADDetectedGame(&desc);

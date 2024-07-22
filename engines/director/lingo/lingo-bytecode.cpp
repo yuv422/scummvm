@@ -22,10 +22,10 @@
 #include "common/config-manager.h"
 #include "common/file.h"
 #include "common/substream.h"
-#include "common/xpfloat.h"
 
 #include "director/director.h"
 #include "director/cast.h"
+#include "director/debugger.h"
 #include "director/movie.h"
 #include "director/window.h"
 #include "director/castmember/castmember.h"
@@ -211,7 +211,7 @@ static LingoV4TheEntity lingoV4TheEntity[] = {
 	{ 0x06, 0x20, kTheSprite,			kTheScoreColor,		true, kTEAItemId },
 	{ 0x06, 0x21, kTheSprite,			kTheLoc,			true, kTEAItemId },
 	{ 0x06, 0x22, kTheSprite,			kTheRect,			true, kTEAItemId },
-	{ 0x06, 0x23, kTheSprite,			kTheMemberNum,		true, kTEAItemId },
+	{ 0x06, 0x23, kTheSprite,			kTheMemberNum,		true, kTEAItemId }, // D5
 
 	{ 0x07, 0x01, kTheBeepOn,			kTheNOField,		true, kTEANOArgs },
 	{ 0x07, 0x02, kTheButtonStyle,		kTheNOField,		true, kTEANOArgs },
@@ -427,7 +427,7 @@ void LC::cb_localcall() {
 	if ((nargs.type == ARGC) || (nargs.type == ARGCNORET)) {
 		Common::String name = g_lingo->_state->context->_functionNames[functionId];
 		if (debugChannelSet(3, kDebugLingoExec))
-			printWithArgList(name.c_str(), nargs.u.i, "localcall:");
+			g_lingo->printArgs(name.c_str(), nargs.u.i, "localcall:");
 
 		LC::call(name, nargs.u.i, nargs.type == ARGC);
 
@@ -595,6 +595,7 @@ void LC::cb_theassign() {
 	if (g_lingo->_state->me.type == OBJECT) {
 		// Don't bother checking if the property is defined, leave that to the object.
 		// For D3-style anonymous objects/factories, you are allowed to define whatever properties you like.
+		g_debugger->propWriteHook(name);
 		g_lingo->_state->me.u.obj->setProp(name, value);
 	} else {
 		warning("cb_theassign: no me object");
@@ -622,22 +623,15 @@ void LC::cb_thepush() {
 	if (g_lingo->_state->me.type == OBJECT) {
 		if (g_lingo->_state->me.u.obj->hasProp(name)) {
 			g_lingo->push(g_lingo->_state->me.u.obj->getProp(name));
-			return;
-		}
-
-		if (name == "me") {
-			// Special case: push the me object itself
-			g_lingo->push(g_lingo->_state->me);
+			g_debugger->propReadHook(name);
 			return;
 		}
 
 		warning("cb_thepush: me object has no property '%s', type: %d", name.c_str(), g_lingo->_state->me.type);
 	} else {
-		warning("cb_thepush: no me object");
+		debugC(1, kDebugLingoExec, "cb_thepush: attempted to access property '%s' with no me object, returning VOID", name.c_str());
 	}
-	Datum result;
-	result.type = VOID;
-	g_lingo->push(result);
+	g_lingo->pushVoid();
 }
 
 void LC::cb_thepush2() {
@@ -1114,7 +1108,7 @@ ScriptContext *LingoCompiler::compileLingoV4(Common::SeekableReadStreamEndian &s
 		} else if (0 <= index && index < (int16)archive->names.size()) {
 			const char *name = archive->names[index].c_str();
 			debugC(5, kDebugLoading, "%d: %s", i, name);
-			_assemblyContext->_properties[name] = Datum();
+			_assemblyContext->setProp(name, Datum(), true);
 		} else {
 			warning("Property %d has unknown name id %d, skipping define", i, index);
 		}
@@ -1241,10 +1235,7 @@ ScriptContext *LingoCompiler::compileLingoV4(Common::SeekableReadStreamEndian &s
 					// Floats are stored as an "80 bit IEEE Standard 754 floating
 					// point number (Standard Apple Numeric Environment [SANE] data type
 					// Extended).
-					uint16 signAndExponent = READ_BE_UINT16(&constsStore[pointer]);
-					uint64 mantissa = READ_BE_UINT64(&constsStore[pointer+2]);
-
-					constant.u.f = Common::XPFloat(signAndExponent, mantissa).toDouble(Common::XPFloat::kSemanticsSANE);
+					constant.u.f = readAppleFloat80(&constsStore[pointer]);
 				} else if (length == 8) {
 					constant.u.f = READ_BE_FLOAT64(&constsStore[pointer]);
 				} else {
@@ -1279,7 +1270,7 @@ ScriptContext *LingoCompiler::compileLingoV4(Common::SeekableReadStreamEndian &s
 	bool skipdump = false;
 
 	if (ConfMan.getBool("dump_scripts")) {
-		Common::String buf;
+		Common::Path buf;
 		if (scriptFlags & kScriptFlagFactoryDef) {
 			buf = dumpFactoryName(encodePathForDump(archName).c_str(), factoryName.c_str(), "lscr");
 		} else {
@@ -1287,10 +1278,10 @@ ScriptContext *LingoCompiler::compileLingoV4(Common::SeekableReadStreamEndian &s
 		}
 
 		if (!out.open(buf, true)) {
-			warning("Lingo::addCodeV4(): Can not open dump file %s", buf.c_str());
+			warning("Lingo::addCodeV4(): Can not open dump file %s", buf.toString(Common::Path::kNativeSeparator).c_str());
 			skipdump = true;
 		} else {
-			warning("Lingo::addCodeV4(): Dumping Lscr to %s", buf.c_str());
+			warning("Lingo::addCodeV4(): Dumping Lscr to %s", buf.toString(Common::Path::kNativeSeparator).c_str());
 		}
 	}
 
@@ -1402,6 +1393,7 @@ ScriptContext *LingoCompiler::compileLingoV4(Common::SeekableReadStreamEndian &s
 		uint32 pointer = startOffset - codeStoreOffset;
 		Common::Array<uint32> offsetList;
 		Common::Array<uint32> jumpList;
+		Common::Array<uint32> byteOffsets;
 
 		// Size of an entry in the consts index.
 		int constEntrySize = 0;
@@ -1421,6 +1413,7 @@ ScriptContext *LingoCompiler::compileLingoV4(Common::SeekableReadStreamEndian &s
 				// Opcode for pushing a value from the constants table.
 				// Rewrite these to inline the constant into our bytecode.
 				offsetList.push_back(_currentAssembly->size());
+				byteOffsets.push_back(_currentAssembly->size());
 				int arg = 0;
 				if (opcode == 0x84) {
 					arg = (uint16)READ_BE_UINT16(&codeStore[pointer]);
@@ -1453,8 +1446,11 @@ ScriptContext *LingoCompiler::compileLingoV4(Common::SeekableReadStreamEndian &s
 				if (opcode == 0x84) {
 					offsetList.push_back(_currentAssembly->size());
 					offsetList.push_back(_currentAssembly->size());
+					byteOffsets.push_back(_currentAssembly->size());
+					byteOffsets.push_back(_currentAssembly->size());
 				} else {
 					offsetList.push_back(_currentAssembly->size());
+					byteOffsets.push_back(_currentAssembly->size());
 				}
 				switch (constant.type) {
 				case INT:
@@ -1472,6 +1468,7 @@ ScriptContext *LingoCompiler::compileLingoV4(Common::SeekableReadStreamEndian &s
 				}
 			} else if (g_lingo->_lingoV4.contains(opcode)) {
 				offsetList.push_back(_currentAssembly->size());
+				byteOffsets.push_back(_currentAssembly->size());
 				code1(g_lingo->_lingoV4[opcode]->func);
 
 				size_t argc = strlen(g_lingo->_lingoV4[opcode]->proto);
@@ -1483,12 +1480,14 @@ ScriptContext *LingoCompiler::compileLingoV4(Common::SeekableReadStreamEndian &s
 						case 'b':
 							// read one uint8 as an argument
 							offsetList.push_back(_currentAssembly->size());
+							byteOffsets.push_back(_currentAssembly->size());
 							arg = (uint8)codeStore[pointer];
 							pointer += 1;
 							break;
 						case 'B':
 							// read one int8 as an argument
 							offsetList.push_back(_currentAssembly->size());
+							byteOffsets.push_back(_currentAssembly->size());
 							arg = (int8)codeStore[pointer];
 							pointer += 1;
 							break;
@@ -1496,6 +1495,8 @@ ScriptContext *LingoCompiler::compileLingoV4(Common::SeekableReadStreamEndian &s
 							// read one uint16 as an argument
 							offsetList.push_back(_currentAssembly->size());
 							offsetList.push_back(_currentAssembly->size());
+							byteOffsets.push_back(_currentAssembly->size());
+							byteOffsets.push_back(_currentAssembly->size());
 							arg = (uint16)READ_BE_UINT16(&codeStore[pointer]);
 							pointer += 2;
 							break;
@@ -1503,6 +1504,8 @@ ScriptContext *LingoCompiler::compileLingoV4(Common::SeekableReadStreamEndian &s
 							// read one int16 as an argument
 							offsetList.push_back(_currentAssembly->size());
 							offsetList.push_back(_currentAssembly->size());
+							byteOffsets.push_back(_currentAssembly->size());
+							byteOffsets.push_back(_currentAssembly->size());
 							arg = (int16)READ_BE_INT16(&codeStore[pointer]);
 							pointer += 2;
 							break;
@@ -1558,24 +1561,30 @@ ScriptContext *LingoCompiler::compileLingoV4(Common::SeekableReadStreamEndian &s
 				if (opcode < 0x40) { // 1 byte instruction
 					debugC(5, kDebugCompile, "Unimplemented opcode: 0x%02x", opcode);
 					offsetList.push_back(_currentAssembly->size());
+					byteOffsets.push_back(_currentAssembly->size());
 					code1(LC::cb_unk);
 					codeInt(opcode);
 				} else if (opcode < 0x80) { // 2 byte instruction
 					debugC(5, kDebugCompile, "Unimplemented opcode: 0x%02x (%d)", opcode, (uint)codeStore[pointer]);
 					offsetList.push_back(_currentAssembly->size());
+					byteOffsets.push_back(_currentAssembly->size());
 					code1(LC::cb_unk1);
 					codeInt(opcode);
 					offsetList.push_back(_currentAssembly->size());
+					byteOffsets.push_back(_currentAssembly->size());
 					codeInt((uint)codeStore[pointer]);
 					pointer += 1;
 				} else { // 3 byte instruction
 					debugC(5, kDebugCompile, "Unimplemented opcode: 0x%02x (%d, %d)", opcode, (uint)codeStore[pointer], (uint)codeStore[pointer+1]);
 					offsetList.push_back(_currentAssembly->size());
+					byteOffsets.push_back(_currentAssembly->size());
 					code1(LC::cb_unk2);
 					codeInt(opcode);
 					offsetList.push_back(_currentAssembly->size());
+					byteOffsets.push_back(_currentAssembly->size());
 					codeInt((uint)codeStore[pointer]);
 					offsetList.push_back(_currentAssembly->size());
+					byteOffsets.push_back(_currentAssembly->size());
 					codeInt((uint)codeStore[pointer+1]);
 					pointer += 2;
 				}
@@ -1624,6 +1633,8 @@ ScriptContext *LingoCompiler::compileLingoV4(Common::SeekableReadStreamEndian &s
 			sym.argNames = argNames;
 			sym.varNames = varNames;
 		}
+
+		_assemblyContext->_functionByteOffsets[functionName] = byteOffsets;
 
 		if (!skipdump && ConfMan.getBool("dump_scripts")) {
 			out.writeString(g_lingo->formatFunctionBody(sym));

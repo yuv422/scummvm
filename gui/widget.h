@@ -33,6 +33,7 @@
 #include "common/text-to-speech.h"
 #include "common/system.h"
 #include "common/config-manager.h"
+#include "common/events.h"
 
 namespace GUI {
 
@@ -144,6 +145,7 @@ public:
 	void handleMouseWheel(int x, int y, int direction) override { assert(_boss); _boss->handleMouseWheel(x, y, direction); }
 	virtual bool handleKeyDown(Common::KeyState state) { return false; }	// Return true if the event was handled
 	virtual bool handleKeyUp(Common::KeyState state) { return false; }	// Return true if the event was handled
+	virtual void handleOtherEvent(const Common::Event &evt) {}
 	virtual void handleTickle() {}
 
 	/** Mark the widget and its children as dirty so they are redrawn on the next screen update */
@@ -317,6 +319,7 @@ protected:
 	void drawWidget() override;
 
 	Graphics::ManagedSurface _gfx[kPicButtonStateMax + 1];
+	Graphics::AlphaType _alphaType[kPicButtonStateMax + 1];
 	bool _showButton;
 };
 
@@ -452,6 +455,57 @@ protected:
 	void drawWidget() override;
 
 	Graphics::ManagedSurface _gfx;
+	Graphics::AlphaType _alphaType;
+};
+
+class PathWidget : public StaticTextWidget {
+public:
+	PathWidget(GuiObject *boss, int x, int y, int w, int h, bool scale,
+			const Common::Path &path, Graphics::TextAlign align,
+			const Common::U32String &placeholder = Common::U32String(),
+			const Common::U32String &tooltip = Common::U32String(),
+			ThemeEngine::FontStyle font = ThemeEngine::kFontStyleBold,
+			bool useEllipsis = true) :
+		StaticTextWidget(boss, x, y, w, h, scale,
+				path.empty() ? placeholder : Common::U32String(path.toString(Common::Path::kNativeSeparator)),
+				align, tooltip, font, Common::UNK_LANG, useEllipsis),
+		_path(path),
+		_placeholder(placeholder) { }
+	PathWidget(GuiObject *boss, int x, int y, int w, int h,
+			const Common::Path &path, Graphics::TextAlign align,
+			const Common::U32String &placeholder = Common::U32String(),
+			const Common::U32String &tooltip = Common::U32String(),
+			ThemeEngine::FontStyle font = ThemeEngine::kFontStyleBold,
+			bool useEllipsis = true) :
+		StaticTextWidget(boss, x, y, w, h,
+				path.empty() ? placeholder : Common::U32String(path.toString(Common::Path::kNativeSeparator)),
+				align, tooltip, font, Common::UNK_LANG, useEllipsis),
+		_path(path),
+		_placeholder(placeholder) {}
+	PathWidget(GuiObject *boss, const Common::String &name,
+			const Common::Path &path,
+			const Common::U32String &placeholder = Common::U32String(),
+			const Common::U32String &tooltip = Common::U32String(),
+			ThemeEngine::FontStyle font = ThemeEngine::kFontStyleBold,
+			bool useEllipsis = true) :
+		StaticTextWidget(boss, name,
+				path.empty() ? placeholder : Common::U32String(path.toString(Common::Path::kNativeSeparator)),
+				tooltip, font, Common::UNK_LANG, useEllipsis),
+		_path(path),
+		_placeholder(placeholder) {}
+	void setLabel(const Common::Path &path) {
+		_path = path;
+		if (path.empty()) {
+			StaticTextWidget::setLabel(_placeholder);
+		} else {
+			StaticTextWidget::setLabel(path.toString(Common::Path::kNativeSeparator));
+		}
+	}
+	const Common::Path &getLabel() const { return _path; }
+	void setEmptyPlaceHolder(const Common::U32String &placeholder) { _placeholder = placeholder; }
+protected:
+	Common::Path _path;
+	Common::U32String _placeholder;
 };
 
 /* ContainerWidget */
@@ -478,12 +532,12 @@ public:
 	/**
 	 * @param widgetsBoss  parent widget for the container widget
 	 * @param name         name of the container widget in the layout system
-	 * @param dialogLayout name of the layout used by the contained widgets, empty string for manually layed out widgets
+	 * @param dialogLayout name of the layout used by the contained widgets, empty string for manually laid out widgets
 	 * @param scrollable   whether the container is made scrollable through a ScrollContainerWidget
 	 * @param domain       the configuration manager domain this widget is meant to edit
 	 */
 	OptionsContainerWidget(GuiObject *boss, const Common::String &name, const Common::String &dialogLayout,
-	                       bool scrollable, const Common::String &domain);
+	                       const Common::String &domain);
 	~OptionsContainerWidget() override;
 
 	/** Implementing classes should (re)initialize their widgets with state from the configuration domain */
@@ -509,11 +563,6 @@ public:
 	void setDomain(const Common::String &domain) { _domain = domain; }
 
 protected:
-	enum {
-		/** The command that gets sent when the scroll container needs to reflow its contents */
-		kReflowCmd = 'REFL'
-	};
-
 	// Widget API
 	void reflowLayout() override;
 	void drawWidget() override {}
@@ -522,7 +571,7 @@ protected:
 	void removeWidget(Widget *widget) override;
 
 	/** The pareent object to use when creating child widgets */
-	GuiObject *widgetsBoss();
+	GuiObject *widgetsBoss() { return this; }
 
 	/**
 	 * Child classes can override this method to define the layout used by the contained widgets in the layout system
@@ -535,9 +584,6 @@ protected:
 	const Common::String _dialogLayout;
 
 	Dialog *_parentDialog;
-
-private:
-	ScrollContainerWidget *_scrollContainer;
 };
 
 ButtonWidget *addClearButton(GuiObject *boss, const Common::String &name, uint32 cmd, int x=0, int y=0, int w=0, int h=0, bool scale = false);

@@ -34,8 +34,8 @@
 #ifndef AGS_ENGINE_GFX_ALI_3D_SCUMMVM_H
 #define AGS_ENGINE_GFX_ALI_3D_SCUMMVM_H
 
-#include "ags/lib/std/memory.h"
-#include "ags/lib/std/vector.h"
+#include "common/std/memory.h"
+#include "common/std/vector.h"
 #include "ags/shared/core/platform.h"
 #include "ags/shared/gfx/bitmap.h"
 #include "ags/engine/gfx/ddb.h"
@@ -160,12 +160,13 @@ public:
 	ScummVMRendererGraphicsDriver();
 	~ScummVMRendererGraphicsDriver() override;
 
-	const char *GetDriverName() override {
-		return "SDL 2D Software renderer";
-	}
 	const char *GetDriverID() override {
 		return "Software";
 	}
+	const char *GetDriverName() override {
+		return "ScummVM 2D renderer";
+	}
+
 	void SetTintMethod(TintMethod /*method*/) override;
 	bool SetDisplayMode(const DisplayMode &mode) override;
 	void UpdateDeviceScreen(const Size &screen_sz) override;

@@ -39,8 +39,8 @@ TangramPuzzle::~TangramPuzzle() {
 
 void TangramPuzzle::init() {
 	Common::Rect screenBounds = NancySceneState.getViewport().getBounds();
-	_drawSurface.create(screenBounds.width(), screenBounds.height(), g_nancy->_graphicsManager->getInputPixelFormat());
-	_drawSurface.clear(g_nancy->_graphicsManager->getTransColor());
+	_drawSurface.create(screenBounds.width(), screenBounds.height(), g_nancy->_graphics->getInputPixelFormat());
+	_drawSurface.clear(g_nancy->_graphics->getTransColor());
 	setTransparent(true);
 	setVisible(true);
 	moveTo(screenBounds);
@@ -85,7 +85,7 @@ void TangramPuzzle::init() {
 		for (int y = 0; y < curTile->_highlightedSrcImage.h; ++y) {
 			uint16 *p = (uint16 *)curTile->_highlightedSrcImage.getBasePtr(0, y);
 			for (int x = 0; x < curTile->_highlightedSrcImage.w; ++x) {
-				if (*p != g_nancy->_graphicsManager->getTransColor()) {
+				if (*p != g_nancy->_graphics->getTransColor()) {
 					// I'm not sure *3/2 is the exact formula but it's close enough
 					byte r, g, b;
 					format.colorToRGB(*p, r, g, b);
@@ -150,6 +150,9 @@ void TangramPuzzle::execute() {
 		g_nancy->_sound->loadSound(_pickUpSound);
 		g_nancy->_sound->loadSound(_putDownSound);
 		g_nancy->_sound->loadSound(_rotateSound);
+
+		NancySceneState.setNoHeldItem();
+
 		_state = kRun;
 		// fall through
 	case kRun :
@@ -189,7 +192,7 @@ void TangramPuzzle::execute() {
 		g_nancy->_sound->stopSound(_rotateSound);
 
 		finishExecution();
-		
+
 		break;
 	}
 }
@@ -217,7 +220,7 @@ void TangramPuzzle::handleInput(NancyInput &input) {
 
 		if (idUnderMouse != 0 && idUnderMouse != (byte)-1) {
 			// A tile is under the cursor
-			g_nancy->_cursorManager->setCursorType(CursorManager::kHotspot);
+			g_nancy->_cursor->setCursorType(CursorManager::kHotspot);
 
 			if (input.input & NancyInput::kLeftMouseButtonUp) {
 				pickUpTile(idUnderMouse);
@@ -232,7 +235,7 @@ void TangramPuzzle::handleInput(NancyInput &input) {
 
 		// No tile under cursor, check exit hotspot
 		if (_exitHotspot.contains(mousePos)) {
-			g_nancy->_cursorManager->setCursorType(g_nancy->_cursorManager->_puzzleExitCursor);
+			g_nancy->_cursor->setCursorType(g_nancy->_cursor->_puzzleExitCursor);
 
 			if (input.input & NancyInput::kLeftMouseButtonUp) {
 				_state = kActionTrigger;
@@ -251,28 +254,7 @@ void TangramPuzzle::handleInput(NancyInput &input) {
 			return;
 		}
 
-		// Move the tile under the cursor
-		Common::Rect newScreenPos = tileHolding._screenPosition;
-		newScreenPos.moveTo(mousePos);
-		newScreenPos.translate(-newScreenPos.width() / 2, -newScreenPos.height() / 2);
-
-		// Clip movement so the ring stays entirely inside the viewport
-		if (newScreenPos.left < viewport.left) {
-			newScreenPos.translate(viewport.left - newScreenPos.left, 0);
-		} else if (newScreenPos.right > viewport.right) {
-			newScreenPos.translate(viewport.right - newScreenPos.right, 0);
-		}
-
-		if (newScreenPos.top < viewport.top) {
-			newScreenPos.translate(0, viewport.top - newScreenPos.top);
-		} else if (newScreenPos.bottom > viewport.bottom) {
-			newScreenPos.translate(0, viewport.bottom - newScreenPos.bottom);
-		}
-
-		if (newScreenPos != tileHolding._screenPosition) {
-			tileHolding.moveTo(newScreenPos);
-		}
-
+		tileHolding.handleInput(input);
 		bool rotated = false;
 
 		// Check if we need to rotate it
@@ -320,13 +302,11 @@ void TangramPuzzle::pickUpTile(uint id) {
 	Tile &tileToPickUp = _tiles[id];
 
 	moveToTop(id);
-
 	_pickedUpTile = id;
-
 	redrawBuffer(tileToPickUp._screenPosition);
+	tileToPickUp.pickUp();
 
 	// Make sure we don't have a frame with the correct zOrder, but wrong position
-	// This is not done when we're calling from rotate()
 	NancyInput input = g_nancy->_input->getInput();
 	input.input = 0;
 	handleInput(input);
@@ -335,8 +315,9 @@ void TangramPuzzle::pickUpTile(uint id) {
 void TangramPuzzle::putDownTile(uint id) {
 	Tile &tile = _tiles[id];
 	_pickedUpTile = -1;
-	
+
 	drawToBuffer(tile);
+	tile.putDown();
 
 	if (tile._isHighlighted) {
 		tile.setHighlighted(false);
@@ -349,7 +330,7 @@ void TangramPuzzle::rotateTile(uint id) {
 	assert(id < _tiles.size() && id != 0);
 
 	Tile &tileToRotate = _tiles[id];
-	
+
 	if (tileToRotate._rotation == 3) {
 		tileToRotate._rotation = 0;
 	} else {
@@ -365,15 +346,11 @@ void TangramPuzzle::rotateTile(uint id) {
 	} else {
 		tileToRotate.setHighlighted(false);
 	}
-	
+
 	Common::Rect newPos = tileToRotate._drawSurface.getBounds();
 	newPos.moveTo(oldPos.left + oldPos.width() / 2 - newPos.width() / 2, oldPos.top + oldPos.height() / 2 - newPos.height() / 2);
-
-	// Do NOT use moveTo()!
-	// If moved and rotated in the same frame, we need to make sure the last position isn't overwritten
-	tileToRotate._screenPosition = newPos;
+	tileToRotate.moveTo(newPos);
 	_needsRedraw = true;
-
 
 	tileToRotate.drawMask();
 	tileToRotate._needsRedraw = true;
@@ -393,7 +370,7 @@ void TangramPuzzle::moveToTop(uint id) {
 			tile.registerGraphics();
 		}
 	}
-	
+
 	_tiles[id].setZ(_z + _tiles.size());
 	_tiles[id].registerGraphics();
 }
@@ -405,7 +382,7 @@ void TangramPuzzle::redrawBuffer(const Common::Rect &rect) {
 		memset(dest, -1, rect.width());
 	}
 
-	for (uint z = _z + 1; z < _z  + _tiles.size(); ++z) {
+	for (uint z = _z + 1; z < _z + _tiles.size(); ++z) {
 		for (uint i = 0; i < _tiles.size() - 1; ++i) {
 			Tile &tile = _tiles[i];
 			if (tile._z == z) {
@@ -438,7 +415,7 @@ bool TangramPuzzle::checkBuffer(const Tile &tile) const {
 	return true;
 }
 
-TangramPuzzle::Tile::Tile() : RenderObject(1), _mask(nullptr), _id(0), _rotation(0), _isHighlighted(false) {}
+TangramPuzzle::Tile::Tile() : _mask(nullptr), _id(0), _rotation(0), _isHighlighted(false) {}
 
 TangramPuzzle::Tile::~Tile() {
 	delete _mask;
@@ -449,7 +426,7 @@ void TangramPuzzle::Tile::drawMask() {
 		_mask = new byte[_drawSurface.w * _drawSurface.h];
 	}
 
-	uint16 transColor = g_nancy->_graphicsManager->getTransColor();
+	uint16 transColor = g_nancy->_graphics->getTransColor();
 	for (int y = 0; y < _drawSurface.h; ++y) {
 		uint16 *src = (uint16 *)_drawSurface.getBasePtr(0, y);
 		for (int x = 0; x < _drawSurface.w; ++x) {
@@ -461,11 +438,6 @@ void TangramPuzzle::Tile::drawMask() {
 			++src;
 		}
 	}
-}
-
-void TangramPuzzle::Tile::setZ(uint z) {
-	_z = z;
-	_needsRedraw = true;
 }
 
 void TangramPuzzle::Tile::setHighlighted(bool highlighted) {

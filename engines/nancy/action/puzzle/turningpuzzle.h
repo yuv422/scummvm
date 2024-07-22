@@ -43,7 +43,6 @@ public:
 	void execute() override;
 	void handleInput(NancyInput &input) override;
 
-
 protected:
 	Common::String getRecordTypeName() const override { return "TurningPuzzle"; }
 	bool isViewportRelative() const override { return true; }
@@ -51,7 +50,7 @@ protected:
 	void drawObject(uint objectID, uint faceID, uint frameID);
 	void turnLogic(uint objectID);
 
-	Common::String _imageName;
+	Common::Path _imageName;
 
 	uint16 _numFaces = 0;
 	uint16 _numFramesPerTurn = 0;
@@ -76,7 +75,7 @@ protected:
 	Common::Array<uint16> _correctOrder;
 
 	SceneChangeWithFlag _solveScene;
-	uint16 _soundDelayTime = 0;
+	uint16 _solveSoundDelay = 0;
 	SoundDescription _solveSound;
 
 	SceneChangeWithFlag _exitScene;

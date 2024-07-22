@@ -34,6 +34,8 @@ bool gDebugChannelsOnly = false;
 const DebugChannelDef gDebugChannels[] = {
 	{ kDebugLevelEventRec,   "eventrec",  "Event recorder debug level" },
 	{ kDebugGlobalDetection, "detection", "debug messages for advancedDetector" },
+	{ kDebugLevelMainGUI,    "maingui",   "debug messages for GUI" },
+	{ kDebugLevelMacGUI,     "macgui",    "debug messages for MacGUI" },
 	DEBUG_CHANNEL_END
 };
 namespace Common {
@@ -50,8 +52,7 @@ struct DebugLevelComperator {
 
 } // end of anonymous namespace
 
-DebugManager::DebugManager() :
-	_debugChannelsEnabled(0) {
+DebugManager::DebugManager() {
 	addDebugChannels(gDebugChannels);
 
 	// Create global debug channels mask
@@ -88,20 +89,22 @@ void DebugManager::addAllDebugChannels(const DebugChannelDef *channels) {
 }
 
 void DebugManager::removeAllDebugChannels() {
-	uint32 globalChannels = _debugChannelsEnabled & _globalChannelsMask;
-	_debugChannelsEnabled = 0;
+	EnabledChannelsMap oldMap = _debugChannelsEnabled;
+
+	_debugChannelsEnabled.clear();
 	_debugChannels.clear();
 	addDebugChannels(gDebugChannels);
 
-	_debugChannelsEnabled |= globalChannels;
+	for (DebugChannelMap::iterator i = _debugChannels.begin(); i != _debugChannels.end(); ++i)
+		if (oldMap.contains(i->_value.channel))
+			_debugChannelsEnabled[i->_value.channel] = oldMap[i->_value.channel];
 }
 
 bool DebugManager::enableDebugChannel(const String &name) {
 	DebugChannelMap::iterator i = _debugChannels.find(name);
 
 	if (i != _debugChannels.end()) {
-		_debugChannelsEnabled |= i->_value.channel;
-		i->_value.enabled = true;
+		_debugChannelsEnabled[i->_value.channel] = true;
 
 		return true;
 	} else {
@@ -110,7 +113,7 @@ bool DebugManager::enableDebugChannel(const String &name) {
 }
 
 bool DebugManager::enableDebugChannel(uint32 channel) {
-	_debugChannelsEnabled |= channel;
+	_debugChannelsEnabled[channel] = true;
 	return true;
 }
 
@@ -118,8 +121,7 @@ bool DebugManager::disableDebugChannel(const String &name) {
 	DebugChannelMap::iterator i = _debugChannels.find(name);
 
 	if (i != _debugChannels.end()) {
-		_debugChannelsEnabled &= ~i->_value.channel;
-		i->_value.enabled = false;
+		_debugChannelsEnabled[i->_value.channel] = false;
 
 		return true;
 	} else {
@@ -128,7 +130,7 @@ bool DebugManager::disableDebugChannel(const String &name) {
 }
 
 bool DebugManager::disableDebugChannel(uint32 channel) {
-	_debugChannelsEnabled &= ~channel;
+	_debugChannelsEnabled[channel] = false;
 	return true;
 }
 
@@ -156,13 +158,18 @@ bool DebugManager::isDebugChannelEnabled(uint32 channel, bool enforce) {
 	if (gDebugLevel == 11 && enforce == false)
 		return true;
 	else
-		return (_debugChannelsEnabled & channel) != 0;
+		return (_debugChannelsEnabled.contains(channel) && _debugChannelsEnabled[channel] == true);
 }
 
 void DebugManager::addDebugChannels(const DebugChannelDef *channels) {
+	int added = 0;
 	for (uint i = 0; channels[i].channel != 0; ++i) {
 		addDebugChannel(channels[i].channel, channels[i].name, channels[i].description);
+		added++;
 	}
+
+	if (!added)
+		warning("DebugManager::addDebugChannels(): No debug channels were added, list is empty");
 }
 
 } // End of namespace Common
@@ -182,11 +189,15 @@ bool debugChannelSet(int level, uint32 debugChannels) {
 
 #ifndef DISABLE_TEXT_CONSOLE
 
-static void debugHelper(const char *s, va_list va, bool caret = true) {
+static void debugHelper(const char *s, va_list va, int level, uint32 debugChannels, bool caret = true) {
 	Common::String buf = Common::String::vformat(s, va);
 
 	if (caret)
 		buf += '\n';
+
+	Common::LogWatcher logWatcher = Common::getLogWatcher();
+	if (logWatcher)
+   		(*logWatcher)(LogMessageType::kDebug, level, debugChannels, buf.c_str());
 
 	if (g_system)
 		g_system->logMessage(LogMessageType::kDebug, buf.c_str());
@@ -201,7 +212,7 @@ void debug(const char *s, ...) {
 		return;
 
 	va_start(va, s);
-	debugHelper(s, va);
+	debugHelper(s, va, 0, 0);
 	va_end(va);
 }
 
@@ -212,7 +223,7 @@ void debug(int level, const char *s, ...) {
 		return;
 
 	va_start(va, s);
-	debugHelper(s, va);
+	debugHelper(s, va, level, 0);
 	va_end(va);
 
 }
@@ -224,7 +235,7 @@ void debugN(const char *s, ...) {
 		return;
 
 	va_start(va, s);
-	debugHelper(s, va, false);
+	debugHelper(s, va, 0, 0, false);
 	va_end(va);
 }
 
@@ -235,7 +246,7 @@ void debugN(int level, const char *s, ...) {
 		return;
 
 	va_start(va, s);
-	debugHelper(s, va, false);
+	debugHelper(s, va, level, 0, false);
 	va_end(va);
 }
 
@@ -248,7 +259,7 @@ void debugC(int level, uint32 debugChannels, const char *s, ...) {
 			return;
 
 	va_start(va, s);
-	debugHelper(s, va);
+	debugHelper(s, va, level, debugChannels);
 	va_end(va);
 }
 
@@ -261,7 +272,7 @@ void debugCN(int level, uint32 debugChannels, const char *s, ...) {
 			return;
 
 	va_start(va, s);
-	debugHelper(s, va, false);
+	debugHelper(s, va, level, debugChannels, false);
 	va_end(va);
 }
 
@@ -274,7 +285,7 @@ void debugC(uint32 debugChannels, const char *s, ...) {
 			return;
 
 	va_start(va, s);
-	debugHelper(s, va);
+	debugHelper(s, va, 0, debugChannels);
 	va_end(va);
 }
 
@@ -287,7 +298,7 @@ void debugCN(uint32 debugChannels, const char *s, ...) {
 			return;
 
 	va_start(va, s);
-	debugHelper(s, va, false);
+	debugHelper(s, va, 0, debugChannels, false);
 	va_end(va);
 }
 

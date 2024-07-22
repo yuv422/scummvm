@@ -35,9 +35,9 @@
 namespace Director {
 
 const char *IsCD::xlibName = "isCD";
-const char *IsCD::fileNames[] = {
-	"isCD",
-	0
+const XlibFileDesc IsCD::fileNames[] = {
+	{ "isCD",	nullptr },
+	{ nullptr,	nullptr },
 };
 
 static BuiltinProto builtins[] = {
@@ -45,11 +45,11 @@ static BuiltinProto builtins[] = {
 	{ nullptr, nullptr, 0, 0, 0, VOIDSYM }
 };
 
-void IsCD::open(int type) {
+void IsCD::open(ObjectType type, const Common::Path &path) {
 	g_lingo->initBuiltIns(builtins);
 }
 
-void IsCD::close(int type) {
+void IsCD::close(ObjectType type) {
 	g_lingo->cleanupBuiltIns(builtins);
 }
 

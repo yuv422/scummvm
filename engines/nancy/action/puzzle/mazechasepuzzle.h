@@ -55,7 +55,7 @@ protected:
 
 		Common::Point _gridPos;
 		Common::Point _lastPos;
-	
+
 	protected:
 		bool isViewportRelative() const override { return true; }
 	};
@@ -69,8 +69,8 @@ protected:
 	bool canMove(uint pieceID, WallType direction);
 	void reset();
 
-	Common::String _imageName;
-	
+	Common::Path _imageName;
+
 	Common::Point _exitPos = Common::Point(-1, -1);
 
 	Common::Array<Common::Array<uint16>> _grid;
@@ -98,14 +98,14 @@ protected:
 	Common::Rect _leftButtonDest;
 	Common::Rect _resetButtonDest;
 
-	uint16 _lineWidth;
-	uint16 _framesPerMove;
+	uint16 _lineWidth = 0;
+	uint16 _framesPerMove = 0;
 
 	SoundDescription _failSound;
 	SoundDescription _moveSound;
 
 	SceneChangeWithFlag _solveScene;
-	uint16 _solveSoundDelay;
+	uint16 _solveSoundDelay = 0;
 	SoundDescription _solveSound;
 
 	SceneChangeWithFlag _exitScene;

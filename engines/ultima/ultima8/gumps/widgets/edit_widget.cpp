@@ -20,9 +20,9 @@
  */
 
 #include "ultima/ultima8/gumps/widgets/edit_widget.h"
-#include "ultima/ultima8/graphics/fonts/rendered_text.h"
-#include "ultima/ultima8/graphics/render_surface.h"
-#include "ultima/ultima8/graphics/fonts/font_manager.h"
+#include "ultima/ultima8/gfx/fonts/rendered_text.h"
+#include "ultima/ultima8/gfx/render_surface.h"
+#include "ultima/ultima8/gfx/fonts/font_manager.h"
 #include "common/system.h"
 #include "common/events.h"
 
@@ -147,7 +147,14 @@ void EditWidget::renderText() {
 		_cachedText = font->renderText(_text, remaining,
 		                               max_width, max_height,
 		                               Font::TEXT_LEFT,
-		                               false, cv ? _cursor : Std::string::npos);
+		                               false, false,
+		                               cv ? _cursor : Std::string::npos);
+
+		// Trim text to fit
+		if (remaining < _text.length()) {
+			_text.resize(remaining);
+			_cursor = _text.size();
+		}
 	}
 }
 

@@ -23,6 +23,7 @@
 #define NANCY_ACTION_RIPPEDLETTERPUZZLE_H
 
 #include "engines/nancy/action/actionrecord.h"
+#include "engines/nancy/misc/mousefollow.h"
 
 namespace Nancy {
 
@@ -33,7 +34,8 @@ namespace Action {
 class RippedLetterPuzzle : public RenderActionRecord {
 public:
 	enum SolveState { kNotSolved, kWaitForSound };
-	RippedLetterPuzzle() : RenderActionRecord(7), _pickedUpPiece(8) {}
+	enum RotationType { kRotationNone = 0, kRotation90 = 1, kRotation180 = 2 };
+	RippedLetterPuzzle() : RenderActionRecord(7) {}
 	virtual ~RippedLetterPuzzle() {}
 
 	void init() override;
@@ -42,27 +44,42 @@ public:
 	void execute() override;
 	void handleInput(NancyInput &input) override;
 
-	Common::String _imageName;
+	Common::Path _imageName;
+
 	Common::Array<Common::Rect> _srcRects;
 	Common::Array<Common::Rect> _destRects;
+
 	Common::Rect _rotateHotspot;
 	Common::Rect _takeHotspot;
 	Common::Rect _dropHotspot;
+
+	RotationType _rotationType = kRotation90;
+
 	Common::Array<int8> _initOrder;
 	Common::Array<byte> _initRotations;
 	Common::Array<int8> _solveOrder;
 	Common::Array<byte> _solveRotations;
+	Common::Array<int8> _solveOrderAlt;
+	Common::Array<byte> _solveRotationsAlt;
+	Common::Array<Common::Array<byte>> _doubles;
+	bool _useAltSolution = false;
+
+	bool _useCustomPickUpTile = false;
+	Common::Rect _customPickUpTileSrc;
+
 	SoundDescription _takeSound;
 	SoundDescription _dropSound;
 	SoundDescription _rotateSound;
+
 	SceneChangeWithFlag _solveExitScene;
 	SoundDescription _solveSound;
+
 	SceneChangeWithFlag _exitScene;
 	Common::Rect _exitHotspot;
 
-	RenderObject _pickedUpPiece;
-	int8 _pickedUpPieceID = -1;
-	byte _pickedUpPieceRot = 0;
+	int16 _customCursorID = -1;
+
+	Misc::MouseFollowObject _pickedUpPiece;
 
 	Graphics::ManagedSurface _image;
 	SolveState _solveState = kNotSolved;
@@ -73,6 +90,7 @@ protected:
 	bool isViewportRelative() const override { return true; }
 
 	void drawPiece(const uint pos, const byte rotation, const int pieceID = -1);
+	bool checkOrder(bool useAlt);
 };
 
 } // End of namespace Action

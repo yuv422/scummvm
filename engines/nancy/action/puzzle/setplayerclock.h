@@ -46,7 +46,7 @@ protected:
 
 	void drawTime(uint16 hours, uint16 minutes);
 
-	Common::String _imageName;
+	Common::Path _imageName;
 
 	Common::Rect _minutesDest;
 	Common::Rect _hoursDest;
@@ -75,7 +75,7 @@ protected:
 	SoundDescription _buttonSound;
 	SceneChangeWithFlag _alarmSetScene;
 	uint16 _alarmSoundDelay = 0;
-	SoundDescription _alarmRingSound; // NO SOUND in MHM
+	SoundDescription _alarmSetSound; // NO SOUND in MHM
 	SceneChangeWithFlag _exitScene;
 
 	Graphics::ManagedSurface _image;

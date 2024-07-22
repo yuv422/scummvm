@@ -19,12 +19,18 @@
  *
  */
 
+
+#include "backends/keymapper/action.h"
+#include "backends/keymapper/keymap.h"
+#include "backends/keymapper/standard-actions.h"
 #include "common/config-manager.h"
 #include "common/events.h"
 #include "common/file.h"
+#include "common/translation.h"
 #include "common/random.h"
 
 #include "freescape/freescape.h"
+#include "freescape/games/driller/driller.h"
 #include "freescape/language/8bitDetokeniser.h"
 
 namespace Freescape {
@@ -53,10 +59,7 @@ DrillerEngine::DrillerEngine(OSystem *syst, const ADGameDescription *gd) : Frees
 		initC64();
 
 	_playerHeightNumber = 1;
-	_playerHeights.push_back(16);
-	_playerHeights.push_back(48);
-	_playerHeights.push_back(80);
-	_playerHeights.push_back(112);
+	_playerHeightMaxNumber = 3;
 
 	_angleRotations.push_back(5);
 	_angleRotations.push_back(10);
@@ -65,7 +68,6 @@ DrillerEngine::DrillerEngine(OSystem *syst, const ADGameDescription *gd) : Frees
 	_angleRotations.push_back(45);
 	_angleRotations.push_back(90);
 
-	_playerHeight = _playerHeights[_playerHeightNumber];
 	_playerWidth = 12;
 	_playerDepth = 32;
 	_stepUpDistance = 64;
@@ -80,17 +82,37 @@ DrillerEngine::DrillerEngine(OSystem *syst, const ADGameDescription *gd) : Frees
 
 	Math::Vector3d drillBaseOrigin = Math::Vector3d(0, 0, 0);
 	Math::Vector3d drillBaseSize = Math::Vector3d(3, 2, 3);
-	_drillBase = new GeometricObject(kCubeType, 0, 0, drillBaseOrigin, drillBaseSize, nullptr, nullptr, FCLInstructionVector(), "");
+	_drillBase = new GeometricObject(kCubeType, 0, 0, drillBaseOrigin, drillBaseSize, nullptr, nullptr, nullptr, FCLInstructionVector(), "");
 	assert(!_drillBase->isDestroyed() && !_drillBase->isInvisible());
 
 	if (isDemo()) {
 		_demoMode = !_disableDemoMode; // Most of the driller demos are non-interactive
 		_angleRotationIndex = 0;
 	}
+
+	_endArea = 127;
+	_endEntrance = 0;
 }
 
 DrillerEngine::~DrillerEngine() {
 	delete _drillBase;
+}
+
+void DrillerEngine::initKeymaps(Common::Keymap *engineKeyMap, const char *target) {
+	FreescapeEngine::initKeymaps(engineKeyMap, target);
+	Common::Action *act;
+
+	act = new Common::Action("DEPLOY", _("Deploy drilling rig"));
+	act->setKeyEvent(Common::KeyState(Common::KEYCODE_d, 'd'));
+	act->addDefaultInputMapping("JOY_LEFT_SHOULDER");
+	act->addDefaultInputMapping("d");
+	engineKeyMap->addAction(act);
+
+	act = new Common::Action("COLLECT", _("Collect drilling rig"));
+	act->setKeyEvent(Common::KeyState(Common::KEYCODE_c, 'c'));
+	act->addDefaultInputMapping("c");
+	act->addDefaultInputMapping("JOY_RIGHT_SHOULDER");
+	engineKeyMap->addAction(act);
 }
 
 void DrillerEngine::gotoArea(uint16 areaID, int entranceID) {
@@ -135,13 +157,18 @@ void DrillerEngine::gotoArea(uint16 areaID, int entranceID) {
 			error("Invalid movement across areas");
 		assert(newPos != -1);
 		_sensors = _currentArea->getSensors();
-	}
+	} else if (entranceID == -1)
+		debugC(1, kFreescapeDebugMove, "Loading game, no change in position");
+	else
+		error("Invalid area change!");
+
 	_lastPosition = _position;
 	_gameStateVars[0x1f] = 0;
 
 	if (areaID == _startArea && entranceID == _startEntrance) {
 		_yaw = 280;
 		_pitch = 0;
+		playSound(9, true);
 	} else if (areaID == 127) {
 		assert(entranceID == 0);
 		_yaw = 90;
@@ -149,11 +176,11 @@ void DrillerEngine::gotoArea(uint16 areaID, int entranceID) {
 		_flyMode = true; // Avoid falling
 		// Show the number of completed areas
 		_areaMap[127]->_name.replace(0, 3, Common::String::format("%4d", _gameStateVars[32]));
-	}
+	} else
+		playSound(5, false);
 
 	debugC(1, kFreescapeDebugMove, "starting player position: %f, %f, %f", _position.x(), _position.y(), _position.z());
 	clearTemporalMessages();
-	playSound(5, false);
 	// Ignore sky/ground fields
 	_gfx->_keyColor = 0;
 	_gfx->setColorRemaps(&_currentArea->_colorRemaps);
@@ -171,30 +198,39 @@ void DrillerEngine::gotoArea(uint16 areaID, int entranceID) {
 	resetInput();
 }
 
-void DrillerEngine::loadAssetsFullGame() {
-	FreescapeEngine::loadAssetsFullGame();
-	/*
-	We are going to inject a small script in the
-	last area to force the game to end:
-	IF COLLIDED? THEN
-	IF VAR!=? (v32, 18) THEN END ENDIF
-	GOTO (127, 0)
-	*/
+void DrillerEngine::loadAssets() {
+	FreescapeEngine::loadAssets();
+	if (_areaMap.contains(18)) {
+		/*
+		We are going to inject a small script in the
+		last area to force the game to end:
+		IF COLLIDED? THEN
+		IF VAR!=? (v32, 18) THEN END ENDIF
+		GOTO (127, 0)
+		*/
 
-	FCLInstructionVector instructions;
-	Common::Array<uint16> conditionArray;
+		FCLInstructionVector instructions;
+		Common::Array<uint16> conditionArray;
 
-	conditionArray.push_back(0xb);
-	conditionArray.push_back(0x20);
-	conditionArray.push_back(0x12);
-	conditionArray.push_back(0x12);
-	conditionArray.push_back(0x7f);
-	conditionArray.push_back(0x0);
+		conditionArray.push_back(0xb);
+		conditionArray.push_back(0x20);
+		conditionArray.push_back(0x12);
+		conditionArray.push_back(0x12);
+		conditionArray.push_back(0x7f);
+		conditionArray.push_back(0x0);
 
-	Common::String conditionSource = detokenise8bitCondition(conditionArray, instructions, false);
-	debugC(1, kFreescapeDebugParser, "%s", conditionSource.c_str());
-	_areaMap[18]->_conditions.push_back(instructions);
-	_areaMap[18]->_conditionSources.push_back(conditionSource);
+		Common::String conditionSource = detokenise8bitCondition(conditionArray, instructions, false);
+		debugC(1, kFreescapeDebugParser, "%s", conditionSource.c_str());
+		_areaMap[18]->_conditions.push_back(instructions);
+		_areaMap[18]->_conditionSources.push_back(conditionSource);
+	}
+
+	_timeoutMessage = _messagesList[14];
+	_noShieldMessage = _messagesList[15];
+	_noEnergyMessage = _messagesList[16];
+	_fallenMessage = _messagesList[17];
+	// Small extra feature: allow player to be crushed in Driller
+	_crushedMessage = "CRUSHED!";
 }
 
 void DrillerEngine::drawInfoMenu() {
@@ -284,25 +320,23 @@ void DrillerEngine::drawInfoMenu() {
 	} else if (isAmiga() || isAtariST())
 		drawStringInSurface("press any key to continue", 66, 97, front, black, surface);
 
-	drawFullscreenSurface(surface);
-
-	_gfx->flipBuffer();
-	g_system->updateScreen();
-
+	Texture *menuTexture = _gfx->createTexture(surface);
 	Common::Event event;
 	bool cont = true;
 	while (!shouldQuit() && cont) {
-		while (g_system->getEventManager()->pollEvent(event)) {
+		while (_eventManager->pollEvent(event)) {
 
 			// Events
 			switch (event.type) {
 			case Common::EVENT_KEYDOWN:
 				if (event.kbd.keycode == Common::KEYCODE_l) {
 					_gfx->setViewport(_fullscreenViewArea);
+					_eventManager->purgeKeyboardEvents();
 					loadGameDialog();
 					_gfx->setViewport(_viewArea);
 				} else if (event.kbd.keycode == Common::KEYCODE_s) {
 					_gfx->setViewport(_fullscreenViewArea);
+					_eventManager->purgeKeyboardEvents();
 					saveGameDialog();
 					_gfx->setViewport(_viewArea);
 				} else if (isDOS() && event.kbd.keycode == Common::KEYCODE_t) {
@@ -320,18 +354,31 @@ void DrillerEngine::drawInfoMenu() {
 				_gfx->computeScreenViewport();
 				// TODO: properly refresh screen
 				break;
-
+			case Common::EVENT_RBUTTONDOWN:
+			// fallthrough
+			case Common::EVENT_LBUTTONDOWN:
+				if (g_system->hasFeature(OSystem::kFeatureTouchscreen))
+					cont = false;
+				break;
 			default:
 				break;
 			}
 		}
-		g_system->delayMillis(10);
+		_gfx->clear(0, 0, 0, true);
+		drawFrame();
+		if (surface)
+			_gfx->drawTexturedRect2D(_fullscreenViewArea, _fullscreenViewArea, menuTexture);
+
+		_gfx->flipBuffer();
+		g_system->updateScreen();
+		g_system->delayMillis(15); // try to target ~60 FPS
 	}
 
 	_savedScreen->free();
 	delete _savedScreen;
 	surface->free();
 	delete surface;
+	delete menuTexture;
 	pauseToken.clear();
 }
 
@@ -344,7 +391,19 @@ Math::Vector3d getProjectionToPlane(const Math::Vector3d &vect, const Math::Vect
 }
 
 void DrillerEngine::pressedKey(const int keycode) {
-	if (keycode == Common::KEYCODE_d) {
+	if (keycode == Common::KEYCODE_q) {
+		rotate(-_angleRotations[_angleRotationIndex], 0);
+	} else if (keycode == Common::KEYCODE_w) {
+		rotate(_angleRotations[_angleRotationIndex], 0);
+	} else if (keycode == Common::KEYCODE_s) {
+		increaseStepSize();
+	} else if (keycode ==  Common::KEYCODE_x) {
+		decreaseStepSize();
+	} else if (keycode == Common::KEYCODE_r) {
+		rise();
+	} else if (keycode == Common::KEYCODE_f) {
+		lower();
+	} else if (keycode == Common::KEYCODE_d) {
 		if (isDOS() && isDemo()) // No support for drilling here yet
 			return;
 		clearTemporalMessages();
@@ -682,19 +741,9 @@ void DrillerEngine::removeDrill(Area *area) {
 }
 
 void DrillerEngine::initGameState() {
-	_flyMode = false;
-	_noClipMode = false;
-	_playerWasCrushed = false;
-	_shootingFrames = 0;
-	_underFireFrames = 0;
-	_yaw = 0;
-	_pitch = 0;
-
-	for (int i = 0; i < k8bitMaxVariable; i++) // TODO: check maximum variable
-		_gameStateVars[i] = 0;
+	FreescapeEngine::initGameState();
 
 	for (auto &it : _areaMap) {
-		it._value->resetArea();
 		if (_drillStatusByArea[it._key] != kDrillerNoRig)
 			removeDrill(it._value);
 		_drillStatusByArea[it._key] = kDrillerNoRig;
@@ -704,7 +753,6 @@ void DrillerEngine::initGameState() {
 		}
 		_drillSuccessByArea[it._key] = 0;
 	}
-	_gameStateBits = 0;
 
 	_gameStateVars[k8bitVariableEnergy] = _initialTankEnergy;
 	_gameStateVars[k8bitVariableShield] = _initialTankShield;
@@ -716,13 +764,6 @@ void DrillerEngine::initGameState() {
 	_gameStateVars[k8bitVariableShieldDrillerJet] = _initialJetShield;
 
 	_playerHeightNumber = 1;
-	_playerHeight = _playerHeights[_playerHeightNumber];
-	removeTimers();
-	startCountdown(_initialCountdown - 1);
-
-	int seconds, minutes, hours;
-	getTimeFromCountdown(seconds, minutes, hours);
-	_lastMinute = minutes;
 	_demoIndex = 0;
 	_demoEvents.clear();
 
@@ -735,78 +776,26 @@ bool DrillerEngine::checkIfGameEnded() {
 		if (_demoData[_demoIndex + 1] == 0x5f)
 			return true;
 
-	if (_countdown <= 0) {
-		insertTemporaryMessage(_messagesList[14], _countdown - 2);
-		drawFrame();
-		_gfx->flipBuffer();
-		g_system->updateScreen();
-		g_system->delayMillis(2000);
-		gotoArea(127, 0);
-	}
-
-	if (_gameStateVars[k8bitVariableShield] == 0) {
-		insertTemporaryMessage(_messagesList[15], _countdown - 2);
-		drawFrame();
-		_gfx->flipBuffer();
-		g_system->updateScreen();
-		g_system->delayMillis(2000);
-		gotoArea(127, 0);
-	}
-
-	if (_gameStateVars[k8bitVariableEnergy] == 0) {
-		insertTemporaryMessage(_messagesList[16], _countdown - 2);
-		drawFrame();
-		_gfx->flipBuffer();
-		g_system->updateScreen();
-		g_system->delayMillis(2000);
-		gotoArea(127, 0);
-	}
-
-	if (_hasFallen) {
-		_hasFallen = false;
-		playSound(14, false);
-		insertTemporaryMessage(_messagesList[17], _countdown - 4);
-		drawBackground();
-		drawBorder();
-		drawUI();
-		_gfx->flipBuffer();
-		g_system->updateScreen();
-		g_system->delayMillis(1000);
-		gotoArea(127, 0);
-	}
-
-	if (_forceEndGame) {
-		_forceEndGame = false;
-		if (isDemo())
-			return true;
-		else {
-			insertTemporaryMessage(_messagesList[18], _countdown - 2);
-			drawFrame();
-			_gfx->flipBuffer();
-			g_system->updateScreen();
-			g_system->delayMillis(2000);
-			gotoArea(127, 0);
-		}
-	}
-
-	if (_currentArea->getAreaID() == 127) {
-		if (_gameStateVars[32] == 18) { // All areas are complete
-			insertTemporaryMessage(_messagesList[19], _countdown - 2);
-			_gameStateVars[32] = 0;  // Avoid repeating the message
-		}
-
-		// Draw a few frames
-		for (int i = 0; i < 10; i++) {
-			drawFrame();
-			_gfx->flipBuffer();
-			g_system->updateScreen();
-			g_system->delayMillis(10);
-		}
-
-		g_system->delayMillis(5000);
-		return true;
-	}
+	FreescapeEngine::checkIfGameEnded();
 	return false;
+}
+
+void DrillerEngine::endGame() {
+	FreescapeEngine::endGame();
+
+	if (!_endGamePlayerEndArea)
+		return;
+
+	if (_gameStateVars[32] == 18) { // All areas are complete
+		insertTemporaryMessage(_messagesList[19], _countdown - 2);
+		_gameStateVars[32] = 0;  // Avoid repeating the message
+	}
+
+	if (_endGameKeyPressed) {
+		_gameStateControl = kFreescapeGameStateRestart;
+	}
+
+	_endGameKeyPressed = false;
 }
 
 bool DrillerEngine::onScreenControls(Common::Point mouse) {
@@ -882,6 +871,31 @@ void DrillerEngine::updateTimeVariables() {
 		executeLocalGlobalConditions(false, true, false); // Only execute "on collision" room/global conditions
 	}
 }
+
+void DrillerEngine::drawCompass(Graphics::Surface *surface, int x, int y, double degrees, double magnitude, uint32 color) {
+	double fov = 60;
+	degrees = degrees + fov;
+	if (degrees >= 360)
+		degrees = degrees - 360;
+
+	const double degtorad = (M_PI * 2) / 360;
+	double w = magnitude * cos(-degrees * degtorad);
+	double h = magnitude * sin(-degrees * degtorad);
+
+	surface->drawLine(x, y, x+(int)w, y+(int)h, color);
+
+
+	degrees = degrees - fov;
+	if (degrees < 0)
+		degrees = degrees + 360;
+
+	w = magnitude * cos(-degrees * degtorad);
+	h = magnitude * sin(-degrees * degtorad);
+
+	surface->drawLine(x, y, x+(int)w, y+(int)h, color);
+	//surface->drawLine(x, y, x+(int)-w, y+(int)h, color);
+}
+
 
 Common::Error DrillerEngine::saveGameStreamExtended(Common::WriteStream *stream, bool isAutosave) {
 	for (auto &it : _areaMap) { // All but skip area 255

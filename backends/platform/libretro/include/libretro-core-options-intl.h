@@ -71,8 +71,13 @@ extern "C" {
 
 struct retro_core_option_v2_category option_cats_it[] = {
 	{
+		"video",
+		NULL,
+		"Configura le impostazioni video"
+	},
+	{
 		"cursor",
-		"Movimento del cursore",
+		"Cursore",
 		"Impostazioni relative al movimento del cursore"
 	},
 	{
@@ -94,6 +99,20 @@ struct retro_core_option_v2_category option_cats_it[] = {
 };
 
 struct retro_core_option_v2_definition option_defs_it[] = {
+	{
+		"scummvm_gamepad_cursor_only",
+		"Cursore > Controllo esclusivo del cursore con RetroPad",
+		"Controllo esclusivo del cursore con RetroPad",
+		"Consente di usare solo RetroPad per il controllo del cursore del mouse, escludento gli altri input (es. mouse fisico, touch screen).",
+		NULL,
+		"cursor",
+		{
+			{"disabled", NULL},
+			{"enabled", NULL},
+			{NULL, NULL},
+		},
+		"disabled"
+	},
 	{
 		"scummvm_gamepad_cursor_speed",
 		"Cursore > Velocità del cursore",
@@ -543,16 +562,16 @@ struct retro_core_option_v2_definition option_defs_it[] = {
 		NULL,
 	},
 	{
-		"scummvm_auto_performance_tuner",
-		"Regolazione automatica performance",
-		NULL,
-		"Cambio automatico delle impostazioni di timing e salto dei fotogrammi se vengono rilevate performance scadenti durante il gioco. Le impostazioni di timing/frameskip saranno temporaneamente cambiate in sequenza, se saranno rilevati audio buffer underrun e per la sola sessione di gioco, e ripristinati in sequenza in caso di recupero del buffer audio. Le singole impostazioni salvate non saranno modificate ma saranno ignorati.",
+		"scummvm_video_hw_acceleration",
+		"Video > Accelerazione hardware",
+		"Accelerazione hardware",
+		"Richiede accelerazione hardware (OpenGL or OpenGLES2) al frontend, se supportata. È necessario ricaricare il core per rendere effettiva questa opzione",
 		NULL,
 		NULL,
 		{
-			{NULL, NULL},
+			{ NULL, NULL }
 		},
-		NULL
+		NULL,
 	},
 	{ NULL, NULL, NULL, NULL, NULL, NULL, {{0}}, NULL },
 };

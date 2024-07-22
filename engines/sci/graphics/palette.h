@@ -55,8 +55,6 @@ public:
 	bool insert(Palette *newPalette, Palette *destPalette, bool includeFirstColor = false);
 	bool merge(Palette *pFrom, bool force, bool forceRealMerge);
 	uint16 matchColor(byte r, byte g, byte b, bool force16BitColorMatch = false);
-	void getSys(Palette *pal);
-	uint16 getTotalColorCount() const { return _totalScreenColors; }
 
 	// Set palette on screen. If update is false, try not to change the palette
 	// on already painted areas, but this may be impossible.
@@ -134,4 +132,4 @@ protected:
 
 } // End of namespace Sci
 
-#endif
+#endif // SCI_GRAPHICS_PALETTE_H

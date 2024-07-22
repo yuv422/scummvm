@@ -93,7 +93,7 @@
 #include "ags/engine/script/non_blocking_script_function.h"
 #include "ags/engine/script/script.h"
 #include "ags/engine/script/system_imports.h"
-#include "ags/lib/std/limits.h"
+#include "common/std/limits.h"
 #include "ags/plugins/ags_plugin.h"
 #include "ags/plugins/plugin_object_reader.h"
 #include "ags/plugins/core/core.h"
@@ -274,6 +274,9 @@ Globals::Globals() {
 
 	// global_dialog.cpp globals
 	_last_in_dialog_request_script_pos = new ScriptPosition();
+
+	// global_game.cpp globals
+	_last_cutscene_script_pos = new ScriptPosition();
 
 	// graphics_mode.cpp globals
 	_SavedFullscreenSetting = new ActiveDisplaySetting();
@@ -531,6 +534,9 @@ Globals::~Globals() {
 
 	// global_dialog.cpp globals
 	delete _last_in_dialog_request_script_pos;
+
+	// global_game.cpp globals
+	delete _last_cutscene_script_pos;
 
 	// graphics_mode.cpp globals
 	delete _SavedFullscreenSetting;

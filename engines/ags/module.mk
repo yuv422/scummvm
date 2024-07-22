@@ -27,7 +27,6 @@ MODULE_OBJS = \
 	lib/allegro/surface_generic.o \
 	lib/allegro/system.o \
 	lib/allegro/unicode.o \
-	lib/std/std.o \
 	lib/system/datetime.o \
 	shared/ac/dynobj/script_audio_clip.o \
 	shared/ac/audio_clip_type.o \
@@ -320,10 +319,12 @@ MODULE_OBJS = \
 	plugins/ags_agi/ags_agi.o \
 	plugins/ags_app_open_url/ags_app_open_url.o \
 	plugins/ags_blend/ags_blend.o \
+	plugins/ags_bm_font_renderer/ags_bm_font_renderer.o \
 	plugins/ags_clipboard/ags_clipboard.o \
 	plugins/ags_collision_detector/ags_collision_detector.o \
 	plugins/ags_consoles/ags_consoles.o \
 	plugins/ags_controller/ags_controller.o \
+	plugins/ags_controller/ags_controller_arcnor.o \
 	plugins/ags_creditz/ags_creditz.o \
 	plugins/ags_creditz/ags_creditz1.o \
 	plugins/ags_creditz/ags_creditz2.o \

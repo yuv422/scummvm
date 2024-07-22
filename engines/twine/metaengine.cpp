@@ -165,7 +165,7 @@ static const ADExtraGuiOptionsMap twineOptionsList[] = {
 	AD_EXTRA_GUI_OPTIONS_TERMINATOR
 };
 
-class TwinEMetaEngine : public AdvancedMetaEngine {
+class TwinEMetaEngine : public AdvancedMetaEngine<ADGameDescription> {
 public:
 	const char *getName() const override {
 		return "twine";
@@ -427,6 +427,10 @@ Common::KeymapArray TwinEMetaEngine::initKeymaps(const char *target) const {
 		act->setCustomEngineActionEvent(TwinEActionType::SpecialAction);
 		act->addDefaultInputMapping("w");
 		act->addDefaultInputMapping("JOY_LEFT_SHOULDER");
+		gameKeyMap->addAction(act);
+
+		act = new Action("SCENERYZOOM", _("Scenery Zoom"));
+		act->setCustomEngineActionEvent(TwinEActionType::SceneryZoom);
 		gameKeyMap->addAction(act);
 
 		act = new Action("ESCAPE", _("Escape"));

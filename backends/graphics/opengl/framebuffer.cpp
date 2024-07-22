@@ -111,6 +111,16 @@ void Framebuffer::applyBlendState() {
 		case kBlendModeDisabled:
 			GL_CALL(glDisable(GL_BLEND));
 			break;
+		case kBlendModeOpaque:
+			if (!glBlendColor) {
+				// If glBlendColor is not available (old OpenGL) fallback on disabling blending
+				GL_CALL(glDisable(GL_BLEND));
+				break;
+			}
+			GL_CALL(glEnable(GL_BLEND));
+			GL_CALL(glBlendColor(1.f, 1.f, 1.f, 0.f));
+			GL_CALL(glBlendFunc(GL_CONSTANT_COLOR, GL_ONE_MINUS_CONSTANT_COLOR));
+			break;
 		case kBlendModeTraditionalTransparency:
 			GL_CALL(glEnable(GL_BLEND));
 			GL_CALL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));

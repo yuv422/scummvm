@@ -41,7 +41,7 @@ static const DebugChannelDef debugFlagList[] = {
 	DEBUG_CHANNEL_END
 };
 
-static const char *directoryGlobs[] = {
+static const char *const directoryGlobs[] = {
 	"bin",
 	"M3Data",
 	"MYST3BIN",
@@ -56,7 +56,7 @@ static const char *directoryGlobs[] = {
 		extra,                                                                  \
 		{                                                                       \
 			{ "RSRC.m3r", 0, "a2c8ed69800f60bf5667e5c76a88e481", 1223862 },     \
-			{ langFile, 0, md5lang, -1 },                                       \
+			{ langFile, 0, md5lang, AD_NO_SIZE },                                       \
 		},                                                                      \
 		lang,                                                                   \
 		Common::kPlatformWindows,                                               \
@@ -74,7 +74,7 @@ static const char *directoryGlobs[] = {
 		{                                                                       \
 			{ "RSRC.m3r",    0, "a2c8ed69800f60bf5667e5c76a88e481", 1223862 },  \
 			{ "ENGLISH.m3t", 0, "74726de866c0594d3f2a05ff754c973d", 3407120 },  \
-			{ langFile, 0, md5lang, -1 },                                       \
+			{ langFile, 0, md5lang, AD_NO_SIZE },                                       \
 		},                                                                      \
 		lang,                                                                   \
 		Common::kPlatformWindows,                                               \
@@ -91,7 +91,7 @@ static const char *directoryGlobs[] = {
 		0,                                                                      \
 		{                                                                       \
 			{ "RSRC.m3r", 0, "3de23eb5a036a62819186105478f9dde", 1226192 },     \
-			{ langFile, 0, md5lang, -1 },                                       \
+			{ langFile, 0, md5lang, AD_NO_SIZE },                                       \
 		},                                                                      \
 		lang,                                                                   \
 		Common::kPlatformXbox,                                                  \
@@ -205,9 +205,9 @@ static const Myst3GameDescription gameDescriptions[] = {
 	{ AD_TABLE_END_MARKER, 0 }
 };
 
-class Myst3MetaEngineDetection : public AdvancedMetaEngineDetection {
+class Myst3MetaEngineDetection : public AdvancedMetaEngineDetection<Myst3GameDescription> {
 public:
-	Myst3MetaEngineDetection() : AdvancedMetaEngineDetection(gameDescriptions, sizeof(Myst3GameDescription), myst3Games) {
+	Myst3MetaEngineDetection() : AdvancedMetaEngineDetection(gameDescriptions, myst3Games) {
 		_guiOptions = GUIO5(GUIO_NOMIDI, GUIO_NOSFX, GUIO_NOSPEECH, GUIO_NOSUBTITLES, GAMEOPTION_WIDESCREEN_MOD);
 		_maxScanDepth = 3;
 		_directoryGlobs = directoryGlobs;

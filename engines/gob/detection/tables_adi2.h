@@ -17,9 +17,15 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ *
+ * This file is dual-licensed.
+ * In addition to the GPLv3 license mentioned above, this code is also
+ * licensed under LGPL 2.1. See LICENSES/COPYING.LGPL file for the
+ * full text of the license.
+ *
  */
 
-/* Detection tables for the ADI / Addy 2 series. */
+/* Detection tables for the ADI 2 series. */
 
 #ifndef GOB_DETECTION_TABLES_ADI2_H
 #define GOB_DETECTION_TABLES_ADI2_H
@@ -36,7 +42,6 @@
 		ADGF_UNSTABLE,
 		GUIO0()
 	},
-	kGameTypeAdi2,
 	kFeaturesNone,
 	"adi2.stk", "ediintro.tot", 0
 },
@@ -50,7 +55,6 @@
 		ADGF_UNSTABLE,
 		GUIO1(GUIO_NOASPECT)
 	},
-	kGameTypeAdi2,
 	kFeatures640x400,
 	"adi2.stk", "ediintro.tot", 0
 },
@@ -64,7 +68,6 @@
 		ADGF_UNSTABLE,
 		GUIO1(GUIO_NOASPECT)
 	},
-	kGameTypeAdi2,
 	kFeatures640x400,
 	"adi2.stk", "ediintro.tot", 0
 },
@@ -78,7 +81,6 @@
 		ADGF_UNSTABLE,
 		GUIO1(GUIO_NOASPECT)
 	},
-	kGameTypeAdi2,
 	kFeatures640x400,
 	"adi2.stk", "ediintro.tot", 0
 },
@@ -92,7 +94,6 @@
 		ADGF_UNSTABLE,
 		GUIO1(GUIO_NOASPECT)
 	},
-	kGameTypeAdi2,
 	kFeatures640x400,
 	"adi2.stk", "ediintro.tot", 0
 },
@@ -106,12 +107,11 @@
 		ADGF_UNSTABLE,
 		GUIO1(GUIO_NOASPECT)
 	},
-	kGameTypeAdi2,
 	kFeatures640x400,
 	"adi2.stk", "ediintro.tot", 0
 },
 
-// -- German: Addy --
+// -- German: ADI Spielerisch lernen --
 
 {
 	{
@@ -123,21 +123,19 @@
 		ADGF_UNSTABLE,
 		GUIO1(GUIO_NOASPECT)
 	},
-	kGameTypeAdi2,
 	kFeatures640x400,
 	"adi2.stk", "ediintro.tot", 0
 },
 {
-	{ // 1994 CD version
+	{ // 1994 CD version - Supplied by BJNFNE
 		"adi2",
-		"Adi Deutsch Klasse 1+2 (CD)",
+		"Adi 2 (CD)",
 		AD_ENTRY1s("adi2.stk", "157a26943a021d92f5c76f6eb8f18f2a", 12960390),
 		DE_DEU,
 		kPlatformWindows,
 		ADGF_UNSTABLE | ADGF_CD,
 		GUIO1(GUIO_NOASPECT)
 	},
-	kGameTypeAdi2,
 	kFeatures640x400,
 	"adi2.stk", "ediintro.tot", 0
 },
@@ -151,7 +149,58 @@
 		ADGF_UNSTABLE,
 		GUIO1(GUIO_NOASPECT)
 	},
-	kGameTypeAdi2,
+	kFeatures640x400,
+	"adi2.stk", "ediintro.tot", 0
+},
+{
+	{ // Supplied by Indy4-Fan
+		"adi2",
+		"Adi 2.5",
+		AD_ENTRY1s("adi2.stk", "f44526b8ce3a96f966ffce0ba81d6d25", 16918426),
+		DE_DEU,
+		kPlatformWindows,
+		ADGF_UNSTABLE | ADGF_CD,
+		GUIO1(GUIO_NOASPECT)
+	},
+	kFeatures640x400,
+	"adi2.stk", "ediintro.tot", 0
+},
+{
+	{
+		"adi2",
+		"Adi 2.5",
+		AD_ENTRY1s("adi2.stk", "be80ec9c50d750b3713df6b44b74e345", 16918998),
+		DE_DEU,
+		kPlatformWindows,
+		ADGF_UNSTABLE | ADGF_CD,
+		GUIO1(GUIO_NOASPECT)
+	},
+	kFeatures640x400,
+	"adi2.stk", "ediintro.tot", 0
+},
+{
+	{
+		"adi2",
+		"Adi 2.6",
+		AD_ENTRY1s("adi2.stk", "4ab5a6d75c6a863706fa156da72d0cf3", 16919534),
+		DE_DEU,
+		kPlatformWindows,
+		ADGF_UNSTABLE | ADGF_CD,
+		GUIO1(GUIO_NOASPECT)
+	},
+	kFeatures640x400,
+	"adi2.stk", "ediintro.tot", 0
+},
+{
+	{
+		"adi2",
+		"Adi 2.6",
+		AD_ENTRY1s("adi2.stk", "e02f8adaef95a668e31a0bc4ce3ba178", 17914610),
+		DE_DEU,
+		kPlatformWindows,
+		ADGF_UNSTABLE | ADGF_CD,
+		GUIO1(GUIO_NOASPECT)
+	},
 	kFeatures640x400,
 	"adi2.stk", "ediintro.tot", 0
 },
@@ -168,7 +217,6 @@
 		ADGF_UNSTABLE,
 		GUIO1(GUIO_NOASPECT)
 	},
-	kGameTypeAdi2,
 	kFeatures640x400,
 	"adi2.stk", "ediintro.tot", 0
 },
@@ -185,8 +233,33 @@
 		ADGF_UNSTABLE,
 		GUIO0()
 	},
-	kGameTypeAdi2,
 	kFeaturesNone,
+	"adi2.stk", "ediintro.tot", 0
+},
+{
+	{
+		"adi2", // This version comes from the Sierra's Schoolhouse Math - Supplied by BJNFNE
+		"Adi 2",
+		AD_ENTRY1s("adi2.stk", "da5c5b4a6b56ed34d10ae5e0acfb9f8d", 11690760),
+		EN_USA,
+		kPlatformDOS,
+		ADGF_UNSTABLE,
+		GUIO0()
+	},
+	kFeatures640x400,
+	"adi2.stk", "ediintro.tot", 0
+},
+{
+	{
+		"adi2", // This version comes from the Sierra's Schoolhouse Math - Supplied by BJNFNE
+		"Adi 2 Math",
+		AD_ENTRY1s("adi2.stk", "0f102a6e4fac493162dfb70144c662bf", 12112994),
+		EN_USA,
+		kPlatformDOS,
+		ADGF_UNSTABLE,
+		GUIO0()
+	},
+	kFeatures640x400,
 	"adi2.stk", "ediintro.tot", 0
 },
 
@@ -196,60 +269,48 @@
 	{
 		"adi2",
 		"Non-Interactive Demo",
-		{
-			{"demo.scn", 0, "8b5ba359fd87d586ad39c1754bf6ea35", 168},
-			{"demadi2t.vmd", 0, "08a1b18cfe2015d3b43270da35cc813d", 7250723},
-			{"demarch.vmd", 0, "4c4a4616585d40ef3df209e3c3911062", 5622731},
-			{"demobou.vmd", 0, "2208b9855775564d15c4a5a559da0aec", 3550511},
-			{0, 0, 0, 0}
-		},
+		AD_ENTRY4s("demo.scn", "8b5ba359fd87d586ad39c1754bf6ea35", 168,
+				"demadi2t.vmd",	"08a1b18cfe2015d3b43270da35cc813d", 7250723,
+                "demarch.vmd", "4c4a4616585d40ef3df209e3c3911062", 5622731,
+                "demobou.vmd", "2208b9855775564d15c4a5a559da0aec", 3550511),
 		EN_ANY,
 		kPlatformDOS,
-		ADGF_NO_FLAGS,
+		ADGF_DEMO,
 		GUIO3(GUIO_NOSUBTITLES, GUIO_NOSPEECH, GUIO_NOASPECT)
 	},
-	kGameTypeAdi2,
 	kFeatures640x480 | kFeaturesSCNDemo,
 	0, 0, 1
 },
 {
-	{
+	{ // Supplied by BJNFNE
 		"adi2",
 		"Non-Interactive Demo",
-		{
-			{"demo.scn", 0, "16331b4db31b153f241ebcee49b7383d", 170},
-			{"demadi2d.vmd", 0, "658b5502bf0aeb46a39788f6a07e3d97", 7552841},
-			{"demarchd.vmd", 0, "a93184f0e297bb2e1ebfd64c1038e1ae", 5946788},
-			{"demoboud.vmd", 0, "37f3a61852c4485f2cc86b9880b98a6c", 3552135},
-			{0, 0, 0, 0}
-		},
+		AD_ENTRY4s("demo.scn", "16331b4db31b153f241ebcee49b7383d", 170,
+				"demadi2d.vmd",	"658b5502bf0aeb46a39788f6a07e3d97", 7552841,
+                "demarchd.vmd", "a93184f0e297bb2e1ebfd64c1038e1ae", 5946788,
+                "demoboud.vmd", "37f3a61852c4485f2cc86b9880b98a6c", 3552135),
 		DE_DEU,
 		kPlatformDOS,
-		ADGF_NO_FLAGS,
+		ADGF_DEMO,
 		GUIO3(GUIO_NOSUBTITLES, GUIO_NOSPEECH, GUIO_NOASPECT)
 	},
-	kGameTypeAdi2,
 	kFeatures640x480 | kFeaturesSCNDemo,
 	0, 0, 1
 },
 {
-	{
+	{ // Supplied by BJNFNE
 		"adi2",
 		"Non-Interactive Demo",
-		{
-			{"demo.scn", 0, "8b5ba359fd87d586ad39c1754bf6ea35", 168},
-	   		{"demarch.vmd", 0, "4c4a4616585d40ef3df209e3c3911062", 5622731},
-	   		{"demobou.vmd", 0, "2208b9855775564d15c4a5a559da0aec", 3550511},
-	   		{0, 0, 0, 0}
-	  	},
+		AD_ENTRY3s("demo.scn", "8b5ba359fd87d586ad39c1754bf6ea35", 168,
+				"demarch.vmd",	"4c4a4616585d40ef3df209e3c3911062", 5622731,
+                "demobou.vmd", "2208b9855775564d15c4a5a559da0aec", 3550511),
 		FR_FRA,
 	  	kPlatformDOS,
-	  	ADGF_NO_FLAGS,
+	  	ADGF_DEMO,
 	  	GUIO3(GUIO_NOSUBTITLES, GUIO_NOSPEECH, GUIO_NOASPECT)
 	},
-	kGameTypeAdi2,
 	kFeatures640x480 | kFeaturesSCNDemo,
 	0, 0, 1
 },
-		  
+
 #endif // GOB_DETECTION_TABLES_ADI2_H

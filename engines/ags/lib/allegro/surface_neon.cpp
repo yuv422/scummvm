@@ -21,6 +21,7 @@
 
 #include "ags/ags.h"
 
+// Without this ifdef the iOS backend breaks, please do not remove
 #ifdef SCUMMVM_NEON
 
 #include <arm_neon.h>
@@ -33,7 +34,9 @@
 
 namespace AGS3 {
 
-inline uint32x4_t simd2BppTo4Bpp(uint16x4_t pixels) {
+class DrawInnerImpl_NEON {
+
+static inline uint32x4_t simd2BppTo4Bpp(uint16x4_t pixels) {
 	uint32x4_t x = vmovl_u16(pixels);
 
 	// c is the extracted 5/6 bit color from the image
@@ -51,7 +54,7 @@ inline uint32x4_t simd2BppTo4Bpp(uint16x4_t pixels) {
 	return vorrq_u32(vorrq_u32(vorrq_u32(r, g), b), vmovq_n_u32(0xff000000));
 }
 
-inline uint16x4_t simd4BppTo2Bpp(uint32x4_t pixels) {
+static inline uint16x4_t simd4BppTo2Bpp(uint32x4_t pixels) {
 	// x is the final 16 bit rgb pixel
 	uint32x4_t x = vshrq_n_u32(vandq_u32(pixels, vmovq_n_u32(0x000000ff)), 3);
 	x = vorrq_u32(x, vshlq_n_u32(vshrq_n_u32(vandq_u32(pixels, vmovq_n_u32(0x0000ff00)), 8+2), 5));
@@ -59,7 +62,7 @@ inline uint16x4_t simd4BppTo2Bpp(uint32x4_t pixels) {
 	return vmovn_u32(x);
 }
 
-inline uint16x8_t rgbBlendSIMD2Bpp(uint16x8_t srcCols, uint16x8_t destCols, uint16x8_t alphas) {
+static inline uint16x8_t rgbBlendSIMD2Bpp(uint16x8_t srcCols, uint16x8_t destCols, uint16x8_t alphas) {
 	// Here we add 1 to alphas if its 0. This is what the original blender function did
 	alphas = vaddq_u16(alphas, vandq_u16(vceqq_u16(alphas, vmovq_n_u16(0)), vmovq_n_u16(1)));
 
@@ -116,7 +119,7 @@ inline uint16x8_t rgbBlendSIMD2Bpp(uint16x8_t srcCols, uint16x8_t destCols, uint
 // preserveAlpha:
 //		false => set destCols's alpha to 0
 // 		true => keep destCols's alpha
-inline uint32x4_t rgbBlendSIMD(uint32x4_t srcCols, uint32x4_t destCols, uint32x4_t alphas, bool preserveAlpha) {
+static inline uint32x4_t rgbBlendSIMD(uint32x4_t srcCols, uint32x4_t destCols, uint32x4_t alphas, bool preserveAlpha) {
 	// Here we add 1 to alphas if its 0. This is what the original blender function did
 	alphas = vaddq_u32(alphas, vandq_u32(vcgtq_u32(alphas, vmovq_n_u32(0)), vmovq_n_u32(1)));
 
@@ -148,7 +151,7 @@ inline uint32x4_t rgbBlendSIMD(uint32x4_t srcCols, uint32x4_t destCols, uint32x4
 	srcCols = vandq_u32(srcCols, vmovq_n_u32(0xff00));
 	srcCols = vorrq_u32(srcCols, srcColsCopy);
 
-	// Remeber that alpha is not alphas, but rather the alpha of destCols
+	// Remember that alpha is not alphas, but rather the alpha of destCols
 	if (preserveAlpha) {
 		srcCols = vandq_u32(srcCols, vmovq_n_u32(0x00ffffff));
 		srcCols = vorrq_u32(srcCols, alpha);
@@ -157,7 +160,7 @@ inline uint32x4_t rgbBlendSIMD(uint32x4_t srcCols, uint32x4_t destCols, uint32x4
 }
 
 // uses the alpha from srcCols and destCols
-inline uint32x4_t argbBlendSIMD(uint32x4_t srcCols, uint32x4_t destCols) {
+static inline uint32x4_t argbBlendSIMD(uint32x4_t srcCols, uint32x4_t destCols) {
 	float32x4_t srcA = vcvtq_f32_u32(vshrq_n_u32(srcCols, 24));
 	srcA = vmulq_n_f32(srcA, 1.0f / 255.0f);
 	float32x4_t srcR = vcvtq_f32_u32(vandq_u32(vshrq_n_u32(srcCols, 16), vmovq_n_u32(0xff)));
@@ -188,7 +191,7 @@ inline uint32x4_t argbBlendSIMD(uint32x4_t srcCols, uint32x4_t destCols) {
 			vcvtq_u32_f32(destB))));
 }
 
-inline uint32x4_t blendTintSpriteSIMD(uint32x4_t srcCols, uint32x4_t destCols, uint32x4_t alphas, bool light) {
+static inline uint32x4_t blendTintSpriteSIMD(uint32x4_t srcCols, uint32x4_t destCols, uint32x4_t alphas, bool light) {
 	// This function is NOT 1 to 1 with the original... It just approximates it
 	// It gets the value of the HSV of the dest color
 	// Then it gets the HSV of the srcCols
@@ -200,7 +203,7 @@ inline uint32x4_t blendTintSpriteSIMD(uint32x4_t srcCols, uint32x4_t destCols, u
 	// srcCols[2] = A | R | G | B
 	// srcCols[3] = A | R | G | B
 	//  ->
-	// to 4 float32x4_t's each being a seperate channel with each lane
+	// to 4 float32x4_t's each being a separate channel with each lane
 	// corresponding to their respective srcCols lane
 	// dda = { A[0], A[1], A[2], A[3] }
 	// ddr = { R[0], R[1], R[2], R[3] }
@@ -217,7 +220,7 @@ inline uint32x4_t blendTintSpriteSIMD(uint32x4_t srcCols, uint32x4_t destCols, u
 	ssg = vmulq_n_f32(vcvtq_f32_u32(vandq_u32(vshrq_n_u32(srcCols, 8), vmovq_n_u32(0xff))), 1.0 / 255.0);
 	ssb = vmulq_n_f32(vcvtq_f32_u32(vandq_u32(srcCols, vmovq_n_u32(0xff))), 1.0 / 255.0);
 
-	// Get the maxes and mins (needed for HSV->RGB and visa-versa)
+	// Get the maxes and mins (needed for HSV->RGB and vice-versa)
 	float32x4_t dmaxes = vmaxq_f32(ddr, vmaxq_f32(ddg, ddb));
 	float32x4_t smaxes = vmaxq_f32(ssr, vmaxq_f32(ssg, ssb));
 	float32x4_t smins = vminq_f32(ssr, vminq_f32(ssg, ssb));
@@ -252,9 +255,9 @@ inline uint32x4_t blendTintSpriteSIMD(uint32x4_t srcCols, uint32x4_t destCols, u
 		val = vmaxq_f32(val, vmovq_n_f32(0.0));
 	}
 
-	// then it stiches the HSV back together
+	// then it stitches the HSV back together
 	// the hue and saturation come from the source (tint) color, and the value comes from
-	// the destinaion (real source) color
+	// the destination (real source) color
 	chroma = vmulq_f32(val, vmulq_f32(vsubq_f32(smaxes, smins), vrecpeq_f32(vaddq_f32(smaxes, eplison0))));
 	float32x4_t hprime_mod2 = vmulq_n_f32(hue, 1.0 / 2.0);
 	hprime_mod2 = vmulq_n_f32(vsubq_f32(hprime_mod2, vcvtq_f32_s32(vcvtq_s32_f32(hprime_mod2))), 2.0);
@@ -287,7 +290,7 @@ inline uint32x4_t blendTintSpriteSIMD(uint32x4_t srcCols, uint32x4_t destCols, u
 	return final;
 }
 
-inline uint32x4_t blendPixelSIMD(uint32x4_t srcCols, uint32x4_t destCols, uint32x4_t alphas) {
+static inline uint32x4_t blendPixelSIMD(uint32x4_t srcCols, uint32x4_t destCols, uint32x4_t alphas) {
 	uint32x4_t srcAlphas, difAlphas, mask, ch1, ch2;
 	auto setupArgbAlphas = [&]() {
 		// This acts the same as this in the normal blender functions
@@ -352,7 +355,7 @@ inline uint32x4_t blendPixelSIMD(uint32x4_t srcCols, uint32x4_t destCols, uint32
 	return srcCols;
 }
 
-inline uint16x8_t blendPixelSIMD2Bpp(uint16x8_t srcCols, uint16x8_t destCols, uint16x8_t alphas) {
+static inline uint16x8_t blendPixelSIMD2Bpp(uint16x8_t srcCols, uint16x8_t destCols, uint16x8_t alphas) {
 	uint16x8_t mask, ch1, ch2;
 	switch (_G(_blender_mode)) {
 	case kSourceAlphaBlender:
@@ -389,7 +392,7 @@ inline uint16x8_t blendPixelSIMD2Bpp(uint16x8_t srcCols, uint16x8_t destCols, ui
 }
 
 template<int DestBytesPerPixel, int SrcBytesPerPixel>
-inline void drawPixelSIMD(byte *destPtr, const byte *srcP2, uint32x4_t tint, uint32x4_t alphas, uint32x4_t maskedAlphas, uint32x4_t transColors, int xDir, int xCtrBpp, int srcAlpha, int skipTrans, bool horizFlip, bool useTint, uint32x4_t skipMask) {
+static inline void drawPixelSIMD(byte *destPtr, const byte *srcP2, uint32x4_t tint, uint32x4_t alphas, uint32x4_t maskedAlphas, uint32x4_t transColors, int xDir, int xCtrBpp, int srcAlpha, int skipTrans, bool horizFlip, bool useTint, uint32x4_t skipMask) {
 	uint32x4_t srcCols, destCol;
 
 	if (DestBytesPerPixel == 4)
@@ -425,7 +428,7 @@ inline void drawPixelSIMD(byte *destPtr, const byte *srcP2, uint32x4_t tint, uin
 	}
 }
 
-inline void drawPixelSIMD2Bpp(byte *destPtr, const byte *srcP2, uint16x8_t tint, uint16x8_t alphas, uint16x8_t transColors, int xDir, int xCtrBpp, int srcAlpha, int skipTrans, bool horizFlip, bool useTint, uint16x8_t skipMask) {
+static inline void drawPixelSIMD2Bpp(byte *destPtr, const byte *srcP2, uint16x8_t tint, uint16x8_t alphas, uint16x8_t transColors, int xDir, int xCtrBpp, int srcAlpha, int skipTrans, bool horizFlip, bool useTint, uint16x8_t skipMask) {
 	uint16x8_t destCol = vld1q_u16((uint16 *)destPtr);
 	uint16x8_t srcCols = vld1q_u16((const uint16 *)(srcP2 + xDir * xCtrBpp));
 	uint16x8_t mask1 = skipTrans ? vceqq_u16(srcCols, transColors) : vmovq_n_u16(0);
@@ -448,7 +451,6 @@ inline void drawPixelSIMD2Bpp(byte *destPtr, const byte *srcP2, uint16x8_t tint,
 	vst1q_u16((uint16 *)destPtr, final);
 }
 
-class DrawInnerImpl {
 public:
 
 // This template handles 2bpp and 4bpp, the other specializations handle 1bpp and format conversion blits
@@ -470,7 +472,7 @@ static void drawInner4BppWithConv(BITMAP::DrawInnerArgs &args) {
 	const uint32x4_t addIndexesFlipped = {3, 2, 1, 0};
 	uint32x4_t addIndexes = args.horizFlip ? addIndexesFlipped : addIndexesNormal;
 
-	// This is so that we can calculate in parralell the pixel indexes for scaled drawing
+	// This is so that we can calculate in parallel the pixel indexes for scaled drawing
 	uint32x4_t scaleAdds = {0, (uint32)args.scaleX, (uint32)args.scaleX*2, (uint32)args.scaleX*3};
 
 	// Clip the bounds ahead of time (so we don't waste time checking if we are in bounds when
@@ -484,7 +486,7 @@ static void drawInner4BppWithConv(BITMAP::DrawInnerArgs &args) {
 		xCtrBppStart = xCtrStart * SrcBytesPerPixel;
 		args.xStart = 0;
 	}
-	int destY = args.yStart, srcYCtr = 0, yCtr = 0, scaleYCtr = 0, yCtrHeight = (xCtrWidth % 4 == 0) ? args.dstRect.height() : (args.dstRect.height() - 1);
+	int destY = args.yStart, srcYCtr = 0, yCtr = 0, scaleYCtr = 0, yCtrHeight = args.dstRect.height();
 	if (Scale) yCtrHeight = args.dstRect.height();
 	if (args.yStart < 0) {
 		yCtr = -args.yStart;
@@ -497,6 +499,11 @@ static void drawInner4BppWithConv(BITMAP::DrawInnerArgs &args) {
 	if (args.yStart + yCtrHeight > args.destArea.h) {
 		yCtrHeight = args.destArea.h - args.yStart;
 	}
+	/*if (!Scale && xCtrWidth % 4 != 0) {
+		--yCtrHeight;
+	}*/
+
+	const int secondToLast = xCtrWidth - 4;
 
 	byte *destP = (byte *)args.destArea.getBasePtr(0, destY);
 	const byte *srcP = (const byte *)args.src.getBasePtr(
@@ -506,12 +513,23 @@ static void drawInner4BppWithConv(BITMAP::DrawInnerArgs &args) {
 		uint32x4_t xCtrWidthSIMD = vdupq_n_u32(xCtrWidth); // This is the width of the row
 
 		if (!Scale) {
-			for (int xCtr = xCtrStart, xCtrBpp = xCtrBppStart, destX = args.xStart; xCtr < xCtrWidth; destX += 4, xCtr += 4, xCtrBpp += SrcBytesPerPixel*4) {
+			int xCtr = xCtrStart, xCtrBpp = xCtrBppStart, destX = args.xStart;
+			for (; xCtr < secondToLast; destX += 4, xCtr += 4, xCtrBpp += SrcBytesPerPixel*4) {
 				byte *destPtr = &destP[destX * DestBytesPerPixel];
-				// Skip pixels that are beyond the row
-				uint32x4_t skipMask = vcgeq_u32(vaddq_u32(vdupq_n_u32(xCtr), addIndexes), xCtrWidthSIMD);
-				drawPixelSIMD<DestBytesPerPixel, SrcBytesPerPixel>(destPtr, srcP, tint, alphas, maskedAlphas, transColors, xDir, xCtrBpp, args.srcAlpha, args.skipTrans, args.horizFlip, args.useTint, skipMask);
+				drawPixelSIMD<DestBytesPerPixel, SrcBytesPerPixel>(destPtr, srcP, tint, alphas, maskedAlphas, transColors, xDir, xCtrBpp, args.srcAlpha, args.skipTrans, args.horizFlip, args.useTint, vmovq_n_u32(0));
 			}
+
+			byte *destPtr = &destP[destX * DestBytesPerPixel];
+			uint32x4_t srcCols = vmovq_n_u32(0);
+			uint32x4_t destCols = vmovq_n_u32(0);
+			memcpy(&srcCols, srcP + xDir * xCtrBpp, (xCtrWidth - xCtr) * SrcBytesPerPixel);
+			memcpy(&destCols, destPtr, (xCtrWidth - xCtr) * DestBytesPerPixel);
+
+			// Skip pixels that are beyond the row
+			// uint32x4_t skipMask = vcgeq_u32(vaddq_u32(vdupq_n_u32(xCtr), addIndexes), xCtrWidthSIMD);
+			drawPixelSIMD<DestBytesPerPixel, SrcBytesPerPixel>((byte *)&destCols, (byte *)&srcCols, tint, alphas, maskedAlphas, transColors, xDir, 0, args.srcAlpha, args.skipTrans, args.horizFlip, args.useTint, vmovq_n_u32(0));
+			memcpy(destPtr, &destCols, (xCtrWidth - xCtr) * DestBytesPerPixel);
+
 			// Goto next row in source and destination image
 			destP += args.destArea.pitch;
 			srcP += args.vertFlip ? -args.src.pitch : args.src.pitch;
@@ -543,7 +561,7 @@ static void drawInner4BppWithConv(BITMAP::DrawInnerArgs &args) {
 				scaleXCtr += args.scaleX*4;
 
 				// Now this is pretty much the same as before with non-scaled code, except that we use
-				// our dummy source buffer instead of the actuall source bitmap
+				// our dummy source buffer instead of the actual source bitmap
 				byte *destPtr = &destP[destX * (uintptr_t)DestBytesPerPixel];
 				uint32x4_t skipMask = vcgeq_u32(vaddq_u32(vdupq_n_u32(xCtr), addIndexes), xCtrWidthSIMD);
 				drawPixelSIMD<DestBytesPerPixel, SrcBytesPerPixel>(destPtr, (const byte *)srcBuffer, tint, alphas, maskedAlphas, transColors, 1, 0, args.srcAlpha, args.skipTrans, args.horizFlip, args.useTint, skipMask);
@@ -553,7 +571,7 @@ static void drawInner4BppWithConv(BITMAP::DrawInnerArgs &args) {
 			// The only exception here is scaling drawing this is because:
 			// 1) if statements are costly, and the less we do the faster this loop is
 			// 2) with this, the only branch in the normal drawing loop is the width check
-			// 3) the scaling code will actually draw the until the last 4 pixels of the image
+			// 3) the scaling code will actually draw until the last 4 pixels of the image
 			//    and do the extra if checks because the scaling code is already much slower
 			//    than the normal drawing loop, and the less duplicate code helps here.
 			if (yCtr + 1 != yCtrHeight) destP += args.destArea.pitch;
@@ -563,7 +581,7 @@ static void drawInner4BppWithConv(BITMAP::DrawInnerArgs &args) {
 	// Get the last x values of the last row
 	int xCtr = xCtrStart, xCtrBpp = xCtrBppStart, destX = args.xStart;
 	// We have a picture that is a multiple of 4, so no extra pixels to draw
-	if (xCtrWidth % 4 == 0) return;
+	/*if (xCtrWidth % 4 == 0)*/ return;
 	// Drawing the last few not scaled pixels here.
 	// Same as the loop above but now we check if we are going to overflow,
 	// and thus we don't need to mask out pixels that go over the row.
@@ -633,7 +651,7 @@ static void drawInner2Bpp(BITMAP::DrawInnerArgs &args) {
 	uint16x8_t addIndexesFlipped = {7, 6, 5, 4, 3, 2, 1, 0};
 	uint16x8_t addIndexes = args.horizFlip ? addIndexesFlipped : addIndexesNormal;
 
-	// This is so that we can calculate in parralell the pixel indexes for scaled drawing
+	// This is so that we can calculate in parallel the pixel indices for scaled drawing
 	uint32x4_t scaleAdds = {0, (uint32)args.scaleX, (uint32)args.scaleX*2, (uint32)args.scaleX*3};
 	uint32x4_t scaleAdds2 = {(uint32)args.scaleX*4, (uint32)args.scaleX*5, (uint32)args.scaleX*6, (uint32)args.scaleX*7};
 
@@ -648,7 +666,7 @@ static void drawInner2Bpp(BITMAP::DrawInnerArgs &args) {
 		xCtrBppStart = xCtrStart * 2;
 		args.xStart = 0;
 	}
-	int destY = args.yStart, yCtr = 0, srcYCtr = 0, scaleYCtr = 0, yCtrHeight = (xCtrWidth % 8 == 0) ? args.dstRect.height() : (args.dstRect.height() - 1);
+	int destY = args.yStart, yCtr = 0, srcYCtr = 0, scaleYCtr = 0, yCtrHeight = args.dstRect.height();
 	if (Scale) yCtrHeight = args.dstRect.height();
 	if (args.yStart < 0) {
 		yCtr = -args.yStart;
@@ -661,6 +679,11 @@ static void drawInner2Bpp(BITMAP::DrawInnerArgs &args) {
 	if (args.yStart + yCtrHeight > args.destArea.h) {
 		yCtrHeight = args.destArea.h - args.yStart;
 	}
+	/*if (!Scale && xCtrWidth % 8 != 0) {
+		--yCtrHeight;
+	}*/
+
+	const int secondToLast = xCtrWidth - 8;
 
 	byte *destP = (byte *)args.destArea.getBasePtr(0, destY);
 	const byte *srcP = (const byte *)args.src.getBasePtr(
@@ -670,12 +693,24 @@ static void drawInner2Bpp(BITMAP::DrawInnerArgs &args) {
 		uint16x8_t xCtrWidthSIMD = vmovq_n_u16(xCtrWidth); // This is the width of the row
 		if (!Scale) {
 			// If we are not scaling the image
-			for (int xCtr = xCtrStart, xCtrBpp = xCtrBppStart, destX = args.xStart; xCtr < xCtrWidth; destX += 8, xCtr += 8, xCtrBpp += 16) {
+			int xCtr = xCtrStart, xCtrBpp = xCtrBppStart, destX = args.xStart;
+			for (; xCtr < secondToLast; destX += 8, xCtr += 8, xCtrBpp += 16) {
 				byte *destPtr = &destP[destX * 2];
-				// Skip pixels that are beyond the row
-				uint16x8_t skipMask = vcgeq_u16(vaddq_u16(vdupq_n_u16(xCtr), addIndexes), xCtrWidthSIMD);
-				drawPixelSIMD2Bpp(destPtr, srcP, tint, alphas, transColors, xDir, xCtrBpp, args.srcAlpha, args.skipTrans, args.horizFlip, args.useTint, skipMask);
+				drawPixelSIMD2Bpp(destPtr, srcP, tint, alphas, transColors, xDir, xCtrBpp, args.srcAlpha, args.skipTrans, args.horizFlip, args.useTint, vmovq_n_u16(0));
 			}
+
+			byte *destPtr = &destP[destX * 2];
+			uint16x8_t srcCols = vmovq_n_u16(0);
+			uint16x8_t destCols = vmovq_n_u16(0);
+			const int copySize = (xCtrWidth - xCtr) * 2;
+			memcpy(&srcCols, srcP + xDir * xCtrBpp, copySize);
+			memcpy(&destCols, destPtr, copySize);
+
+			// Skip pixels that are beyond the row
+			// uint16x8_t skipMask = vcgeq_u16(vaddq_u16(vdupq_n_u16(xCtr), addIndexes), xCtrWidthSIMD);
+			drawPixelSIMD2Bpp((byte *)&destCols, (byte *)&srcCols, tint, alphas, transColors, xDir, 0, args.srcAlpha, args.skipTrans, args.horizFlip, args.useTint, vmovq_n_u16(0));
+			memcpy(destPtr, &destCols, copySize);
+
 			// Goto next row in source and destination image
 			destP += args.destArea.pitch;
 			srcP += args.vertFlip ? -args.src.pitch : args.src.pitch;
@@ -697,7 +732,7 @@ static void drawInner2Bpp(BITMAP::DrawInnerArgs &args) {
 			for (int xCtr = xCtrStart, xCtrBpp = xCtrBppStart, destX = args.xStart, scaleXCtr = xCtrStart * args.scaleX; xCtr < xCtrWidth; destX += 8, xCtr += 8, xCtrBpp += 16) {
 				if (yCtr + 1 == yCtrHeight && xCtr + 8 > xCtrWidth) break;
 				uint32x4_t indexes = vdupq_n_u32(scaleXCtr), indexes2 = vdupq_n_u32(scaleXCtr);
-				// Calculate in parallel the indexes of the pixels
+				// Calculate in parallel the indices of the pixels
 				indexes = vmulq_n_u32(vshrq_n_u32(vaddq_u32(indexes, scaleAdds), BITMAP::SCALE_THRESHOLD_BITS), 2);
 				indexes2 = vmulq_n_u32(vshrq_n_u32(vaddq_u32(indexes2, scaleAdds2), BITMAP::SCALE_THRESHOLD_BITS), 2);
 				// Simply memcpy them in. memcpy has no real performance overhead here
@@ -712,7 +747,7 @@ static void drawInner2Bpp(BITMAP::DrawInnerArgs &args) {
 				scaleXCtr += args.scaleX*8;
 
 				// Now this is pretty much the same as before with non-scaled code, except that we use
-				// our dummy source buffer instead of the actuall source bitmap
+				// our dummy source buffer instead of the actual source bitmap
 				byte *destPtr = &destP[destX * 2];
 				uint16x8_t skipMask = vcgeq_u16(vaddq_u16(vdupq_n_u16(xCtr), addIndexes), xCtrWidthSIMD);
 				drawPixelSIMD2Bpp(destPtr, (const byte *)srcBuffer, tint, alphas, transColors, 1, 0, args.srcAlpha, args.skipTrans, args.horizFlip, args.useTint, skipMask);
@@ -722,7 +757,7 @@ static void drawInner2Bpp(BITMAP::DrawInnerArgs &args) {
 			// The only exception here is scaling drawing this is because:
 			// 1) if statements are costly, and the less we do the faster this loop is
 			// 2) with this, the only branch in the normal drawing loop is the width check
-			// 3) the scaling code will actually draw the until the last 4 pixels of the image
+			// 3) the scaling code will actually draw until the last 4 pixels of the image
 			//    and do the extra if checks because the scaling code is already much slower
 			//    than the normal drawing loop, and the less duplicate code helps here.
 			if (yCtr + 1 != yCtrHeight) destP += args.destArea.pitch;
@@ -730,7 +765,7 @@ static void drawInner2Bpp(BITMAP::DrawInnerArgs &args) {
 	}
 
 	// We have a picture that is a multiple of 8, so no extra pixels to draw
-	if (xCtrWidth % 8 == 0) return;
+	/*if (xCtrWidth % 8 == 0)*/ return;
 	// Get the last x values of the last row
 	int xCtr = xCtrStart, xCtrBpp = xCtrBppStart, destX = args.xStart;
 	// Drawing the last few not scaled pixels here.
@@ -792,7 +827,7 @@ static void drawInner1Bpp(BITMAP::DrawInnerArgs &args) {
 	const int xDir = args.horizFlip ? -1 : 1;
 	uint8x16_t transColors = vmovq_n_u8(args.transColor);
 
-	// This is so that we can calculate in parralell the pixel indexes for scaled drawing
+	// This is so that we can calculate in parallel the pixel indices for scaled drawing
 	uint32x4_t scaleAdds1 = {0, (uint32)args.scaleX, (uint32)args.scaleX*2, (uint32)args.scaleX*3};
 	uint32x4_t scaleAdds2 = {(uint32)args.scaleX*4, (uint32)args.scaleX*5, (uint32)args.scaleX*6, (uint32)args.scaleX*7};
 	uint32x4_t scaleAdds3 = {(uint32)args.scaleX*8, (uint32)args.scaleX*9, (uint32)args.scaleX*10, (uint32)args.scaleX*11};
@@ -843,7 +878,7 @@ static void drawInner1Bpp(BITMAP::DrawInnerArgs &args) {
 		for (; xCtr + 16 < xCtrWidth; destX += 16, xCtr += 16) {
 			byte *destPtr = &destP[destX];
 
-			// Here we dont use the drawPixelSIMD function because 1bpp bitmaps in allegro
+			// Here we don't use the drawPixelSIMD function because 1bpp bitmaps in allegro
 			// can't have any blending applied to them
 			uint8x16_t destCols = vld1q_u8(destPtr);
 			uint8x16_t srcCols = vld1q_u8(srcP + xDir * xCtr);
@@ -901,26 +936,26 @@ static void drawInner1Bpp(BITMAP::DrawInnerArgs &args) {
 			*destVal = *srcCol;
 		}
 		if (args.horizFlip) srcP -= 15; // Undo what we did up there
-		destP += args.destArea.pitch; // Goto next row
+		destP += args.destArea.pitch; // Go to next row
 		// Only advance the src row by 1 every time like this if we don't scale
 		if (!Scale) srcP += args.vertFlip ? -args.src.pitch : args.src.pitch;
 	}
 }
 
-}; // end of class DrawInnerImpl
+}; // end of class DrawInnerImpl_NEON
 
 template<bool Scale>
 void BITMAP::drawNEON(DrawInnerArgs &args) {
 	if (args.sameFormat) {
 		switch (format.bytesPerPixel) {
-		case 1: DrawInnerImpl::drawInner1Bpp<Scale>(args); break;
-		case 2: DrawInnerImpl::drawInner2Bpp<Scale>(args); break;
-		case 4: DrawInnerImpl::drawInner4BppWithConv<4, 4, Scale>(args); break;
+		case 1: DrawInnerImpl_NEON::drawInner1Bpp<Scale>(args); break;
+		case 2: DrawInnerImpl_NEON::drawInner2Bpp<Scale>(args); break;
+		case 4: DrawInnerImpl_NEON::drawInner4BppWithConv<4, 4, Scale>(args); break;
 		}
 	} else if (format.bytesPerPixel == 4 && args.src.format.bytesPerPixel == 2) {
-		DrawInnerImpl::drawInner4BppWithConv<4, 2, Scale>(args);
+		DrawInnerImpl_NEON::drawInner4BppWithConv<4, 2, Scale>(args);
 	} else if (format.bytesPerPixel == 2 && args.src.format.bytesPerPixel == 4) {
-		DrawInnerImpl::drawInner4BppWithConv<2, 4, Scale>(args);
+		DrawInnerImpl_NEON::drawInner4BppWithConv<2, 4, Scale>(args);
 	}
 }
 
@@ -928,4 +963,5 @@ template void BITMAP::drawNEON<false>(DrawInnerArgs &);
 template void BITMAP::drawNEON<true>(DrawInnerArgs &);
 
 } // namespace AGS3
+
 #endif // SCUMMVM_NEON

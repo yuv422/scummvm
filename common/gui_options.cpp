@@ -57,6 +57,7 @@ const struct GameOpt {
 	{ GUIO_MIDISEGACD,   "midiSegaCD" },
 	{ GUIO_MIDIMT32,     "midiMt32" },
 	{ GUIO_MIDIGM,       "midiGM" },
+	{ GUIO_MIDIMAC,      "midiMac" },
 
 	{ GUIO_NOASPECT,     "noAspect" },
 
@@ -78,6 +79,7 @@ const struct GameOpt {
 	{ GUIO_RENDERCPC,			"cpc" },
 	{ GUIO_RENDERZX,			"zx" },
 	{ GUIO_RENDERC64,			"c64" },
+	{ GUIO_RENDERVGAGREY,		"vgaGray" },
 
 	{ GUIO_GAMEOPTIONS1, "gameOption1" },
 	{ GUIO_GAMEOPTIONS2, "gameOption2" },

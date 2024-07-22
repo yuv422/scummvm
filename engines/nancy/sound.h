@@ -45,7 +45,7 @@ class SoundManager {
 	friend class NancyConsole;
 public:
 	// Settings for playing a sound, used in nancy3 and up
-	// Older versions had a different, non-bitflag enum, but testing 
+	// Older versions had a different, non-bitflag enum, but testing
 	// indicates those were never actually implemented
 	enum PlayCommandFlags {
 		kPlaySequential				= 0x0001, 		// Play normally
@@ -60,12 +60,6 @@ public:
 		kPlayRandomMove				= 0x0500	// Move along random vector. Does not combine with kPlayMoveCircular
 	};
 
-	enum SoundRotationAxis {
-		kRotateAroundX = 0,
-		kRotateAroundY = 1,
-		kRotateAroundZ = 2
-	};
-	
 	SoundManager();
 	~SoundManager();
 
@@ -73,7 +67,7 @@ public:
 	void initSoundChannels();
 
 	// Load a sound into a channel without starting it
-	void loadSound(const SoundDescription &description, SoundEffectDescription **effectData = nullptr);
+	void loadSound(const SoundDescription &description, SoundEffectDescription **effectData = nullptr, bool forceReload = false);
 
 	void playSound(uint16 channelID);
 	void playSound(const SoundDescription &description);
@@ -113,6 +107,10 @@ public:
 	void setRate(const SoundDescription &description, uint32 rate);
 	void setRate(const Common::String &chunkName, uint32 rate);
 
+	Audio::Timestamp getLength(uint16 channelID);
+	Audio::Timestamp getLength(const SoundDescription &description);
+	Audio::Timestamp getLength(const Common::String &chunkName);
+
 	void soundEffectMaintenance();
 	void recalculateSoundEffects();
 
@@ -133,6 +131,7 @@ protected:
 		uint16 panAnchorFrame = 0;
 		bool isPanning = false;
 		Audio::SeekableAudioStream *stream = nullptr;
+		Audio::AudioStream *streamForMixer = nullptr;
 		Audio::SoundHandle handle;
 		bool isPersistent = false;
 
@@ -145,7 +144,7 @@ protected:
 		uint32 nextRepeatTime = 0;
 	};
 
-	void soundEffectMaintenance(uint16 channelID);
+	void soundEffectMaintenance(uint16 channelID, bool force = false);
 
 	Audio::Mixer *_mixer;
 
@@ -153,7 +152,10 @@ protected:
 	Common::HashMap<Common::String, SoundDescription> _commonSounds;
 
 	bool _shouldRecalculate;
+
 	Math::Vector3d _orientation;
+	Math::Vector3d _position;
+	uint _positionLerp = 0;
 };
 
 } // End of namespace Nancy

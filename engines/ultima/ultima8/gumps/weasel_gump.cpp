@@ -22,10 +22,10 @@
 #include "ultima/ultima8/gumps/weasel_gump.h"
 #include "ultima/ultima8/gumps/weasel_dat.h"
 #include "ultima/ultima8/games/game_data.h"
-#include "ultima/ultima8/graphics/gump_shape_archive.h"
-#include "ultima/ultima8/graphics/main_shape_archive.h"
-#include "ultima/ultima8/graphics/shape.h"
-#include "ultima/ultima8/graphics/shape_frame.h"
+#include "ultima/ultima8/gfx/gump_shape_archive.h"
+#include "ultima/ultima8/gfx/main_shape_archive.h"
+#include "ultima/ultima8/gfx/shape.h"
+#include "ultima/ultima8/gfx/shape_frame.h"
 #include "ultima/ultima8/ultima8.h"
 #include "ultima/ultima8/kernel/mouse.h"
 #include "ultima/ultima8/gumps/widgets/button_widget.h"
@@ -35,7 +35,6 @@
 #include "ultima/ultima8/audio/audio_process.h"
 #include "ultima/ultima8/world/get_object.h"
 #include "ultima/ultima8/world/item_factory.h"
-#include "ultima/ultima8/filesys/file_system.h"
 
 namespace Ultima {
 namespace Ultima8 {

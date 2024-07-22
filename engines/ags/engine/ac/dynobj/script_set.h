@@ -27,15 +27,15 @@
 // that would let expose internal engine's sets using same interface.
 // TODO: maybe optimize key lookup operations further by not creating a String
 // object from const char*. It seems, C++14 standard allows to use convertible
-// types as keys; need to research what perfomance impact that would make.
+// types as keys; need to research what performance impact that would make.
 //
 //=============================================================================
 
 #ifndef AGS_ENGINE_AC_DYNOBJ_SCRIPTSET_H
 #define AGS_ENGINE_AC_DYNOBJ_SCRIPTSET_H
 
-#include "ags/lib/std/set.h"
-#include "ags/lib/std/unordered_set.h"
+#include "common/std/set.h"
+#include "common/std/unordered_set.h"
 #include "ags/engine/ac/dynobj/cc_ags_dynamic_object.h"
 #include "ags/shared/util/stream.h"
 #include "ags/shared/util/string.h"

@@ -25,6 +25,7 @@
 
 #include "common/memstream.h"
 #include "common/macresman.h"
+#include "common/formats/cue.h"
 
 #include "graphics/fonts/macfont.h"
 #include "graphics/macgui/macfontmanager.h"
@@ -115,12 +116,13 @@ void Window::testFontScaling() {
 	in.open(path);
 
 	if (in.isOpen()) {
-		Image::PICTDecoder *k = new Image::PICTDecoder();
-		k->loadStream(in);
+		Image::PICTDecoder k;
+		k.loadStream(in);
 
-		Graphics::Surface *res = k->getSurface()->convertTo(_wm->_pixelformat, k->getPalette(), k->getPaletteSize(), _wm->getPalette(), _wm->getPaletteSize(), Graphics::kDitherNaive);
+		Graphics::Surface *res = k.getSurface()->convertTo(_wm->_pixelformat, k.getPalette(), k.getPaletteSize(), _wm->getPalette(), _wm->getPaletteSize(), Graphics::kDitherNaive);
+		surface.blitFrom(*res, Common::Point(400, 280));
+		delete res;
 
-		surface.blitFrom(res, Common::Point(400, 280));
 		in.close();
 	} else {
 		warning("b_importFileInto(): Cannot open file %s", path.toString().c_str());
@@ -131,7 +133,7 @@ void Window::testFontScaling() {
 	Common::Event event;
 
 	while (true) {
-		if (g_system->getEventManager()->pollEvent(event))
+		if (g_director->pollEvent(event))
 			if (event.type == Common::EVENT_QUIT)
 				break;
 
@@ -141,11 +143,11 @@ void Window::testFontScaling() {
 }
 
 void Window::testFonts() {
-	Common::String fontName("Helvetica");
+	Common::Path fontName("Helvetica");
 
 	Common::MacResManager *fontFile = new Common::MacResManager();
 	if (!fontFile->open(fontName))
-		error("testFonts(): Could not open %s as a resource fork", fontName.c_str());
+		error("testFonts(): Could not open %s as a resource fork", fontName.toString(Common::Path::kNativeSeparator).c_str());
 
 	Common::MacResIDArray fonds = fontFile->getResIDArray(MKTAG('F','O','N','D'));
 	if (fonds.size() > 0) {
@@ -166,7 +168,7 @@ void Window::testFonts() {
 //////////////////////
 // Movie iteration
 //////////////////////
-Common::HashMap<Common::String, Movie *> *Window::scanMovies(const Common::String &folder) {
+Common::HashMap<Common::String, Movie *> *Window::scanMovies(const Common::Path &folder) {
 	Common::FSNode directory(folder);
 	Common::FSList movies;
 	const char *sharedMMMname;
@@ -191,7 +193,7 @@ Common::HashMap<Common::String, Movie *> *Window::scanMovies(const Common::Strin
 			}
 
 			warning("name: %s", i->getName().c_str());
-			Archive *arc = _vm->openArchive(i->getName());
+			Archive *arc = _vm->openArchive(i->getPathInArchive());
 			Movie *m = new Movie(this);
 			m->setArchive(arc);
 			nameMap->setVal(m->getMacName(), m);
@@ -204,7 +206,7 @@ Common::HashMap<Common::String, Movie *> *Window::scanMovies(const Common::Strin
 }
 
 void Window::enqueueAllMovies() {
-	Common::FSNode dir(ConfMan.get("path"));
+	Common::FSNode dir(ConfMan.getPath("path"));
 	Common::FSList files;
 	if (!dir.getChildren(files, Common::FSNode::kListFilesOnly)) {
 		warning("DirectorEngine::enqueueAllMovies(): Failed inquiring file list");
@@ -300,6 +302,25 @@ const byte testMovie[] = {
 void Window::runTests() {
 	Common::MemoryReadStream *movie = new Common::MemoryReadStream(testMovie, ARRAYSIZE(testMovie));
 	Common::SeekableReadStream *stream = Common::wrapCompressedReadStream(movie);
+
+	const char *cueTest =
+"PERFORMER \"Bloc Party\"\n"
+"TITLE \"Silent Alarm\"\n"
+"FILE \"Bloc Party - Silent Alarm.flac\" WAVE\n"
+   "TRACK 01 AUDIO\n"
+      "TITLE \"Like Eating Glass\"\n"
+      "PERFORMER \"Bloc Party\"\n"
+      "INDEX 00 00:00:00\n"
+      "INDEX 01 03:22:70\n"
+   "TRACK 02 AUDIO\n"
+      "TITLE \"Helicopter\"\n"
+      "PERFORMER \"Bloc Party\"\n"
+      "INDEX 00 07:42:69\n"
+      "INDEX 01 07:44:69\n"
+"";
+
+
+	Common::CueSheet cue(cueTest);
 
 	initGraphics(640, 480);
 

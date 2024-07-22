@@ -23,7 +23,7 @@
 #define FORBIDDEN_SYMBOL_EXCEPTION_strcpy
 
 #include "ags/lib/allegro.h"
-#include "ags/lib/std/vector.h"
+#include "common/std/vector.h"
 #include "ags/shared/core/platform.h"
 #include "ags/plugins/ags_plugin.h"
 #include "ags/plugins/core/core.h"
@@ -177,12 +177,12 @@ void IAGSEngine::DrawText(int32 x, int32 y, int32 font, int32 color, const char 
 }
 
 void IAGSEngine::GetScreenDimensions(int32 *width, int32 *height, int32 *coldepth) {
-	if (width != nullptr)
-		width[0] = _GP(play).GetMainViewport().GetWidth();
-	if (height != nullptr)
-		height[0] = _GP(play).GetMainViewport().GetHeight();
-	if (coldepth != nullptr)
-		coldepth[0] = _GP(scsystem).coldepth;
+	if (width)
+		*width = _GP(play).GetMainViewport().GetWidth();
+	if (height)
+		*height = _GP(play).GetMainViewport().GetHeight();
+	if (coldepth)
+		*coldepth = _GP(scsystem).coldepth;
 }
 
 int IAGSEngine::GetBitmapPitch(BITMAP *bmp) {
@@ -404,7 +404,7 @@ AGSObject *IAGSEngine::GetObject(int32 num) {
 }
 BITMAP *IAGSEngine::CreateBlankBitmap(int32 width, int32 height, int32 coldep) {
 	// [IKM] We should not create Bitmap object here, because
-	// a) we are returning raw allegro bitmap and therefore loosing control over it
+	// a) we are returning raw allegro bitmap and therefore losing control over it
 	// b) plugin won't use Bitmap anyway
 	BITMAP *tempb = create_bitmap_ex(coldep, width, height);
 	clear_to_color(tempb, bitmap_mask_color(tempb));

@@ -17,6 +17,13 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ *
+ * This file is dual-licensed.
+ * In addition to the GPLv3 license mentioned above, MojoTouch has
+ * non-exclusively licensed this code on March 23th, 2024, to be used in
+ * closed-source products.
+ * Therefore, any contributions (commits) to it will also be dual-licensed.
+ *
  */
 
 // Based on http://wiki.multimedia.cx/index.php?title=Smacker
@@ -444,7 +451,7 @@ bool SmackerDecoder::rewind() {
 	return true;
 }
 
-void SmackerDecoder::forceSeekToFrame(uint frame) {
+const Graphics::Surface *SmackerDecoder::forceSeekToFrame(uint frame) {
 	uint seekFrame;
 	if (frame >= 10)
 		seekFrame = MAX<uint>(frame - 10, 0);
@@ -452,13 +459,13 @@ void SmackerDecoder::forceSeekToFrame(uint frame) {
 		seekFrame = 0;
 
 	if (!isVideoLoaded())
-		return;
+		return nullptr;
 
 	if (seekFrame >= getFrameCount())
-		return;
+		return nullptr;
 
 	if (!rewind())
-		return;
+		return nullptr;
 
 	stopAudio();
 	SmackerVideoTrack *videoTrack = (SmackerVideoTrack *)getTrack(0);
@@ -477,14 +484,19 @@ void SmackerDecoder::forceSeekToFrame(uint frame) {
 	}
 
 	if (!_fileStream->seek(startPos + offset, SEEK_SET))
-		return;
+		return nullptr;
 
+	const Graphics::Surface *surface = nullptr;
 	while (getCurFrame() < (int)frame) {
-		decodeNextFrame();
+		surface = decodeNextFrame();
 	}
 
 	_lastTimeChange = videoTrack->getFrameTime(frame);
-	_startTime = g_system->getMillis() - (_lastTimeChange.msecs() / getRate()).toInt();
+	if (isPlaying()) {
+		_startTime = g_system->getMillis() - (_lastTimeChange.msecs() / getRate()).toInt();
+	}
+	resetPauseStartTime();
+	return surface;
 }
 
 void SmackerDecoder::readNextPacket() {

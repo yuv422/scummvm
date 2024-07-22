@@ -57,7 +57,6 @@ class Mouse;
 class ResMan;
 class ObjectMan;
 class Menu;
-class Music;
 class Control;
 
 struct SystemVars {
@@ -65,10 +64,15 @@ struct SystemVars {
 	uint32           currentCD;          // starts at zero, then either 1 or 2 depending on section being played
 	uint32           justRestoredGame;   // see main() in sword.c & New_screen() in gtm_core.c
 	uint8            controlPanelMode;   // 1 death screen version of the control panel, 2 = successful end of game, 3 = force restart
-	bool             forceRestart;
+	uint8            saveGameFlag;
+	int              snrStatus;
 	bool             wantFade;           // when true => fade during scene change, else cut.
 	bool             playSpeech;
+	bool             textRunning;
+	uint32           speechRunning;
+	bool             speechFinished;
 	bool             showText;
+	int32            textNumber;
 	uint8            language;
 	bool             isDemo;
 	bool             isSpanishDemo;
@@ -78,11 +82,20 @@ struct SystemVars {
 	bool             debugMode;
 	bool             slowMode;
 	bool             fastMode;
+	bool             parallaxOn;
+	bool             gamePaused;
+	bool             displayDebugText;
+	bool             displayDebugMouse;
+	bool             displayDebugGrid;
+	uint32           framesPerSecondCounter;
+	uint32           gameCycle;
+	bool             useWindowsAudioMode; // DOS and Windows use different implementations of the audio driver, each with their own behavior
 };
 
 class SwordEngine : public Engine {
 	friend class SwordConsole;
 	friend class Screen;
+	friend class Control;
 
 public:
 	SwordEngine(OSystem *syst, const ADGameDescription *gameDesc);
@@ -97,6 +110,8 @@ public:
 	int _vblCount = 0; // How many vblCallback calls have been made?
 	int _rate = DEFAULT_FRAME_TIME / 10;
 	int _targetFrameTime = DEFAULT_FRAME_TIME;
+	uint32 _mainLoopFrameCount = 0;
+	uint32 _ticker = 0; // For the frame time shown within the debug text
 
 	bool mouseIsActive();
 
@@ -111,6 +126,11 @@ public:
 	void startFadePaletteDown(int speed);
 	void startFadePaletteUp(int speed);
 	void waitForFade();
+	bool screenIsFading();
+	bool fadeDirectionIsUp();
+	void setMenuToTargetState();
+
+	void showDebugInfo();
 
 protected:
 	// Engine APIs
@@ -127,18 +147,20 @@ protected:
 	void syncSoundSettings() override;
 
 	Common::Error loadGameState(int slot) override;
-	bool canLoadGameStateCurrently() override;
+	bool canLoadGameStateCurrently(Common::U32String *msg = nullptr) override;
 	Common::Error saveGameState(int slot, const Common::String &desc, bool isAutosave = false) override;
-	bool canSaveGameStateCurrently() override;
+	bool canSaveGameStateCurrently(Common::U32String *msg = nullptr) override;
 	Common::String getSaveStateName(int slot) const override {
 		return Common::String::format("sword1.%03d", slot);
 	}
 private:
 	void pollInput(uint32 delay);
-	uint8 checkKeys();
+	void checkKeys();
 
 	void checkCdFiles();
 	void checkCd();
+	void askForCd();
+
 	void showFileErrorMsg(uint8 type, bool *fileExists);
 	void flagsToBool(bool *dest, uint8 flags);
 
@@ -160,7 +182,6 @@ private:
 	Logic       *_logic;
 	Sound       *_sound;
 	Menu        *_menu;
-	Music       *_music;
 	Control     *_control;
 	static const uint8  _cdList[TOTAL_SECTIONS];
 	static const CdFile _pcCdFileList[];

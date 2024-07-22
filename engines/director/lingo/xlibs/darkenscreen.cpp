@@ -40,9 +40,9 @@
 namespace Director {
 
 const char *DarkenScreen::xlibName = "darkenScreen";
-const char *DarkenScreen::fileNames[] = {
-	"darkenScreen",
-	0
+const XlibFileDesc DarkenScreen::fileNames[] = {
+	{ "darkenScreen",	nullptr },
+	{ nullptr,			nullptr },
 };
 
 static BuiltinProto builtins[] = {
@@ -50,11 +50,11 @@ static BuiltinProto builtins[] = {
 	{ nullptr, nullptr, 0, 0, 0, VOIDSYM }
 };
 
-void DarkenScreen::open(int type) {
+void DarkenScreen::open(ObjectType type, const Common::Path &path) {
 	g_lingo->initBuiltIns(builtins);
 }
 
-void DarkenScreen::close(int type) {
+void DarkenScreen::close(ObjectType type) {
 	g_lingo->cleanupBuiltIns(builtins);
 }
 

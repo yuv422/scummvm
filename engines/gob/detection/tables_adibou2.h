@@ -17,9 +17,16 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ *
+ * This file is dual-licensed.
+ * In addition to the GPLv3 license mentioned above, this code is also
+ * licensed under LGPL 2.1. See LICENSES/COPYING.LGPL file for the
+ * full text of the license.
+ *
  */
 
 /* Detection tables for Adibou / Addy Junior series. */
+/* This Game uses the DEV6 Engine, more Information can be found here: https://wiki.scummvm.org/index.php?title=DEV6_Information */
 
 #ifndef GOB_DETECTION_TABLES_ADIBOU2_H
 #define GOB_DETECTION_TABLES_ADIBOU2_H
@@ -36,7 +43,6 @@
 		ADGF_NO_FLAGS,
 		GUIO0()
 	},
-	kGameTypeAdibou2,
 	kFeatures640x480,
 	0, 0, 0
 },
@@ -50,7 +56,6 @@
 		ADGF_NO_FLAGS,
 		GUIO0()
 	},
-	kGameTypeAdibou2,
 	kFeatures640x480,
 	0, 0, 0
 },
@@ -64,7 +69,6 @@
 		ADGF_NO_FLAGS,
 		GUIO0()
 	},
-	kGameTypeAdibou2,
 	kFeatures640x480,
 	0, 0, 0
 },
@@ -72,13 +76,13 @@
 	{
 		"adibou2",
 		"ADIBOU 2.10 Environnement",
-		AD_ENTRY1s("intro.stk", "f2b797819aeedee557e904b0b5ccd82e", 8736454),
+		AD_ENTRY2s("intro.stk", "f2b797819aeedee557e904b0b5ccd82e", 8736454,
+				   "BECBF210.CD1",	"bc828c320908a5eaa349956d396bd8e1", 8),
 		FR_FRA,
 		kPlatformWindows,
 		GF_ENABLE_ADIBOU2_FREE_BANANAS_WORKAROUND | GF_ENABLE_ADIBOU2_FLOWERS_INFINITE_LOOP_WORKAROUND,
 		GUIO0()
 	},
-	kGameTypeAdibou2,
 	kFeatures640x480,
 	0, 0, 0
 },
@@ -86,13 +90,13 @@
 	{
 		"adibou2",
 		"ADIBOU 2.11 Environnement",
-		AD_ENTRY1s("intro.stk", "7b1f1f6f6477f54401e95d913f75e333", 8736904),
+		AD_ENTRY2s("intro.stk", "7b1f1f6f6477f54401e95d913f75e333", 8736904,
+				   "BECBF211.CD1",	"bc828c320908a5eaa349956d396bd8e1", 8),
 		FR_FRA,
 		kPlatformWindows,
 		GF_ENABLE_ADIBOU2_FREE_BANANAS_WORKAROUND | GF_ENABLE_ADIBOU2_FLOWERS_INFINITE_LOOP_WORKAROUND,
 		GUIO0()
 	},
-	kGameTypeAdibou2,
 	kFeatures640x480,
 	0, 0, 0
 },
@@ -100,13 +104,13 @@
 	{
 		"adibou2",
 		"ADIBOU 2.12 Environnement",
-		AD_ENTRY1s("intro.stk", "1e49c39a4a3ce6032a84b712539c2d63", 8738134),
+		AD_ENTRY2s("intro.stk", "1e49c39a4a3ce6032a84b712539c2d63", 8738134,
+				   "BECBF212.CD1",	"bc828c320908a5eaa349956d396bd8e1", 8),
 		FR_FRA,
 		kPlatformWindows,
 		GF_ENABLE_ADIBOU2_FREE_BANANAS_WORKAROUND | GF_ENABLE_ADIBOU2_FLOWERS_INFINITE_LOOP_WORKAROUND,
 		GUIO0()
 	},
-	kGameTypeAdibou2,
 	kFeatures640x480,
 	0, 0, 0
 },
@@ -114,13 +118,13 @@
 	{
 		"adibou2",
 		"ADIBOU 2.13s Environnement",
-		AD_ENTRY1s("intro.stk", "092707829555f27706920e4cacf1fada", 8737958),
+		AD_ENTRY2s("intro.stk", "092707829555f27706920e4cacf1fada", 8737958,
+				   "BECBF213.CD1",	"bc828c320908a5eaa349956d396bd8e1", 8),
 		FR_FRA,
 		kPlatformWindows,
 		GF_ENABLE_ADIBOU2_FREE_BANANAS_WORKAROUND | GF_ENABLE_ADIBOU2_FLOWERS_INFINITE_LOOP_WORKAROUND,
 		GUIO0()
 	},
-	kGameTypeAdibou2,
 	kFeatures640x480,
 	0, 0, 0
 },
@@ -134,7 +138,6 @@
 		ADGF_NO_FLAGS,
 		GUIO0()
 	},
-	kGameTypeAdibou2,
 	kFeatures640x480,
 	0, 0, 0
 },
@@ -145,19 +148,19 @@
 	{
 		"adibou2",
 		"ADDY JR 2.20 Basisprogramm",
-		AD_ENTRY1s("intro.stk", "092707829555f27706920e4cacf1fada", 8737958),
+		AD_ENTRY2s("intro.stk", "092707829555f27706920e4cacf1fada", 8737958,
+				   "BECBD220.CD1",	"bc828c320908a5eaa349956d396bd8e1", 8),
 		DE_DEU,
 		kPlatformWindows,
 		ADGF_NO_FLAGS,
 		GUIO0()
 	},
-	kGameTypeAdibou2,
 	kFeatures640x480,
 	0, 0, 0
 },
 
 {
-	{
+	{ // Supplied by lotharsm
 		"adibou2",
 		"ADI Junior 2",
 		AD_ENTRY1s("intro.stk", "80588ad3b5510bb44d3f40d6b07b81e7", 956328),
@@ -166,37 +169,36 @@
 		ADGF_NO_FLAGS,
 		GUIO0()
 	},
-	kGameTypeAdibou2,
 	kFeatures640x480,
 	0, 0, 0
 },
 
 {
-	{
+	{ // Supplied by BJNFNE
 		"adibou2",
 		"ADI Jr.",
-		AD_ENTRY1s("intro.stk", "718a51862406136c28639489a9ba950a", 956350),
+		AD_ENTRY2s("intro.stk", "718a51862406136c28639489a9ba950a", 956350,
+				   "intro.inf", "d8710732c9bfe3ca52d3ce5aefc06089", 48),
 		DE_DEU,
 		kPlatformWindows,
 		GF_ENABLE_ADIBOU2_FLOWERS_INFINITE_LOOP_WORKAROUND,
 		GUIO0()
 	},
-	kGameTypeAdibou2,
 	kFeatures640x480,
 	0, 0, 0
 },
 
 {
-	{
+	{ // Supplied by BJNFNE
 		"adibou2",
 		"ADDY JR 2.13 Basisprogramm",
-		AD_ENTRY1s("intro.stk", "092707829555f27706920e4cacf1fada", 8737958),
+		AD_ENTRY2s("intro.stk", "092707829555f27706920e4cacf1fada", 8737958,
+				   "BECBD213.CD1",	"bc828c320908a5eaa349956d396bd8e1", 8),
 		DE_DEU,
 		kPlatformWindows,
 		ADGF_NO_FLAGS,
 		GUIO0()
 	},
-	kGameTypeAdibou2,
 	kFeatures640x480,
 	0, 0, 0
 },
@@ -206,20 +208,20 @@
 	{
 		"adibou2",
 		"ADIBÙ 2.13 Ambiente",
-		AD_ENTRY1s("intro.stk", "092707829555f27706920e4cacf1fada", 8737958),
+		AD_ENTRY2s("intro.stk", "092707829555f27706920e4cacf1fada", 8737958,
+				   "BECBI213.CD1",	"bc828c320908a5eaa349956d396bd8e1", 8),
 		IT_ITA,
 		kPlatformWindows,
 		ADGF_NO_FLAGS,
 		GUIO0()
 	},
-	kGameTypeAdibou2,
 	kFeatures640x480,
 	0, 0, 0
 },
 
 // -- Spanish: Adibù --
 {
-	{
+	{ // Supplied by eientei95
 		"adibou2",
 		"ADIBÙ 2",
 		AD_ENTRY1s("intro.stk", "0b996fcd8929245fecddc4d9169843d0", 956682),
@@ -228,22 +230,22 @@
 		GF_ENABLE_ADIBOU2_FLOWERS_INFINITE_LOOP_WORKAROUND,
 		GUIO0()
 	},
-	kGameTypeAdibou2,
 	kFeatures640x480,
 	0, 0, 0
 },
 
 // -- English: Adiboo --
 {
-	{
+	{ // Supplied by sdelamarre
 		"adibou2",
 		"ADIBOO 2",
-		AD_ENTRY1s("intro.stk", "718a51862406136c28639489a9ba950a", 956350),
-		EN_ANY,
+		AD_ENTRY2s("intro.stk", "718a51862406136c28639489a9ba950a", 956350,
+				   "intro.inf", "9369aa62939f5f7c11b1e02a45038050", 44),
+		EN_GRB,
 		kPlatformWindows,
 		GF_ENABLE_ADIBOU2_FLOWERS_INFINITE_LOOP_WORKAROUND,
-		GUIO0()},
-	kGameTypeAdibou2,
+		GUIO0()
+	},
 	kFeatures640x480,
 	0, 0, 0
 },
@@ -260,12 +262,12 @@
 		ADGF_DEMO,
 		GUIO0()
 	},
-	kGameTypeAdibou2,
 	kFeatures640x480,
 	0, 0, 0
 },
 {
 	// Titlescreen says "ADIBOO: Limited version!", Sierra setup says "Adiboo 2 Demo"
+	// Supplied by eientei95
 	{
 		"adibou2",
 		"ADIBOO 2 Demo",
@@ -275,7 +277,6 @@
 		ADGF_DEMO,
 		GUIO2(GUIO_NOSUBTITLES, GUIO_NOSPEECH)
 	},
-	kGameTypeAdibou2,
 	kFeatures640x480,
 	0, 0, 0
 },
@@ -290,7 +291,6 @@
 		ADGF_DEMO,
 		GUIO3(GUIO_NOSUBTITLES, GUIO_NOSPEECH, GUIO_NOASPECT)
 	},
-	kGameTypeAdibou2,
 	kFeatures640x480 | kFeaturesSCNDemo,
 	0, 0, 9
 },
@@ -305,7 +305,6 @@
 		ADGF_DEMO,
 		GUIO3(GUIO_NOSUBTITLES, GUIO_NOSPEECH, GUIO_NOASPECT)
 	},
-	kGameTypeAdibou2,
 	kFeatures640x480 | kFeaturesSCNDemo,
 	0, 0, 10
 },
@@ -320,11 +319,11 @@
 		ADGF_DEMO,
 		GUIO3(GUIO_NOSUBTITLES, GUIO_NOSPEECH, GUIO_NOASPECT)
 	},
-	kGameTypeAdibou2,
 	kFeatures640x480 | kFeaturesSCNDemo,
 	0, 0, 11
 },
 { // Shipped as an Demo / Preview for Nature et Sciences on Adibou presente Dessin CD
+  // Supplied by BJNFNE
   // ToDo: adding unimplemented opcodes is required.
   // Also support needs added for static images (.TGA files), The Banner for Nature et Sciences can't be loaded because of the missing opcode.
 	{
@@ -336,7 +335,6 @@
 		ADGF_UNSTABLE,
 		GUIO0()
 	},
-	kGameTypeAdibou2,
 	kFeatures640x480,
 	0, 0, 0
 },

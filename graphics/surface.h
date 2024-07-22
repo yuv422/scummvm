@@ -32,6 +32,7 @@ struct Point;
 }
 
 #include "graphics/pixelformat.h"
+#include "graphics/transform_struct.h"
 
 namespace Graphics {
 
@@ -354,9 +355,26 @@ public:
 	 * @ref create. Otherwise, this function has undefined behavior.
 	 *
 	 * @param dstFormat  The desired format.
-	 * @param palette    The palette (in RGB888), if the source format has a bpp of 1.
 	 */
-	void convertToInPlace(const PixelFormat &dstFormat, const byte *palette = 0);
+	inline void convertToInPlace(const PixelFormat &dstFormat) {
+		convertToInPlace(dstFormat, nullptr, 0);
+	}
+
+	/**
+	 * Convert the data to another pixel format.
+	 *
+	 * This works in-place. This means it does not create an additional buffer
+	 * for the conversion process. The value of 'pixels' might change though
+	 * (that means it might realloc the pixel data).
+	 *
+	 * @b Important: Only use this if you created the surface data using
+	 * @ref create. Otherwise, this function has undefined behavior.
+	 *
+	 * @param dstFormat  The desired format.
+	 * @param palette    The palette (in RGB888), if the source format has one.
+	 * @param paletteCount	The number of colors in the palette.
+	 */
+	void convertToInPlace(const PixelFormat &dstFormat, const byte *palette, uint16 paletteCount);
 
 	/**
 	 * Convert the data to another pixel format.
@@ -371,9 +389,9 @@ public:
 	 * @param dstaletteCount The color count in the for the dstPalette.
 	 * @param method      The dithering method if destination format has a bpp of 1. Default is Floyd-Steinberg.
 	 */
-	Graphics::Surface *convertTo(const PixelFormat &dstFormat, const byte *srcPalette = 0, int srcPaletteCount = 0, const byte *dstPalette = 0, int dstPaletteCount = 0, DitherMethod method = kDitherFloyd) const;
+	Graphics::Surface *convertTo(const PixelFormat &dstFormat, const byte *srcPalette = 0, int srcPaletteCount = 256, const byte *dstPalette = 0, int dstPaletteCount = 0, DitherMethod method = kDitherFloyd) const;
 
-private:
+protected:
 	void ditherFloyd(const byte *srcPalette, int srcPaletteCount, Surface *dstSurf, const byte *dstPalette, int dstPaletteCount, DitherMethod method, const PixelFormat &dstFormat) const;
 
 public:
@@ -494,6 +512,11 @@ public:
 	 * @param skipTransparent  if set to true, then do not touch pixels with alpha=0
 	 */
 	bool setAlpha(uint8 alpha, bool skipTransparent = false);
+
+	/**
+	 * Checks if the given surface contains alpha transparency
+	 */
+	AlphaType detectAlpha() const;
 
 	/**
 	 * Scale the data to the given size.

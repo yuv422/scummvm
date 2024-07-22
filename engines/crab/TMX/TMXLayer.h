@@ -35,6 +35,8 @@
 #include "crab/image/Image.h"
 #include "crab/TMX/TileInfo.h"
 
+#include "common/list.h"
+
 namespace Crab {
 
 namespace TMX {
@@ -104,7 +106,7 @@ public:
 		_type = LAYER_NORMAL;
 		_collide = false;
 	}
-	bool load(const Common::String &path, rapidxml::xml_node<char> *node);
+	bool load(const Common::Path &path, rapidxml::xml_node<char> *node);
 };
 } // End of namespace TMX
 

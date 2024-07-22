@@ -55,7 +55,7 @@ bool ENet::initialize() {
 	return true;
 }
 
-Host *ENet::createHost(Common::String address, int port, int numClients, int numChannels, int incBand, int outBand) {
+Host *ENet::createHost(const Common::String &address, int port, int numClients, int numChannels, int incBand, int outBand) {
 	ENetAddress enetAddress;
 	// NOTE: 0.0.0.0 returns ENET_HOST_ANY normally.
 	enet_address_set_host(&enetAddress, address.c_str());
@@ -63,14 +63,14 @@ Host *ENet::createHost(Common::String address, int port, int numClients, int num
 
 	ENetHost *_host = enet_host_create(&enetAddress, numClients, numChannels, incBand, outBand);
 	if (_host == nullptr) {
-		warning("ENet: An error occured when trying to create host with address %s:%d", address.c_str(), port);
+		warning("ENet: An error occurred when trying to create host with address %s:%d", address.c_str(), port);
 		return nullptr;
 	}
 
 	return new Host(_host);
 }
 
-Host *ENet::connectToHost(Common::String hostAddress, int hostPort, Common::String address, int port, int timeout, int numChannels, int incBand, int outBand) {
+Host *ENet::connectToHost(const Common::String &hostAddress, int hostPort, const Common::String &address, int port, int timeout, int numChannels, int incBand, int outBand) {
 	ENetAddress enetHostAddress;
 	// NOTE: 0.0.0.0 returns ENET_HOST_ANY normally.
 	enet_address_set_host(&enetHostAddress, hostAddress.c_str());
@@ -79,7 +79,7 @@ Host *ENet::connectToHost(Common::String hostAddress, int hostPort, Common::Stri
 	// NOTE: Number of channels must match with the server's.
 	ENetHost *enetHost = enet_host_create(&enetHostAddress, 1, numChannels, incBand, outBand);
 	if (enetHost == nullptr) {
-		warning("ENet: An error occured when trying to create client host");
+		warning("ENet: An error occurred when trying to create client host");
 		return nullptr;
 	}
 
@@ -106,11 +106,11 @@ Host *ENet::connectToHost(Common::String hostAddress, int hostPort, Common::Stri
 	return nullptr;
 }
 
-Host *ENet::connectToHost(Common::String address, int port, int timeout, int numChannels, int incBand, int outBand) {
+Host *ENet::connectToHost(const Common::String &address, int port, int timeout, int numChannels, int incBand, int outBand) {
 	return connectToHost("0.0.0.0", 0, address, port, timeout, numChannels, incBand, outBand);
 }
 
-Socket *ENet::createSocket(Common::String address, int port) {
+Socket *ENet::createSocket(const Common::String &address, int port) {
 	ENetAddress enetAddress;
 	if (address == "255.255.255.255") {
 		enetAddress.host = ENET_HOST_BROADCAST;

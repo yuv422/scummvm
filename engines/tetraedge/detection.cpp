@@ -33,12 +33,12 @@ const DebugChannelDef TetraedgeMetaEngineDetection::debugFlagList[] = {
 };
 
 TetraedgeMetaEngineDetection::TetraedgeMetaEngineDetection() : AdvancedMetaEngineDetection(Tetraedge::GAME_DESCRIPTIONS,
-	sizeof(ADGameDescription), Tetraedge::GAME_NAMES) {
+	Tetraedge::GAME_NAMES) {
 	_flags = kADFlagMatchFullPaths;
 }
 
 static const Common::Language *getGameLanguages() {
-	static Common::Language languages[] = {
+	static const Common::Language languages[] = {
 		Common::EN_ANY,
 		Common::FR_FRA,
 		Common::DE_DEU,

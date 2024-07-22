@@ -31,6 +31,18 @@
 
 static const ADExtraGuiOptionsMap gameGuiOptions[] = {
 	{
+		GAMEOPTION_COPY_PROTECTION,
+		{
+			_s("Enable copy protection"),
+			_s("Enable any copy protection that would otherwise be bypassed by default."),
+			"copy_protection",
+			false,
+			0,
+			0
+		},
+	},
+
+	{
 		GAMEOPTION_ORIGINAL_SAVELOAD,
 		{
 			_s("Use original save/load screens"),
@@ -83,7 +95,7 @@ static const ADExtraGuiOptionsMap gameGuiOptions[] = {
 	AD_EXTRA_GUI_OPTIONS_TERMINATOR
 };
 
-class DreamWebMetaEngine : public AdvancedMetaEngine {
+class DreamWebMetaEngine : public AdvancedMetaEngine<DreamWeb::DreamWebGameDescription> {
 public:
 	const char *getName() const override {
 		return "dreamweb";
@@ -93,7 +105,7 @@ public:
 		return gameGuiOptions;
 	}
 
-	Common::Error createInstance(OSystem *syst, Engine **engine, const ADGameDescription *desc) const override;
+	Common::Error createInstance(OSystem *syst, Engine **engine, const DreamWeb::DreamWebGameDescription *desc) const override;
 
 	bool hasFeature(MetaEngineFeature f) const override;
 
@@ -135,8 +147,8 @@ bool DreamWeb::DreamWebEngine::hasFeature(EngineFeature f) const {
 	}
 }
 
-Common::Error DreamWebMetaEngine::createInstance(OSystem *syst, Engine **engine, const ADGameDescription *desc) const {
-	*engine = new DreamWeb::DreamWebEngine(syst, (const DreamWeb::DreamWebGameDescription *)desc);
+Common::Error DreamWebMetaEngine::createInstance(OSystem *syst, Engine **engine, const DreamWeb::DreamWebGameDescription *desc) const {
+	*engine = new DreamWeb::DreamWebEngine(syst,desc);
 	return Common::kNoError;
 }
 
@@ -151,7 +163,7 @@ SaveStateList DreamWebMetaEngine::listSaves(const char *target) const {
 		if (!stream)
 			error("cannot open save file %s", file.c_str());
 		char name[17] = {};
-		stream->seek(0x61);
+		stream->seek(0x61); // The actual description string starts at desc[1]
 		stream->read(name, sizeof(name) - 1);
 		delete stream;
 
@@ -180,19 +192,16 @@ SaveStateDescriptor DreamWebMetaEngine::querySaveMetaInfos(const char *target, i
 		DreamWeb::FileHeader header;
 		in->read((uint8 *)&header, sizeof(DreamWeb::FileHeader));
 
-		Common::String saveName;
-		byte descSize = header.len(0);
-		byte i;
+		char name[17] = {};
+		in->skip(1); // The actual description string starts at desc[1]
+		in->read(name, sizeof(name) - 1);
 
-		for (i = 0; i < descSize; i++)
-			saveName += (char)in->readByte();
-
-		SaveStateDescriptor desc(this, slot, saveName);
+		SaveStateDescriptor desc(this, slot, name);
 
 		// Check if there is a ScummVM data block
 		if (header.len(6) == SCUMMVM_BLOCK_MAGIC_SIZE) {
 			// Skip the game data
-			for (i = 1; i <= 5; i++)
+			for (byte i = 1; i <= 5; i++)
 				in->skip(header.len(i));
 
 			uint32 tag = in->readUint32BE();
@@ -252,14 +261,6 @@ Common::Error DreamWebEngine::loadGameState(int slot) {
 
 Common::Error DreamWebEngine::saveGameState(int slot, const Common::String &desc, bool isAutosave) {
 	return Common::kNoError;
-}
-
-bool DreamWebEngine::canLoadGameStateCurrently() {
-	return false;
-}
-
-bool DreamWebEngine::canSaveGameStateCurrently() {
-	return false;
 }
 
 Common::Language DreamWebEngine::getLanguage() const {

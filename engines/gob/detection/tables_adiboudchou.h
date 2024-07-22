@@ -17,19 +17,28 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ *
+ * This file is dual-licensed.
+ * In addition to the GPLv3 license mentioned above, this code is also
+ * licensed under LGPL 2.1. See LICENSES/COPYING.LGPL file for the
+ * full text of the license.
+ *
  */
 
 /* Detection tables for Adiboud'chou / Addy Buschu series. */
+/* This Game uses the DEV7 Engine, more Information can be found here: https://wiki.scummvm.org/index.php?title=DEV7_Information */
 
 #ifndef GOB_DETECTION_TABLES_ADIBOUDCHOU_H
 #define GOB_DETECTION_TABLES_ADIBOUDCHOU_H
+
+//#include "common/translation.h"  // Make release checker happy
 
 // -- French: Adiboud'chou series --
 
 // -- German: Addy Buschu series --
 
 {
-	{
+	{ // Supplied by BJNFNE
 		"adiboudchoumer",
 		_s("Missing game code"), // Addy Buschu am Meer 1.01 (Engine: DEV7 version unknown)
 		AD_ENTRY1s("adbc_envir_obc.stk", "46b7db9f7e77a077d9ac8506130ba9a2", 2830950),
@@ -38,13 +47,12 @@
 		ADGF_UNSUPPORTED,
 		GUIO0()
 	},
-	kGameTypeNone,
-	kFeatures640x480,
+	kFeatures800x600,
 	0, 0, 0
 },
 
 {
-	{
+	{ // Supplied by BJNFNE
 
 		"adiboudchoubanquise",
 		_s("Missing game code"), // Addy Buschu Schnee & Eis 1.00 (Engine: DEV7 version 1.0.0.0)
@@ -54,12 +62,11 @@
 		ADGF_UNSUPPORTED,
 		GUIO0()
 	},
-	kGameTypeNone,
-	kFeatures640x480,
+	kFeatures800x600,
 	0,0,0
 },
 {
-	{
+	{ // Supplied by BJNFNE
 		"adiboudchoucampagne",
 		_s("Missing game code"), // Addy Buschu auf dem Land 1.00 (Engine: DEV7 version unknown)
 		AD_ENTRY1s("adbc_envir_obc.stk", "4b43d3d1a8bc908d80e729069c5bb59f", 2831471),
@@ -68,12 +75,11 @@
 		ADGF_UNSUPPORTED,
 		GUIO0()
 	},
-	kGameTypeNone,
-	kFeatures640x480,
+	kFeatures800x600,
 	0,0,0
 },
 {
-	{
+	{ // Supplied by BJNFNE
 		"adiboudchoujunglesavane",
 		_s("Missing game code"), // Addy Buschu Die bunte Tierwelt 1.00 (Engine: DEV7 version 1.0.0.0)
 		AD_ENTRY1s("adbc_envir_obc.stk", "7f33561f295030cbe64a21f941ef1efc", 3188852),
@@ -82,8 +88,7 @@
 		ADGF_UNSUPPORTED,
 		GUIO0()
 	},
-	kGameTypeNone,
-	kFeatures640x480,
+	kFeatures800x600,
 	0,0,0
 },
 

@@ -23,7 +23,7 @@
 // Graphics initialization
 //
 
-#include "ags/lib/std/algorithm.h"
+#include "common/std/algorithm.h"
 #include "ags/shared/core/platform.h"
 #include "ags/engine/ac/draw.h"
 #include "ags/engine/debugging/debugger.h"
@@ -238,7 +238,7 @@ bool try_init_compatible_mode(const DisplayMode &dm) {
 	if (!result && dm.IsWindowed()) {
 		// When initializing windowed mode we could start with any random window size;
 		// if that did not work, try to find nearest supported mode, as with fullscreen mode,
-		// except refering to max window size as an upper bound
+		// except referring to max window size as an upper bound
 		if (find_nearest_supported_mode(*modes.get(), screen_size, dm.ColorDepth, nullptr, &device_size, dm_compat)) {
 			dm_compat.Vsync = dm.Vsync;
 			dm_compat.Mode = kWnd_Windowed;
@@ -470,6 +470,7 @@ bool graphics_mode_set_dm(const DisplayMode &dm) {
 		_GP(SavedWindowedSetting).Dm = rdm;
 	else
 		_GP(SavedFullscreenSetting).Dm = rdm;
+	Debug::Printf(kDbgMsg_Info, "Graphics driver set: %s", _G(gfxDriver)->GetDriverName());
 	Debug::Printf(kDbgMsg_Info, "Graphics mode set: %d x %d (%d-bit) %s",
 		rdm.Width, rdm.Height, rdm.ColorDepth,
 		rdm.IsWindowed() ? "windowed" : (rdm.IsRealFullscreen() ? "fullscreen" : "fullscreen desktop"));
@@ -524,7 +525,7 @@ bool graphics_mode_set_render_frame(const FrameScaleDef &frame) {
 	if (_G(gfxDriver)->GetDisplayMode().IsWindowed())
 		_GP(SavedWindowedSetting).Frame = frame;
 	else
-		_GP(SavedWindowedSetting).Frame = frame;
+		_GP(SavedFullscreenSetting).Frame = frame;
 	graphics_mode_update_render_frame();
 	return true;
 }

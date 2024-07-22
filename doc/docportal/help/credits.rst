@@ -124,6 +124,8 @@ AGS
      -
    * - Thierry Crozat
      -
+   * - Walter Agazzi
+     - Maintenance, Game archival
    * - Chris Jones
      - Creator
    * - Alan Van Drake
@@ -233,6 +235,21 @@ Avalanche
    * - Arnaud Boutonné
      -
 
+Bagel
+^^^^^
+
+.. list-table::
+   :widths: 35 65
+
+   * - Arnaud Boutonné
+     -
+   * - Daniel Albano
+     -
+   * - Eugene Sandulenko
+     -
+   * - Paul Gilbert
+     -
+
 BBVS
 ^^^^
 
@@ -340,6 +357,15 @@ Composer
    :widths: 35 65
 
    * - Alyssa Milburn
+     -
+
+Crab
+^^^^
+
+.. list-table::
+   :widths: 35 65
+
+   * - Kartik Agarwala
      -
 
 CruisE
@@ -467,6 +493,15 @@ DreamWeb
    * - Vladimir Menshakov
      -
    * - Willem Jan Palenstijn
+     -
+
+Efh
+^^^
+
+.. list-table::
+   :widths: 35 65
+
+   * - Arnaud Boutonné
      -
 
 Freescape
@@ -742,6 +777,15 @@ Lilliput
 
 Lure
 ^^^^
+
+.. list-table::
+   :widths: 35 65
+
+   * - Paul Gilbert
+     -
+
+M4
+^^
 
 .. list-table::
    :widths: 35 65
@@ -1067,6 +1111,8 @@ SCUMM HE
 .. list-table::
    :widths: 35 65
 
+   * - Andrea Boscarino
+     - Digital audio, WIZ graphics system
    * - Jonathan Gray
      - (retired)
    * - Travis Howell
@@ -1158,6 +1204,8 @@ Sword1
 
    * - Fabio Battaglia
      - PSX version support
+   * - Andrea Boscarino
+     - Palette fading, menus, audio
    * - Thierry Crozat
      - Mac version support
    * - Robert Göffringmann
@@ -1351,6 +1399,15 @@ TwinE
    * - Martin Gerhardy
      -
 
+Thimbleweed Park
+^^^^^^^^^^^^^^^^
+
+.. list-table::
+   :widths: 35 65
+
+   * - Valéry Sablonnière
+     -
+
 Ultima
 ^^^^^^
 
@@ -1466,6 +1523,15 @@ Z-Vision
 
 Backend Teams
 *************
+
+Atari
+^^^^^
+
+.. list-table::
+   :widths: 35 65
+
+   * - Miro Kropáček
+     -
 
 Android
 ^^^^^^^
@@ -2099,6 +2165,8 @@ Finnish
 .. list-table::
    :widths: 35 65
 
+   * - Linus Virtanen
+     -
    * - Toni Saarela
      -
    * - Timo Mikkolainen
@@ -2363,6 +2431,12 @@ Icons pack
 .. list-table::
    :widths: 35 65
 
+   * - Stefan Philippsen
+     - Primary contributor and coordination
+   * - Benjamin Funke
+     -
+   * - Daniel Albano
+     -
    * - David Calvert
      -
    * - Eugene Sandulenko
@@ -2377,11 +2451,11 @@ Icons pack
      -
    * - Olly Dean
      -
-   * - Stefan Philippsen
+   * - Walter Agazzi
+     -
+   * - beresk137
      -
    * - Canuma
-     -
-   * - SupSuper
      -
    * - Thunderforge
      -

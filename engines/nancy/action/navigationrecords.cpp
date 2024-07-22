@@ -72,8 +72,15 @@ void HotMultiframeSceneChange::execute() {
 }
 
 void Hot1FrSceneChange::readData(Common::SeekableReadStream &stream) {
-	SceneChange::readData(stream);
-	_hotspotDesc.readData(stream);
+	if (!_isTerse) {
+		SceneChange::readData(stream);
+		_hotspotDesc.readData(stream);
+	} else {
+		_sceneChange.sceneID = stream.readUint16LE();
+		_sceneChange.continueSceneSound = kContinueSceneSound;
+		_sceneChange.listenerFrontVector.set(0, 0, 1);
+		readRect(stream, _hotspotDesc.coords);
+	}
 }
 
 void Hot1FrSceneChange::execute() {
@@ -96,8 +103,14 @@ void Hot1FrSceneChange::execute() {
 }
 
 void HotMultiframeMultisceneChange::readData(Common::SeekableReadStream &stream) {
-	_onTrue.readData(stream);
-	_onFalse.readData(stream);
+	if (g_nancy->getGameType() <= kGameTypeNancy2) {
+		_onTrue._sceneChange.readData(stream);
+		_onFalse._sceneChange.readData(stream);
+	} else {
+		_onTrue.readData(stream, true);
+		_onFalse.readData(stream, true);
+	}
+
 	_condType = stream.readByte();
 	_conditionID = stream.readUint16LE();
 	_conditionPayload = stream.readByte();
@@ -148,9 +161,9 @@ void HotMultiframeMultisceneChange::execute() {
 		}
 
 		if (conditionMet) {
-			NancySceneState.changeScene(_onTrue);
+			_onTrue.execute();
 		} else {
-			NancySceneState.changeScene(_onFalse);
+			_onFalse.execute();
 		}
 
 		break;
@@ -169,7 +182,7 @@ void HotMultiframeMultisceneCursorTypeSceneChange::readData(Common::SeekableRead
 
 	stream.skip(2);
 	_defaultScene.readData(stream);
-	
+
 	uint16 numHotspots = stream.readUint16LE();
 	_hotspots.resize(numHotspots);
 	for (uint i = 0; i < numHotspots; ++i) {

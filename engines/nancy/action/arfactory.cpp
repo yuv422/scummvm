@@ -19,22 +19,33 @@
  *
  */
 
+#include "engines/nancy/action/datarecords.h"
+#include "engines/nancy/action/inventoryrecords.h"
 #include "engines/nancy/action/navigationrecords.h"
 #include "engines/nancy/action/soundrecords.h"
 #include "engines/nancy/action/miscrecords.h"
 
+#include "engines/nancy/action/autotext.h"
 #include "engines/nancy/action/conversation.h"
+#include "engines/nancy/action/interactivevideo.h"
 #include "engines/nancy/action/overlay.h"
 #include "engines/nancy/action/secondaryvideo.h"
 #include "engines/nancy/action/secondarymovie.h"
 
+#include "engines/nancy/action/puzzle/assemblypuzzle.h"
+#include "engines/nancy/action/puzzle/bballpuzzle.h"
+#include "engines/nancy/action/puzzle/bulpuzzle.h"
 #include "engines/nancy/action/puzzle/bombpuzzle.h"
 #include "engines/nancy/action/puzzle/collisionpuzzle.h"
+#include "engines/nancy/action/puzzle/cubepuzzle.h"
+#include "engines/nancy/action/puzzle/hamradiopuzzle.h"
 #include "engines/nancy/action/puzzle/leverpuzzle.h"
 #include "engines/nancy/action/puzzle/mazechasepuzzle.h"
+#include "engines/nancy/action/puzzle/mouselightpuzzle.h"
 #include "engines/nancy/action/puzzle/orderingpuzzle.h"
 #include "engines/nancy/action/puzzle/overridelockpuzzle.h"
 #include "engines/nancy/action/puzzle/passwordpuzzle.h"
+#include "engines/nancy/action/puzzle/peepholepuzzle.h"
 #include "engines/nancy/action/puzzle/raycastpuzzle.h"
 #include "engines/nancy/action/puzzle/riddlepuzzle.h"
 #include "engines/nancy/action/puzzle/rippedletterpuzzle.h"
@@ -43,10 +54,12 @@
 #include "engines/nancy/action/puzzle/setplayerclock.h"
 #include "engines/nancy/action/puzzle/sliderpuzzle.h"
 #include "engines/nancy/action/puzzle/soundequalizerpuzzle.h"
+#include "engines/nancy/action/puzzle/spigotpuzzle.h"
 #include "engines/nancy/action/puzzle/tangrampuzzle.h"
 #include "engines/nancy/action/puzzle/telephone.h"
 #include "engines/nancy/action/puzzle/towerpuzzle.h"
 #include "engines/nancy/action/puzzle/turningpuzzle.h"
+#include "engines/nancy/action/puzzle/twodialpuzzle.h"
 
 #include "engines/nancy/state/scene.h"
 
@@ -55,7 +68,7 @@
 namespace Nancy {
 namespace Action {
 
-ActionRecord *ActionManager::createActionRecord(uint16 type) {
+ActionRecord *ActionManager::createActionRecord(uint16 type, Common::SeekableReadStream *recordStream) {
 	switch (type) {
 	case 10:
 		return new Hot1FrSceneChange(CursorManager::kHotspot);
@@ -95,6 +108,20 @@ ActionRecord *ActionManager::createActionRecord(uint16 type) {
 		return new Hot1FrSceneChange(CursorManager::kMoveRight);
 	case 24:
 		return new HotMultiframeMultisceneCursorTypeSceneChange();
+	case 25: {
+		// Weird case; instead of storing the cursor id, they instead chose to store
+		// an AR id corresponding to one of the directional Hot1FrSceneChange variants.
+		// Thus, we need to scan the incoming chunk and make another call to createActionRecord().
+		// This is not the most elegant solution, but it works :)
+		assert(recordStream);
+		uint16 innerID = recordStream->readUint16LE();
+		Hot1FrSceneChange *newRec = dynamic_cast<Hot1FrSceneChange *>(createActionRecord(innerID));
+		assert(newRec);
+		newRec->_isTerse = true;
+		return newRec;
+	}
+	case 26:
+		return new InteractiveVideo();
 	case 40:
 		if (g_nancy->getGameType() < kGameTypeNancy2) {
 			// Only used in TVD
@@ -105,17 +132,30 @@ ActionRecord *ActionManager::createActionRecord(uint16 type) {
 	case 50:
 		return new ConversationVideo(); // PlayPrimaryVideoChan0
 	case 51:
-		return new PlaySecondaryVideo(0);
 	case 52:
-		return new PlaySecondaryVideo(1);
+		return new PlaySecondaryVideo();
 	case 53:
 		return new PlaySecondaryMovie();
 	case 54:
-		return new Overlay(false); // PlayStaticBitmapAnimation
+		if (g_nancy->getGameType() <= kGameTypeNancy1) {
+			return new Overlay(false); // PlayStaticBitmapAnimation
+		} else {
+			return new Overlay(true);
+		}
 	case 55:
-		return new Overlay(true); // PlayIntStaticBitmapAnimation
+		if (g_nancy->getGameType() <= kGameTypeNancy1) {
+			return new Overlay(true); // PlayIntStaticBitmapAnimation
+		} else if (g_nancy->getGameType() >= kGameTypeNancy7) {
+			return new OverlayStaticTerse();
+		}
+		return nullptr;
 	case 56:
-		return new ConversationVideo();
+		if (g_nancy->getGameType() <= kGameTypeNancy6) {
+			return new ConversationVideo();
+		} else {
+			return new OverlayAnimTerse();
+		}
+		return nullptr;
 	case 57:
 		return new ConversationCel();
 	case 58:
@@ -130,13 +170,50 @@ ActionRecord *ActionManager::createActionRecord(uint16 type) {
 			return new ConversationSoundT();
 		}
 	case 61:
-		return new MapCallHot1Fr();
+		if (g_nancy->getGameType() <= kGameTypeNancy5) {
+			// Only used in tvd and nancy1
+			return new MapCallHot1Fr();
+		} else {
+			return new Autotext();
+		}
 	case 62:
-		return new MapCallHotMultiframe();
+		if (g_nancy->getGameType() <= kGameTypeNancy7) {
+			return new MapCallHotMultiframe(); // TVD/nancy1 only
+		} else {
+			return new ConversationCelTerse(); // nancy8 and up
+		}
+	case 63:
+		return new ConversationSoundTerse();
+	case 65:
+		return new TableIndexOverlay();
+	case 66:
+		return new TableIndexPlaySound();
+	case 67:
+		return new TableIndexSetValueHS();
+	case 68:
+		return new TextScroll(false);
+	case 70:
+		return new TextScroll(true); // AutotextEntryList
+	case 71:
+		return new ModifyListEntry(ModifyListEntry::kAdd);
+	case 72:
+		return new ModifyListEntry(ModifyListEntry::kDelete);
+	case 73:
+		return new ModifyListEntry(ModifyListEntry::kMark);
 	case 75:
 		return new TextBoxWrite();
 	case 76:
 		return new TextboxClear();
+	case 77:
+		return new SetValue();
+	case 78:
+		return new SetValueCombo();
+	case 79:
+		return new ValueTest();
+	case 97:
+		return new EventFlags(true);
+	case 98:
+		return new EventFlagsMultiHS(true, true);
 	case 99:
 		return new EventFlagsMultiHS(true);
 	case 100:
@@ -156,7 +233,11 @@ ActionRecord *ActionManager::createActionRecord(uint16 type) {
 	case 107:
 		return new EventFlags();
 	case 108:
-		return new OrderingPuzzle(OrderingPuzzle::kOrdering);
+		if (g_nancy->getGameType() <= kGameTypeNancy6) {
+			return new OrderingPuzzle(OrderingPuzzle::kOrdering);
+		} else {
+			return new GotoMenu();
+		}
 	case 109:
 		return new LoseGame();
 	case 110:
@@ -172,11 +253,17 @@ ActionRecord *ActionManager::createActionRecord(uint16 type) {
 	case 115:
 		return new LeverPuzzle();
 	case 116:
-		return new Telephone();
+		return new Telephone(false);
 	case 117:
 		return new SliderPuzzle();
 	case 118:
 		return new PasswordPuzzle();
+	case 119:
+		if (g_nancy->getGameType() >= kGameTypeNancy7) {
+			// This got moved in nancy7
+			return new OrderingPuzzle(OrderingPuzzle::kOrdering);
+		}
+		return nullptr;
 	case 120:
 		return new AddInventoryNoHS();
 	case 121:
@@ -185,12 +272,24 @@ ActionRecord *ActionManager::createActionRecord(uint16 type) {
 		return new ShowInventoryItem();
 	case 123:
 		return new InventorySoundOverride();
+	case 124:
+		return new EnableDisableInventory();
+	case 125:
+		return new PopInvViewPriorScene();
+	case 126:
+		return new GoInvViewScene();
+	case 140:
+		return new SetVolume();
 	case 150:
-		return new PlayDigiSoundAndDie();
+		return new PlaySound();
 	case 151:
-		return new PlayDigiSoundAndDie();
+		if (g_nancy->getGameType() <= kGameTypeNancy6)  {
+			return new PlaySound(); // PlayStreamSound
+		} else {
+			return new PlayRandomSoundTerse();
+		}
 	case 152:
-		return new PlaySoundPanFrameAnchorAndDie();
+		return new PlaySoundFrameAnchor();
 	case 153:
 		return new PlaySoundMultiHS();
 	case 154:
@@ -198,9 +297,15 @@ ActionRecord *ActionManager::createActionRecord(uint16 type) {
 	case 155:
 		return new StopSound(); // StopAndUnloadSound, but we always unload
 	case 157:
-		return new PlayDigiSoundCC();
+		return new PlaySoundCC();
+	case 158:
+		return new PlayRandomSound();
+	case 159:
+		return new PlaySoundTerse();
 	case 160:
 		return new HintSystem();
+	case 161:
+		return new PlaySoundEventFlagTerse();
 	case 170:
 		return new SetPlayerClock();
 	case 200:
@@ -235,8 +340,29 @@ ActionRecord *ActionManager::createActionRecord(uint16 type) {
 		return new OrderingPuzzle(OrderingPuzzle::PuzzleType::kKeypad);
 	case 215:
 		return new MazeChasePuzzle();
+	case 216:
+		return new PeepholePuzzle();
+	case 217:
+		return new MouseLightPuzzle();
+	case 218:
+		return new BulPuzzle();
+	case 219:
+		return new BBallPuzzle();
+	case 220:
+		return new TwoDialPuzzle();
+	case 221:
+		return new HamRadioPuzzle();
+	case 222:
+		return new AssemblyPuzzle();
+	case 223:
+		return new CubePuzzle();
+	case 224:
+		return new OrderingPuzzle(OrderingPuzzle::kKeypadTerse);
+	case 225:
+		return new SpigotPuzzle();
+	case 230:
+		return new Telephone(true);
 	default:
-		error("Action Record type %i is invalid!", type);
 		return nullptr;
 	}
 }

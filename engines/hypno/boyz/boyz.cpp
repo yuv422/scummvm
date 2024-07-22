@@ -24,6 +24,9 @@
 
 #include "common/events.h"
 
+#include "engines/metaengine.h"
+#include "engines/savestate.h"
+
 namespace Hypno {
 
 static const chapterEntry rawChapterTable[] = {
@@ -82,6 +85,10 @@ BoyzEngine::BoyzEngine(OSystem *syst, const ADGameDescription *gd) : HypnoEngine
 	for (int i = 0; i < 6; i++) {
 		_weaponMaxAmmo[i] = 0;
 	}
+}
+
+BoyzEngine::~BoyzEngine() {
+	free(_crosshairsPalette);
 }
 
 static const char *selectBoyz = "\

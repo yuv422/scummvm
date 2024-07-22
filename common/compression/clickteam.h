@@ -23,6 +23,7 @@
 #define COMMON_CLICKTEAM_H
 
 #include "common/archive.h"
+#include "common/fs.h"
 #include "common/ptr.h"
 #include "common/stream.h"
 #include "common/hashmap.h"
@@ -57,13 +58,14 @@ public:
 	bool hasFile(const Common::Path &path) const override;
 	int listMembers(Common::ArchiveMemberList&) const override;
 	const ArchiveMemberPtr getMember(const Common::Path &path) const override;
-	Common::SharedArchiveContents readContentsForPath(const Common::String& translated) const override;
+	Common::SharedArchiveContents readContentsForPath(const Common::Path &translated) const override;
 
 	ClickteamTag* getTag(ClickteamTagId tagId) const;
 
 	static ClickteamInstaller* openPatch(Common::SeekableReadStream *stream, bool verifyOriginal = true, bool verifyAllowSkip = true,
 					     Common::Archive *reference = &SearchMan, DisposeAfterUse::Flag dispose = DisposeAfterUse::NO);
 	static ClickteamInstaller* open(Common::SeekableReadStream *stream, DisposeAfterUse::Flag dispose = DisposeAfterUse::NO);
+	static ClickteamInstaller* open(const Common::FSNode &node);
 
 private:
 	struct ClickteamPatchDescriptor {
@@ -74,7 +76,7 @@ private:
 	};
 	class ClickteamFileDescriptor {
 	private:
-		Common::String _fileName;
+		Common::Path _fileName;
 
 		// Offset of the file contents relative to the beginning of block3
 		uint32 _fileDataOffset;
@@ -97,8 +99,8 @@ private:
 		ClickteamFileDescriptor() : _fileDataOffset(0), _fileDescriptorOffset(0), _compressedSize(0), _uncompressedSize(0) {}
 	};
 
-	ClickteamInstaller(Common::HashMap<Common::String, ClickteamFileDescriptor, Common::IgnoreCase_Hash, Common::IgnoreCase_EqualTo> files,
-			   Common::HashMap<uint16, Common::SharedPtr<ClickteamTag>> tags,
+	ClickteamInstaller(const Common::HashMap<Common::Path, ClickteamFileDescriptor, Common::Path::IgnoreCase_Hash, Common::Path::IgnoreCase_EqualTo> &files,
+			   const Common::HashMap<uint16, Common::SharedPtr<ClickteamTag>> &tags,
 			   uint32 crcXor, uint32 block3Offset, uint32 block3Size, Common::SeekableReadStream *stream,
 			   Common::Archive *reference,
 			   DisposeAfterUse::Flag dispose)
@@ -106,9 +108,9 @@ private:
 		  _reference(reference) {
 	}
 
-	static int findPatchIdx(const ClickteamFileDescriptor &desc, Common::SeekableReadStream *refStream, const Common::String &fileName,
+	static int findPatchIdx(const ClickteamFileDescriptor &desc, Common::SeekableReadStream *refStream, const Common::Path &fileName,
 				uint32 crcXor, bool doWarn);
-	Common::HashMap<Common::String, ClickteamFileDescriptor, Common::IgnoreCase_Hash, Common::IgnoreCase_EqualTo> _files;
+	Common::HashMap<Common::Path, ClickteamFileDescriptor, Common::Path::IgnoreCase_Hash, Common::Path::IgnoreCase_EqualTo> _files;
 	Common::HashMap<uint16, Common::SharedPtr<ClickteamTag>> _tags;
 	Common::DisposablePtr<Common::SeekableReadStream> _stream;
 	uint32 _crcXor, _block3Offset/*, _block3Size*/;

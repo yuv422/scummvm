@@ -44,6 +44,11 @@ enum class ScenePositionType {
 
 // ZONES
 
+#define ZONE_INIT_ON 1
+#define ZONE_ON 2
+#define ZONE_ACTIVE 4
+#define ZONE_OBLIGATOIRE 8
+
 /**
  * Special actions, like change scene, climbing a ladder, ...
  */
@@ -167,6 +172,12 @@ public:
 	int32 _alphaLight = 0;
 	int32 _betaLight = 0;
 
+	uint8 _island = 0;
+	uint8 _shadowLevel = 0; // lba2
+	uint8 _modeLabyrinthe = 0; // lba2
+	uint8 _currentCubeX = 0; // lba2
+	uint8 _currentCubeY = 0; // lba2
+
 	IVec3 _newHeroPos;
 
 	/** Hero Y coordinate before fall */
@@ -203,7 +214,7 @@ public:
 	int32 _sceneNumZones = 0;
 	ZoneStruct _sceneZones[NUM_MAX_ZONES];
 
-	ActorStruct *getActor(int32 actorIdx);
+	ActorStruct *getActor(int32 actorIdx); // ListObjet
 
 	void playSceneMusic();
 
@@ -211,6 +222,9 @@ public:
 
 	/** Change to another scene */
 	void changeScene();
+
+	/** For the buggy to get the 2D coordinates of an exterior cube in the map */
+	bool loadSceneCubeXY(int sceneNum, int32 *cubeX, int32 *cubeY);
 
 	/** Process scene environment sound */
 	void processEnvironmentSound();

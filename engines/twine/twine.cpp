@@ -23,25 +23,21 @@
 #include "common/config-manager.h"
 #include "common/debug.h"
 #include "common/error.h"
-#include "common/events.h"
-#include "common/keyboard.h"
 #include "common/savefile.h"
 #include "common/scummsys.h"
 #include "common/str.h"
 #include "common/stream.h"
 #include "common/system.h"
-#include "common/textconsole.h"
 #include "common/text-to-speech.h"
+#include "common/textconsole.h"
 #include "engines/metaengine.h"
 #include "engines/util.h"
 #include "graphics/cursorman.h"
 #include "graphics/font.h"
 #include "graphics/fontman.h"
 #include "graphics/managed_surface.h"
-#include "graphics/palette.h"
 #include "graphics/pixelformat.h"
 #include "graphics/surface.h"
-#include "gui/debugger.h"
 #include "twine/audio/music.h"
 #include "twine/audio/sound.h"
 #include "twine/debugger/console.h"
@@ -49,12 +45,12 @@
 #include "twine/debugger/debug_grid.h"
 #include "twine/debugger/debug_scene.h"
 #include "twine/detection.h"
-#include "twine/movies.h"
 #include "twine/holomap.h"
 #include "twine/input.h"
 #include "twine/menu/interface.h"
 #include "twine/menu/menu.h"
 #include "twine/menu/menuoptions.h"
+#include "twine/movies.h"
 #include "twine/renderer/redraw.h"
 #include "twine/renderer/renderer.h"
 #include "twine/renderer/screens.h"
@@ -62,12 +58,16 @@
 #include "twine/resources/resources.h"
 #include "twine/scene/actor.h"
 #include "twine/scene/animations.h"
+#include "twine/scene/buggy.h"
 #include "twine/scene/collision.h"
+#include "twine/scene/dart.h"
 #include "twine/scene/extra.h"
 #include "twine/scene/gamestate.h"
 #include "twine/scene/grid.h"
 #include "twine/scene/movements.h"
+#include "twine/scene/rain.h"
 #include "twine/scene/scene.h"
+#include "twine/scene/wagon.h"
 #include "twine/script/script_life_v1.h"
 #include "twine/script/script_life_v2.h"
 #include "twine/script/script_move_v1.h"
@@ -123,13 +123,28 @@ void TwineScreen::update() {
 		return;
 	}
 	_lastFrame = _engine->_frameCounter;
+
+	if (_engine->_redraw->_flagMCGA) {
+		markAllDirty();
+		Graphics::ManagedSurface zoomWorkVideoBuffer(_engine->_workVideoBuffer);
+		const int maxW = zoomWorkVideoBuffer.w;
+		const int maxH = zoomWorkVideoBuffer.h;
+		const int left = CLIP<int>(_engine->_redraw->_sceneryViewX - maxW / 4, 0, maxW / 2);
+		const int top = CLIP<int>(_engine->_redraw->_sceneryViewY - maxH / 4, 0, maxH / 2);
+		const Common::Rect srcRect(left, top, left + maxW / 2, top + maxH / 2);
+		const Common::Rect &destRect = zoomWorkVideoBuffer.getBounds();
+		zoomWorkVideoBuffer.blitFrom(*this, srcRect, destRect);
+		blitFrom(zoomWorkVideoBuffer);
+		// TODO: we need to redraw everything because we just modified the screen buffer itself
+		_engine->_redraw->_firstTime = true;
+	}
 	Super::update();
 }
 
 TwinEEngine::TwinEEngine(OSystem *system, Common::Language language, uint32 flags, Common::Platform platform, TwineGameType gameType)
 	: Engine(system), _gameType(gameType), _gameLang(language), _frontVideoBuffer(this), _gameFlags(flags), _platform(platform), _rnd("twine") {
 	// Add default file directories
-	const Common::FSNode gameDataDir(ConfMan.get("path"));
+	const Common::FSNode gameDataDir(ConfMan.getPath("path"));
 	SearchMan.addSubDirectoryMatching(gameDataDir, "fla");
 	SearchMan.addSubDirectoryMatching(gameDataDir, "vox");
 	if (isLBA2()) {
@@ -196,6 +211,10 @@ TwinEEngine::TwinEEngine(OSystem *system, Common::Language language, uint32 flag
 	} else {
 		_scriptLife = new ScriptLifeV2(this);
 		_scriptMove = new ScriptMoveV2(this);
+		_buggy = new Buggy(this);
+		_dart = new Dart(this);
+		_rain = new Rain(this);
+		_wagon = new Wagon(this);
 	}
 	_holomap = new Holomap(this);
 	_sound = new Sound(this);
@@ -304,9 +323,9 @@ Common::Error TwinEEngine::run() {
 	if (ConfMan.hasKey("boot_param")) {
 		const int sceneIndex = ConfMan.getInt("boot_param");
 		if (sceneIndex < 0 || sceneIndex >= LBA1SceneId::SceneIdMax) {
-			warning("Scene index out of bounds\n");
+			warning("Scene index out of bounds");
 		} else {
-			debug("Boot parameter: %i\n", sceneIndex);
+			debug("Boot parameter: %i", sceneIndex);
 			_gameState->initEngineVars();
 			_text->normalWinDial();
 			_text->_drawTextBoxBackground = true;
@@ -343,7 +362,7 @@ Common::Error TwinEEngine::run() {
 			_state = EngineState::Menu;
 			break;
 		case EngineState::Menu:
-		#if 0
+#if 0
 			// this will enter the game and execute the commands in the file "debug"
 			_gameState->initEngineVars();
 			_text->textClipSmall();
@@ -353,9 +372,9 @@ Common::Error TwinEEngine::run() {
 				debug("Failed to execute debug file before entering the scene");
 			}
 			gameEngineLoop();
-		#else
+#else
 			_state = _menu->run();
-		#endif
+#endif
 			break;
 		}
 	}
@@ -394,7 +413,7 @@ void TwinEEngine::wipeSaveSlot(int slot) {
 	saveFileMan->removeSavefile(saveFile);
 }
 
-bool TwinEEngine::canSaveGameStateCurrently() { return _scene->isGameRunning(); }
+bool TwinEEngine::canSaveGameStateCurrently(Common::U32String *msg) { return _scene->isGameRunning(); }
 
 Common::Error TwinEEngine::loadGameStream(Common::SeekableReadStream *stream) {
 	debug("load game stream");
@@ -556,7 +575,7 @@ void TwinEEngine::playIntro() {
 	bool abort = false;
 
 	if (isLBA2()) {
-		//abort |= _screens->loadImageDelay(_resources->activisionLogo(), 7);
+		// abort |= _screens->loadImageDelay(_resources->activisionLogo(), 7);
 		abort |= _screens->loadImageDelay(_resources->eaLogo(), 7);
 	}
 
@@ -606,12 +625,21 @@ void TwinEEngine::playIntro() {
 	}
 }
 
-void TwinEEngine::initSceneryView() {
-	_redraw->_inSceneryView = true;
+void TwinEEngine::extInitMcga() {
+	_redraw->_flagMCGA = true;
 }
 
-void TwinEEngine::exitSceneryView() {
-	_redraw->_inSceneryView = false;
+void TwinEEngine::extInitSvga() {
+	_redraw->_flagMCGA = false;
+}
+
+void TwinEEngine::testRestoreModeSVGA(bool redraw) {
+	if (_redraw->_flagMCGA) {
+		extInitSvga();
+		if (redraw) {
+			_redraw->redrawEngineActions(redraw);
+		}
+	}
 }
 
 void TwinEEngine::initAll() {
@@ -625,7 +653,7 @@ void TwinEEngine::initAll() {
 
 	_resources->initResources();
 
-	exitSceneryView();
+	extInitSvga();
 
 	_screens->clearScreen();
 
@@ -643,16 +671,20 @@ int TwinEEngine::getRandomNumber(uint max) {
 void TwinEEngine::freezeTime(bool pause) {
 	if (_isTimeFreezed == 0) {
 		_saveFreezedTime = timerRef;
+		debugC(3, kDebugLevels::kDebugTime, "freezeTime: timer %i", timerRef);
 		if (pause)
 			_pauseToken = pauseEngine();
 	}
 	_isTimeFreezed++;
+	debugC(3, kDebugLevels::kDebugTime, "freezeTime: %i", _isTimeFreezed);
 }
 
 void TwinEEngine::unfreezeTime() {
 	--_isTimeFreezed;
+	debugC(3, kDebugLevels::kDebugTime, "unfreezeTime: %i", _isTimeFreezed);
 	if (_isTimeFreezed == 0) {
 		timerRef = _saveFreezedTime;
+		debugC(3, kDebugLevels::kDebugTime, "unfreezeTime: time %i", timerRef);
 		if (_pauseToken.isActive()) {
 			_pauseToken.clear();
 		}
@@ -700,7 +732,7 @@ void TwinEEngine::processBonusList() {
 
 void TwinEEngine::processInventoryAction() {
 	ScopedEngineFreeze scoped(this);
-	exitSceneryView();
+	extInitSvga();
 	_menu->processInventoryMenu();
 
 	switch (_loopInventoryItem) {
@@ -750,6 +782,12 @@ void TwinEEngine::processInventoryAction() {
 		penguin->_pos = _scene->_sceneHero->posObj();
 		penguin->_pos.x += destPos.x;
 		penguin->_pos.z += destPos.y;
+		// TODO: HACK for https://bugs.scummvm.org/ticket/13731
+		// The movement of the meca penguin is different from dos version
+		// the problem is that the value set to 1 even if the penguin is not yet spawned
+		// this might either be a problem with initObject() not being called for the penguin
+		// or some other flaw that doesn't ignore the penguin until spawned
+		penguin->_workFlags.bIsFalling = 0;
 
 		penguin->_beta = _scene->_sceneHero->_beta;
 		debug("penguin angle: %i", penguin->_beta);
@@ -758,7 +796,7 @@ void TwinEEngine::processInventoryAction() {
 			penguin->setLife(kActorMaxLife);
 			penguin->_genBody = BodyType::btNone;
 			_actor->initBody(BodyType::btNormal, _scene->_mecaPenguinIdx);
-			penguin->_dynamicFlags.bIsDead = 0;
+			penguin->_workFlags.bIsDead = 0;
 			penguin->setCollision(ShapeType::kNone);
 			_movements->initRealAngleConst(penguin->_beta, penguin->_beta, penguin->_speed, &penguin->realAngle);
 			_gameState->removeItem(InventoryItems::kiPenguin);
@@ -795,7 +833,7 @@ int32 TwinEEngine::toSeconds(int x) const {
 
 void TwinEEngine::processOptionsMenu() {
 	ScopedEngineFreeze scoped(this);
-	exitSceneryView();
+	extInitSvga();
 	_sound->pauseSamples();
 	_menu->inGameOptionsMenu();
 	_scene->playSceneMusic();
@@ -819,9 +857,7 @@ bool TwinEEngine::runGameEngine() { // mainLoopInteration
 	if (_scene->_needChangeScene > -1) {
 		if (!isMod() && isDemo() && isLBA1()) {
 			// the demo only has these scenes
-			if (_scene->_needChangeScene != LBA1SceneId::Citadel_Island_Prison
-			 && _scene->_needChangeScene != LBA1SceneId::Citadel_Island_outside_the_citadel
-			 && _scene->_needChangeScene != LBA1SceneId::Citadel_Island_near_the_tavern) {
+			if (_scene->_needChangeScene != LBA1SceneId::Citadel_Island_Prison && _scene->_needChangeScene != LBA1SceneId::Citadel_Island_outside_the_citadel && _scene->_needChangeScene != LBA1SceneId::Citadel_Island_near_the_tavern) {
 				// TODO: PlayMidiFile(6);
 				return true;
 			}
@@ -842,7 +878,7 @@ bool TwinEEngine::runGameEngine() { // mainLoopInteration
 		// Process give up menu - Press ESC
 		if (_input->toggleAbortAction() && _scene->_sceneHero->_lifePoint > 0 && _scene->_sceneHero->_body != -1 && !_scene->_sceneHero->_staticFlags.bIsHidden) {
 			ScopedEngineFreeze scopedFreeze(this);
-			exitSceneryView();
+			extInitSvga();
 			const int giveUp = _menu->giveupMenu();
 			if (giveUp == kQuitEngine) {
 				return false;
@@ -878,11 +914,11 @@ bool TwinEEngine::runGameEngine() { // mainLoopInteration
 		// Process behaviour menu
 		const bool behaviourMenu = _input->isActionActive(TwinEActionType::BehaviourMenu, false);
 		if ((behaviourMenu ||
-		     _input->isActionActive(TwinEActionType::QuickBehaviourNormal, false) ||
-		     _input->isActionActive(TwinEActionType::QuickBehaviourAthletic, false) ||
-		     _input->isActionActive(TwinEActionType::QuickBehaviourAggressive, false) ||
-		     _input->isActionActive(TwinEActionType::QuickBehaviourDiscreet, false)) &&
-		    _scene->_sceneHero->_body != -1 && _scene->_sceneHero->_controlMode == ControlMode::kManual) {
+			 _input->isActionActive(TwinEActionType::QuickBehaviourNormal, false) ||
+			 _input->isActionActive(TwinEActionType::QuickBehaviourAthletic, false) ||
+			 _input->isActionActive(TwinEActionType::QuickBehaviourAggressive, false) ||
+			 _input->isActionActive(TwinEActionType::QuickBehaviourDiscreet, false)) &&
+			_scene->_sceneHero->_body != -1 && _scene->_sceneHero->_controlMode == ControlMode::kManual) {
 			if (_input->isActionActive(TwinEActionType::QuickBehaviourNormal, false)) {
 				_actor->_heroBehaviour = HeroBehaviourType::kNormal;
 			} else if (_input->isActionActive(TwinEActionType::QuickBehaviourAthletic, false)) {
@@ -893,6 +929,7 @@ bool TwinEEngine::runGameEngine() { // mainLoopInteration
 				_actor->_heroBehaviour = HeroBehaviourType::kDiscrete;
 			}
 			ScopedEngineFreeze scopedFreeze(this);
+			testRestoreModeSVGA(true);
 			_menu->processBehaviourMenu(behaviourMenu);
 			_redraw->redrawEngineActions(true);
 		}
@@ -920,7 +957,12 @@ bool TwinEEngine::runGameEngine() { // mainLoopInteration
 
 		// Draw holomap
 		if (_input->toggleActionIfActive(TwinEActionType::OpenHolomap) && _gameState->hasItem(InventoryItems::kiHolomap) && !_gameState->inventoryDisabled()) {
+			testRestoreModeSVGA(true);
+			freezeTime(false);
 			_holomap->holoMap();
+			// unfreeze here - the redrawEngineActions is also doing a freeze
+			// see https://bugs.scummvm.org/ticket/14808
+			unfreezeTime();
 			_screens->_fadePalette = true;
 			_redraw->redrawEngineActions(true);
 		}
@@ -930,9 +972,8 @@ bool TwinEEngine::runGameEngine() { // mainLoopInteration
 			ScopedEngineFreeze scopedFreeze(this, true);
 			const char *PauseString = "Pause";
 			_text->setFontColor(COLOR_WHITE);
-			if (_redraw->_inSceneryView) {
+			if (_redraw->_flagMCGA) {
 				_text->drawText(_redraw->_sceneryViewX + 5, _redraw->_sceneryViewY, PauseString);
-				_redraw->zoomScreenScale();
 			} else {
 				const int width = _text->getTextSize(PauseString);
 				const int bottom = height() - _text->lineHeight;
@@ -947,6 +988,16 @@ bool TwinEEngine::runGameEngine() { // mainLoopInteration
 				}
 			} while (!_input->toggleActionIfActive(TwinEActionType::Pause));
 			_redraw->redrawEngineActions(true);
+		}
+
+		if (_input->toggleActionIfActive(TwinEActionType::SceneryZoom)) {
+			_redraw->_flagMCGA ^= true;
+			if (_redraw->_flagMCGA) {
+				extInitMcga();
+			} else {
+				extInitSvga();
+				_redraw->_firstTime = true;
+			}
 		}
 	}
 
@@ -970,7 +1021,7 @@ bool TwinEEngine::runGameEngine() { // mainLoopInteration
 	for (int32 a = 0; a < _scene->_nbObjets; a++) {
 		ActorStruct *actor = _scene->getActor(a);
 
-		if (actor->_dynamicFlags.bIsDead) {
+		if (actor->_workFlags.bIsDead) {
 			continue;
 		}
 
@@ -1046,7 +1097,7 @@ bool TwinEEngine::runGameEngine() { // mainLoopInteration
 
 		if (actor->_lifePoint <= 0) {
 			if (IS_HERO(a)) {
-				if (actor->_dynamicFlags.bAnimEnded) {
+				if (actor->_workFlags.bAnimEnded) {
 					if (_gameState->_inventoryNumLeafs > 0) { // use clover leaf automaticaly
 						_scene->_sceneHero->_pos = _scene->_newHeroPos;
 
@@ -1086,7 +1137,7 @@ bool TwinEEngine::runGameEngine() { // mainLoopInteration
 				}
 			} else {
 				_actor->processActorCarrier(a);
-				actor->_dynamicFlags.bIsDead = 1;
+				actor->_workFlags.bIsDead = 1;
 				actor->_body = -1;
 				actor->_zoneSce = -1;
 			}
@@ -1219,9 +1270,9 @@ void TwinEEngine::drawText(int32 x, int32 y, const Common::String &text, bool ce
 		return;
 	}
 	font->drawString(&_frontVideoBuffer, text,
-	                 x, y, width,
-	                 _frontVideoBuffer.format.RGBToColor(255, 255, 255),
-	                 center ? Graphics::kTextAlignCenter : Graphics::kTextAlignLeft, 0, true);
+					 x, y, width,
+					 _frontVideoBuffer.format.RGBToColor(255, 255, 255),
+					 center ? Graphics::kTextAlignCenter : Graphics::kTextAlignLeft, 0, true);
 }
 
 Common::Language TwinEEngine::getGameLang() const {

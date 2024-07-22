@@ -33,7 +33,7 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::EN_ANY,
 		Common::kPlatformWindows,
 		ADGF_DEMO,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -46,7 +46,7 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::ES_ESP,
 		Common::kPlatformWindows,
 		ADGF_DEMO,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -59,7 +59,7 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::PT_BRA,
 		Common::kPlatformWindows,
 		ADGF_DEMO,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -109,7 +109,7 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::EN_USA,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -122,7 +122,7 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::EN_GRB,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{ // 25th Anniversary rerelease / Steam DLC for Director's Cut
@@ -135,7 +135,7 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::EN_GRB,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -148,7 +148,7 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::EN_GRB,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -161,7 +161,21 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::EN_ANY,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
+	},
+
+	{ // Bundled with ScummVM 0.8
+	  // Reported by YetAnotherGuy via IRC
+		"sword1",
+		"SoldOut rerelease",
+		AD_ENTRY4s("clusters/scripts.clu",  "72b10193714e8c6e4daca51791c0db0c", 1088292,
+				   "clusters/swordres.rif", "5463362dc77b6efc36e46ac84998bd2f", 59788,
+				   "clusters/text.clu",     "76f93f5feecc8915435105478f3c6615", 3193159,
+				   "video/intro.mp2",       "c3e0ab75e8686c746899a9b6cecceac9", 8739102),
+		Common::EN_ANY,
+		Common::kPlatformWindows,
+		ADGF_NO_FLAGS,
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -174,7 +188,7 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::FR_FRA,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -187,7 +201,7 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::FR_FRA,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -200,7 +214,7 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::FR_FRA,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -213,7 +227,7 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::FR_FRA,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -226,7 +240,7 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::DE_DEU,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -239,7 +253,46 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::DE_DEU,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
+	},
+
+	{ // German DVD Trilogy collection
+		"sword1",
+		"",
+		AD_ENTRY4s("clusters/scripts.clu",  "72b10193714e8c6e4daca51791c0db0c", 1087240,
+				   "clusters/swordres.rif", "b0ae5a47aba74dc0acb3442d4c84b225", 58916,
+				   "clusters/text.clu",     "76f93f5feecc8915435105478f3c6615", 2705446,
+				   "video/intro.dxa",       "e27cd33593c08b66e8d20fbc40938789", 7397543),
+		Common::DE_DEU,
+		Common::kPlatformWindows,
+		ADGF_NO_FLAGS,
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
+	},
+
+	{ // GOG.com version + german translation
+		"sword1",
+		"GOG.com",
+		AD_ENTRY4s("clusters/scripts.clu",  "72b10193714e8c6e4daca51791c0db0c", 1087240,
+				   "clusters/swordres.rif", "5463362dc77b6efc36e46ac84998bd2f", 59788,
+				   "clusters/text.clu",     "76f93f5feecc8915435105478f3c6615", 2705446,
+				   "video/intro.dxa",       "e27cd33593c08b66e8d20fbc40938789", 7397543),
+		Common::DE_DEU,
+		Common::kPlatformWindows,
+		ADGF_NO_FLAGS,
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
+	},
+
+	{ // German version of "Revolution Classic Adventures"
+		"sword1",
+		"",
+		AD_ENTRY4s("clusters/scripts.clu",  "72b10193714e8c6e4daca51791c0db0c", 1087240,
+				   "clusters/swordres.rif", "b0ae5a47aba74dc0acb3442d4c84b225", 58916,
+				   "clusters/text.clu",     "76f93f5feecc8915435105478f3c6615", 2705446,
+				   "smackshi/intro.smk",    "40a2106393c2a749304de0545ddcb7f6", 11542280),
+		Common::DE_DEU,
+		Common::kPlatformWindows,
+		ADGF_NO_FLAGS,
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -252,7 +305,7 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::ES_ESP,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{ // Alternate version
@@ -265,7 +318,7 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::ES_ESP,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -278,7 +331,7 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::ES_ESP,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -291,7 +344,7 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::IT_ITA,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -304,7 +357,7 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::IT_ITA,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -317,7 +370,7 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::IT_ITA,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -330,7 +383,7 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::PT_PRT,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -343,7 +396,7 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::PT_BRA,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -356,7 +409,7 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::HE_ISR,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -369,7 +422,7 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::PL_POL,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -378,11 +431,50 @@ static const ADGameDescription gameDescriptions[] = {
 		AD_ENTRY4s("clusters/scripts.clu",  "72b10193714e8c6e4daca51791c0db0c", 1088292,
 				   "clusters/swordres.rif", "04a41fc5783d18a8958d41aa9a3823af", 59788,
 				   "clusters/text.clu",     "b9e7b3e342569be68738e4681f2adeff", 3164267,
-				   "intro.dxa",             nullptr, -1),
+				   "intro.dxa",             nullptr, AD_NO_SIZE),
 		Common::PL_POL,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
+	},
+
+	{
+		"sword1",
+		"English speech",
+		AD_ENTRY4s("clusters/scripts.clu",  "72b10193714e8c6e4daca51791c0db0c", 1087240,
+				   "clusters/swordres.rif", "7188a3ec8d486fd9179f06968369c011", 58916,
+				   "clusters/text.clu",     "b9e7b3e342569be68738e4681f2adeff", 2675700,
+				   "smackshi/intro.smk",    "d82a7869ace8fcecaa519c04c4bfc483", 13233268),
+		Common::PL_POL,
+		Common::kPlatformWindows,
+		ADGF_NO_FLAGS,
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
+	},
+
+	{
+		"sword1",
+		"English speech",
+		AD_ENTRY4s("clusters/scripts.clu",  "72b10193714e8c6e4daca51791c0db0c", 1087240,
+				   "clusters/swordres.rif", "31ea11161d5d2200b6b44a833b7d5aa8", 58916,
+				   "clusters/text.clu",     "7d9e47533fde5333dc310bfd73eaeb5c", 2666334,
+				   "smackshi/intro.smk",    "d82a7869ace8fcecaa519c04c4bfc483", 13233268),
+		Common::PL_POL,
+		Common::kPlatformWindows,
+		ADGF_NO_FLAGS,
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
+	},
+
+	{
+		"sword1",
+		"English speech",
+		AD_ENTRY4s("clusters/scripts.clu",  "72b10193714e8c6e4daca51791c0db0c", 1088372,
+				   "clusters/swordres.rif", "04a41fc5783d18a8958d41aa9a3823af", 59788,
+				   "clusters/text.clu",     "b9e7b3e342569be68738e4681f2adeff", 3164267,
+				   "smackshi/intro.smk",    "d82a7869ace8fcecaa519c04c4bfc483", 13233268),
+		Common::PL_POL,
+		Common::kPlatformWindows,
+		ADGF_NO_FLAGS,
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -395,7 +487,7 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::HU_HUN,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -408,7 +500,7 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::CS_CZE,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -417,11 +509,11 @@ static const ADGameDescription gameDescriptions[] = {
 		AD_ENTRY4s("clusters/scripts.clu",  "72b10193714e8c6e4daca51791c0db0c", 1088372,
 				   "clusters/swordres.rif", "239bdd76c405bad0f804a8ae5df4adb0", 59788,
 				   "clusters/text.clu",     "76f93f5feecc8915435105478f3c6615", 3199652,
-				   "intro.dxa",             nullptr, -1),
+				   "intro.dxa",             nullptr, AD_NO_SIZE),
 		Common::CS_CZE,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -434,7 +526,7 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::RU_RUS,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -447,7 +539,20 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::RU_RUS,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
+	},
+
+	{ // Alternate version, from a DVD collection containing both BS1 and BS2
+		"sword1",
+		"Mediahauz",
+		AD_ENTRY4s("clusters/scripts.clu",  "72b10193714e8c6e4daca51791c0db0c", 1087240,
+				   "clusters/swordres.rif", "7a6e896064c8d2ee266e961549487204", 58916,
+				   "clusters/text.clu",     "76f93f5feecc8915435105478f3c6615", 3198686,
+				   "smackshi/intro.smk",    "432215e04bb74ad823e033bc774f97d7", 14098520),
+		Common::RU_RUS,
+		Common::kPlatformWindows,
+		ADGF_NO_FLAGS,
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{
@@ -460,7 +565,22 @@ static const ADGameDescription gameDescriptions[] = {
 		Common::RU_RUS,
 		Common::kPlatformWindows,
 		ADGF_NO_FLAGS,
-		GUIO0()
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
+	},
+
+	{ // Korean fan translation
+		"sword1",
+		"",
+		AD_ENTRY6s("clusters/scripts.clu",  "72b10193714e8c6e4daca51791c0db0c", 1087240,
+				   "clusters/swordres.rif", "d21d6321ee2dbb2d7d7ca2d2a940c34a", 58916,
+				   "clusters/text.clu",     "76f93f5feecc8915435105478f3c6615", 2704592,
+				   "smackshi/intro.smk",    "d82a7869ace8fcecaa519c04c4bfc483", 13233268,
+				   "bs1k.fnt",              NULL,                               1222000,
+				   "korean.clu",            NULL,                               AD_NO_SIZE),
+		Common::KO_KOR,
+		Common::kPlatformWindows,
+		ADGF_NO_FLAGS,
+		GUIO1(GAMEOPTION_WINDOWS_AUDIO_MODE)
 	},
 
 	{

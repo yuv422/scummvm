@@ -25,7 +25,7 @@
 // dirty rectangles technique.
 //
 // TODO: do research/profiling to find out if this dirty rectangles thing
-// is still giving ANY notable perfomance boost at all.
+// is still giving ANY notable performance boost at all.
 //
 // TODO: would that give any benefit to reorganize the code and move dirty
 // rectangles into SoftwareGraphicDriver?
@@ -45,7 +45,7 @@
 //
 //=============================================================================
 
-#include "ags/lib/std/vector.h"
+#include "common/std/vector.h"
 #include "ags/engine/ac/draw_software.h"
 #include "ags/shared/gfx/bitmap.h"
 #include "ags/shared/util/scaling.h"

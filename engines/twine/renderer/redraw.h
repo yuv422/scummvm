@@ -24,19 +24,29 @@
 
 #include "common/scummsys.h"
 #include "common/rect.h"
+#include "common/str.h"
 #include "twine/shared.h"
 
 namespace TwinE {
 
+// MAX_INCRUST_DISP
 #define OVERLAY_MAX_ENTRIES 10
 
 enum class OverlayType {
-	koSprite = 0,
-	koNumber = 1,
-	koNumberRange = 2,
-	koInventoryItem = 3,
-	koText = 4
+	koSprite = 0,        // INCRUST_SPRITE
+	koNumber = 1,        // INCRUST_NUM
+	koNumberRange = 2,   // INCRUST_CMPT
+	koInventoryItem = 3, // INCRUST_OBJ
+	koText = 4,          // INCRUST_TEXT
+	koInventory = 5,     // lba2 (INCRUST_INVENTORY)
+	koSysText = 6,       // lba2 (INCRUST_SYS_TEXT)
+	koFlash = 7,         // lba2 (INCRUST_ECLAIR)
+	koRain = 8,          // lba2 (INCRUST_PLUIE)
+	koMax
 };
+
+// lba2
+#define INCRUST_YCLIP (1 << 8)
 
 enum class OverlayPosType {
 	koNormal = 0,
@@ -136,7 +146,7 @@ private:
 public:
 	Redraw(TwinEEngine *engine);
 
-	bool _inSceneryView = false; // FlagMCGA
+	bool _flagMCGA = false;
 
 	/** Request background redraw */
 	bool _firstTime = false;
@@ -154,7 +164,8 @@ public:
 	void setRenderText(const Common::String &text);
 
 	// InitIncrustDisp
-	void addOverlay(OverlayType type, int16 info0, int16 x, int16 y, int16 info1, OverlayPosType posType, int16 lifeTime);
+	int32 addOverlay(OverlayType type, int16 info0, int16 x, int16 y, int16 info1, OverlayPosType posType, int16 lifeTime);
+	void posObjIncrust(OverlayListStruct *ptrdisp, int32 num); // lba2
 
 	/**
 	 * Add a certain region to redraw list array
@@ -190,11 +201,6 @@ public:
 	 * @param listSize number of drawing objects in the list
 	 */
 	void sortDrawingList(DrawListStruct *list, int32 listSize) const;
-
-	/**
-	 * Zooms the area around the scenery view focus positions
-	 */
-	void zoomScreenScale();
 };
 
 } // namespace TwinE

@@ -54,9 +54,9 @@
 namespace Director {
 
 const char *SoundJam::xlibName = "SoundJam";
-const char *SoundJam::fileNames[] = {
-	"SoundJam",
-	nullptr
+const XlibFileDesc SoundJam::fileNames[] = {
+	{ "SoundJam",	nullptr },
+	{ nullptr,		nullptr },
 };
 
 const int kJamChannel = 3;
@@ -76,7 +76,7 @@ static MethodProto xlibMethods[] = {
 	{ nullptr, nullptr, 0, 0, 0 }
 };
 
-void SoundJam::open(int type) {
+void SoundJam::open(ObjectType type, const Common::Path &path) {
 	if (type == kXObj) {
 		SoundJamObject::initMethods(xlibMethods);
 		SoundJamObject *xobj = new SoundJamObject(kXObj);
@@ -84,7 +84,7 @@ void SoundJam::open(int type) {
 	}
 }
 
-void SoundJam::close(int type) {
+void SoundJam::close(ObjectType type) {
 	if (type == kXObj) {
 		SoundJamObject::cleanupMethods();
 		g_lingo->_globalvars[xlibName] = Datum();

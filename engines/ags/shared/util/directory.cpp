@@ -21,7 +21,7 @@
 
 #include "common/config-manager.h"
 #include "common/fs.h"
-#include "ags/lib/std/regex.h"
+#include "common/std/regex.h"
 #include "ags/shared/core/platform.h"
 #include "ags/shared/util/string_utils.h"
 #include "ags/shared/util/directory.h"
@@ -86,7 +86,8 @@ String GetCurrentDirectory() {
 	Path::FixupPath(str);
 	return str;
 #else
-	return ConfMan.get("path");
+	// Use / separator
+	return ConfMan.getPath("path").toString('/');
 #endif
 }
 

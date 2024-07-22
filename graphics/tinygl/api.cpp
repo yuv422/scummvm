@@ -156,7 +156,7 @@ void tglEdgeFlag(TGLboolean flag) {
 	TinyGL::GLParam p[2];
 
 	p[0].op = TinyGL::OP_EdgeFlag;
-	p[1].i = flag == TGL_TRUE ? 1 : 0;;
+	p[1].i = flag == TGL_TRUE ? 1 : 0;
 
 	c->gl_add_op(p);
 }
@@ -279,6 +279,17 @@ void tglStencilOp(TGLenum sfail, TGLenum dpfail, TGLenum dppass) {
 	p[1].i = sfail;
 	p[2].i = dpfail;
 	p[3].i = dppass;
+
+	c->gl_add_op(p);
+}
+
+void tglPolygonStipple(const TGLubyte *mask) {
+	TinyGL::GLContext *c = TinyGL::gl_get_context();
+	TinyGL::GLParam p[129];
+
+	p[0].op = TinyGL::OP_PolygonStipple;
+	for (int i = 0; i < 128; i++)
+		p[i + 1].ui = mask[i];
 
 	c->gl_add_op(p);
 }

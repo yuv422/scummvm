@@ -96,49 +96,6 @@ protected:
 	DataReadErrorCode load(PlugIn &plugIn, const PlugInModifier &prefix, DataReader &reader) override;
 };
 
-struct MidiModifier : public PlugInModifierData {
-	struct EmbeddedFile {
-		Common::Array<uint8> contents;
-	};
-
-	struct EmbeddedPart {
-		uint8 hasFile;
-		uint8 loop;
-		uint8 overrideTempo;
-		uint8 volume;
-	};
-
-	struct SingleNotePart {
-		uint8 channel;
-		uint8 note;
-		uint8 velocity;
-		uint8 program;
-	};
-
-	union ModeSpecificUnion {
-		EmbeddedPart embedded;
-		SingleNotePart singleNote;
-	};
-
-	MidiModifier();
-
-	PlugInTypeTaggedValue executeWhen;
-	PlugInTypeTaggedValue terminateWhen;
-
-	uint8 embeddedFlag;
-	ModeSpecificUnion modeSpecific;
-
-	PlugInTypeTaggedValue embeddedTempo;		// Float
-	PlugInTypeTaggedValue embeddedFadeIn;		// Float
-	PlugInTypeTaggedValue embeddedFadeOut;		// Float
-	PlugInTypeTaggedValue singleNoteDuration;	// Float
-
-	Common::SharedPtr<EmbeddedFile> embeddedFile;
-
-protected:
-	DataReadErrorCode load(PlugIn &plugIn, const PlugInModifier &prefix, DataReader &reader) override;
-};
-
 struct ListVariableModifier : public PlugInModifierData {
 	enum ContentsType {
 		kContentsTypeInteger = 1,
@@ -174,6 +131,17 @@ protected:
 };
 
 struct PanningModifier : public PlugInModifierData {
+	PlugInTypeTaggedValue unknown1Event; // Probably "Enable When"
+	PlugInTypeTaggedValue unknown2Event; // Probably "Disable When"
+	PlugInTypeTaggedValue unknown3Int;   // Int
+	PlugInTypeTaggedValue unknown4Int;   // Int
+	PlugInTypeTaggedValue unknown5Int;   // Int
+
+protected:
+	DataReadErrorCode load(PlugIn &plugIn, const PlugInModifier &prefix, DataReader &reader) override;
+};
+
+struct FadeModifier : public PlugInModifierData {
 	PlugInTypeTaggedValue unknown1Event; // Probably "Enable When"
 	PlugInTypeTaggedValue unknown2Event; // Probably "Disable When"
 	PlugInTypeTaggedValue unknown3Int;   // Int

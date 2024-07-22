@@ -35,8 +35,8 @@ namespace Action {
 
 void TowerPuzzle::init() {
 	Common::Rect screenBounds = NancySceneState.getViewport().getBounds();
-	_drawSurface.create(screenBounds.width(), screenBounds.height(), g_nancy->_graphicsManager->getInputPixelFormat());
-	_drawSurface.clear(g_nancy->_graphicsManager->getTransColor());
+	_drawSurface.create(screenBounds.width(), screenBounds.height(), g_nancy->_graphics->getInputPixelFormat());
+	_drawSurface.clear(g_nancy->_graphics->getTransColor());
 	setTransparent(true);
 	setVisible(true);
 	moveTo(screenBounds);
@@ -96,6 +96,9 @@ void TowerPuzzle::readData(Common::SeekableReadStream &stream) {
 void TowerPuzzle::execute() {
 	switch (_state) {
 	case kBegin:
+		_puzzleState = (TowerPuzzleData *)NancySceneState.getPuzzleData(TowerPuzzleData::getTag());
+		assert(_puzzleState);
+
 		init();
 		registerGraphics();
 		_numRings = _numRingsByDifficulty[NancySceneState.getDifficulty()];
@@ -118,6 +121,8 @@ void TowerPuzzle::execute() {
 				drawRing(poleID, pos, _puzzleState->order[poleID][pos]);
 			}
 		}
+
+		NancySceneState.setNoHeldItem();
 
 		g_nancy->_sound->loadSound(_takeSound);
 		g_nancy->_sound->loadSound(_dropSound);
@@ -180,7 +185,7 @@ void TowerPuzzle::handleInput(NancyInput &input) {
 	int hoveredPoleID = -1;
 	for (uint poleID = 0; poleID < 3; ++poleID) {
 		if (NancySceneState.getViewport().convertViewportToScreen(_hotspots[poleID]).contains(input.mousePos)) {
-			g_nancy->_cursorManager->setCursorType(CursorManager::kHotspot);
+			g_nancy->_cursor->setCursorType(CursorManager::kHotspot);
 			hoveredPoleID = poleID;
 			break;
 		}
@@ -191,7 +196,7 @@ void TowerPuzzle::handleInput(NancyInput &input) {
 
 		// First, check the exit hotspot
 		if (NancySceneState.getViewport().convertViewportToScreen(_exitHotspot).contains(input.mousePos)) {
-			g_nancy->_cursorManager->setCursorType(g_nancy->_cursorManager->_puzzleExitCursor);
+			g_nancy->_cursor->setCursorType(g_nancy->_cursor->_puzzleExitCursor);
 
 			if (input.input & NancyInput::kLeftMouseButtonUp) {
 				// Player has clicked, exit
@@ -233,12 +238,15 @@ void TowerPuzzle::handleInput(NancyInput &input) {
 			_heldRing._drawSurface.create(_image, _heldRingSrcs[_heldRingID]);
 			_heldRing.setVisible(true);
 			_heldRing.setTransparent(true);
+			_heldRing.pickUp();
 
 			g_nancy->_sound->playSound(_takeSound);
 		}
 	}
 
 	if (_heldRingID != -1) {
+		_heldRing.handleInput(input);
+
 		// Holding a ring, check if it has just been dropped
 		if ((input.input & NancyInput::kLeftMouseButtonUp) || !(input.input & NancyInput::kLeftMouseButtonHeld)) {
 			// Check if dropped over a pole hotspot
@@ -275,38 +283,7 @@ void TowerPuzzle::handleInput(NancyInput &input) {
 
 			// Hide the held ring
 			_heldRing.setVisible(false);
-		} else {
-			// Still holding the ring, move under mouse
-
-			Common::Rect viewport = NancySceneState.getViewport().getScreenPosition();
-
-			// Do not move ring if mouse is outside viewport
-			if (!viewport.contains(input.mousePos)) {
-				return;
-			}
-
-			Common::Rect newScreenPos = _heldRingSrcs[_heldRingID];
-			newScreenPos.moveTo(input.mousePos);
-			newScreenPos.translate(-newScreenPos.width() / 2, -newScreenPos.height() / 2);
-
-			// Center of ring is at top left of cursor
-			const Common::Point &cursorHotspot = g_nancy->_cursorManager->getCurrentCursorHotspot();
-			newScreenPos.translate(-cursorHotspot.x, -cursorHotspot.y);
-
-			// Clip movement so the ring stays entirely inside the viewport
-			if (newScreenPos.left < viewport.left) {
-				newScreenPos.translate(viewport.left - newScreenPos.left, 0);
-			} else if (newScreenPos.right > viewport.right) {
-				newScreenPos.translate(viewport.right - newScreenPos.right, 0);
-			}
-
-			if (newScreenPos.top < viewport.top) {
-				newScreenPos.translate(0, viewport.top - newScreenPos.top);
-			} else if (newScreenPos.bottom > viewport.bottom) {
-				newScreenPos.translate(0, viewport.bottom - newScreenPos.bottom);
-			}
-
-			_heldRing.moveTo(newScreenPos);
+			_heldRing.putDown();
 		}
 	}
 }

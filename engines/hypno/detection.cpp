@@ -91,9 +91,19 @@ static const ADGameDescription gameDescriptions[] = {
 		GUIO1(GUIO_NOMIDI)
 	},
 	{
-		"sinistersix", // HE release
+		"sinistersix", // HE release (CD, Installed)
 		nullptr,
 		AD_ENTRY2s("SPIDER.EXE", "dbd912d6f6724c6d44775fc19cfa8ca0", 483359,
+				"MISSIONS.LIB", "585704e26094cbaf14fbee90798e8d5d", 119945),
+		Common::HE_ISR,
+		Common::kPlatformDOS,
+		ADGF_UNSTABLE,
+		GUIO1(GUIO_NOMIDI)
+	},
+	{
+		"sinistersix", // HE release (CD, Not Installed)
+		nullptr,
+		AD_ENTRY2s("DATA.Z", "5068f15089ac05556c2f3f37e06c4f32", 8921748,
 				"MISSIONS.LIB", "585704e26094cbaf14fbee90798e8d5d", 119945),
 		Common::HE_ISR,
 		Common::kPlatformDOS,
@@ -271,9 +281,9 @@ static const char *const directoryGlobs[] = {
 	nullptr
 };
 
-class HypnoMetaEngineDetection : public AdvancedMetaEngineDetection {
+class HypnoMetaEngineDetection : public AdvancedMetaEngineDetection<ADGameDescription> {
 public:
-	HypnoMetaEngineDetection() : AdvancedMetaEngineDetection(Hypno::gameDescriptions, sizeof(ADGameDescription), Hypno::hypnoGames) {
+	HypnoMetaEngineDetection() : AdvancedMetaEngineDetection(Hypno::gameDescriptions, Hypno::hypnoGames) {
 		_guiOptions = GUIO6(GUIO_NOMIDI, GAMEOPTION_ORIGINAL_CHEATS, GAMEOPTION_INFINITE_HEALTH, GAMEOPTION_INFINITE_AMMO, GAMEOPTION_UNLOCK_ALL_LEVELS, GAMEOPTION_RESTORED_CONTENT);
 		_maxScanDepth = 3;
 		_directoryGlobs = directoryGlobs;

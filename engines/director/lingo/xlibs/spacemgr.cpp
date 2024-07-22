@@ -23,6 +23,7 @@
  *
  * USED IN:
  * DEVO Presents: Adventures of the Smart Patrol
+ * The Dark Eye
  *
  **************************************************/
 
@@ -83,10 +84,9 @@
 namespace Director {
 
 const char *SpaceMgr::xlibName = "SpaceMgr";
-const char *SpaceMgr::fileNames[] = {
-	"SpaceMgr",
-	"SPACEMGR",
-	nullptr
+const XlibFileDesc SpaceMgr::fileNames[] = {
+	{ "SpaceMgr",	nullptr },
+	{ nullptr,		nullptr },
 };
 
 static MethodProto xlibMethods[] = {
@@ -136,22 +136,18 @@ SpaceMgrXObject::SpaceMgrXObject(ObjectType ObjectType) :Object<SpaceMgrXObject>
 	_objType = ObjectType;
 }
 
-void SpaceMgr::open(int type) {
+void SpaceMgr::open(ObjectType type, const Common::Path &path) {
 	if (type == kXObj) {
 		SpaceMgrXObject::initMethods(xlibMethods);
 		SpaceMgrXObject *xobj = new SpaceMgrXObject(kXObj);
 		g_lingo->exposeXObject(xlibName, xobj);
-	} else if (type == kXtraObj) {
-		// TODO - Implement Xtra
 	}
 }
 
-void SpaceMgr::close(int type) {
+void SpaceMgr::close(ObjectType type) {
 	if (type == kXObj) {
 		SpaceMgrXObject::cleanupMethods();
 		g_lingo->_globalvars[xlibName] = Datum();
-	} else if (type == kXtraObj) {
-		// TODO - Implement Xtra
 	}
 }
 

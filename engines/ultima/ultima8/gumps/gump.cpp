@@ -20,10 +20,10 @@
  */
 
 #include "ultima/ultima8/gumps/gump.h"
-#include "ultima/ultima8/graphics/render_surface.h"
-#include "ultima/ultima8/graphics/shape.h"
-#include "ultima/ultima8/graphics/shape_frame.h"
-#include "ultima/ultima8/graphics/shape_archive.h"
+#include "ultima/ultima8/gfx/render_surface.h"
+#include "ultima/ultima8/gfx/shape.h"
+#include "ultima/ultima8/gfx/shape_frame.h"
+#include "ultima/ultima8/gfx/shape_archive.h"
 #include "ultima/ultima8/games/game_data.h"
 #include "ultima/ultima8/gumps/gump_notify_process.h"
 #include "ultima/ultima8/kernel/kernel.h"
@@ -205,8 +205,9 @@ bool Gump::GetMouseCursor(int32 mx, int32 my, Shape &shape, int32 &frame) {
 	{
 		Gump *g = *it;
 
-		// Not if closing
-		if (g->_flags & FLAG_CLOSING) continue;
+		// Not if closing or hidden
+		if (g->_flags & FLAG_CLOSING || g->IsHidden())
+			continue;
 
 		// It's got the point
 		if (g->PointOnGump(mx, my))
@@ -501,8 +502,9 @@ uint16 Gump::TraceObjId(int32 mx, int32 my) {
 	for (it = _children.rbegin(); it != _children.rend(); ++it) {
 		Gump *g = *it;
 
-		// Not if closing
-		if (g->_flags & FLAG_CLOSING) continue;
+		// Not if closing or hidden
+		if (g->_flags & FLAG_CLOSING || g->IsHidden())
+			continue;
 
 		// It's got the point
 		if (g->PointOnGump(gx, gy)) objId_ = g->TraceObjId(gx, gy);
@@ -702,8 +704,9 @@ Gump *Gump::onMouseDown(int button, int32 mx, int32 my) {
 	for (it = _children.rbegin(); it != _children.rend(); ++it) {
 		Gump *g = *it;
 
-		// Not if closing
-		if (g->_flags & FLAG_CLOSING || g->IsHidden()) continue;
+		// Not if closing or hidden
+		if (g->_flags & FLAG_CLOSING || g->IsHidden())
+			continue;
 
 		// It's got the point
 		if (g->PointOnGump(mx, my)) handled = g->onMouseDown(button, mx, my);
@@ -725,8 +728,9 @@ Gump *Gump::onMouseMotion(int32 mx, int32 my) {
 	for (it = _children.rbegin(); it != _children.rend(); ++it) {
 		Gump *g = *it;
 
-		// Not if closing
-		if (g->_flags & FLAG_CLOSING || g->IsHidden()) continue;
+		// Not if closing or hidden
+		if (g->_flags & FLAG_CLOSING || g->IsHidden())
+			continue;
 
 		// It's got the point
 		if (g->PointOnGump(mx, my)) handled = g->onMouseMotion(mx, my);
@@ -764,6 +768,10 @@ bool Gump::OnTextInput(int unicode) {
 bool Gump::mustSave(bool toplevel) const {
 	// DONT_SAVE flag
 	if (_flags & FLAG_DONT_SAVE)
+		return false;
+
+	// don't save when ready for deletion
+	if (_flags & FLAG_CLOSE_AND_DEL)
 		return false;
 
 	if (toplevel) {

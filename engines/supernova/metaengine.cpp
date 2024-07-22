@@ -21,7 +21,6 @@
 
 #include "base/plugins.h"
 #include "common/file.h"
-#include "common/gui_options.h"
 #include "common/savefile.h"
 #include "common/system.h"
 #include "common/translation.h"
@@ -59,7 +58,7 @@ static const ADExtraGuiOptionsMap optionsList[] = {
 	AD_EXTRA_GUI_OPTIONS_TERMINATOR
 };
 
-class SupernovaMetaEngine : public AdvancedMetaEngine {
+class SupernovaMetaEngine : public AdvancedMetaEngine<ADGameDescription> {
 public:
 	const char *getName() const override {
 		return "supernova";

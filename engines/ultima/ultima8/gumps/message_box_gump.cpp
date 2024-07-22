@@ -23,10 +23,10 @@
 #include "ultima/ultima8/gumps/widgets/text_widget.h"
 #include "ultima/ultima8/gumps/widgets/button_widget.h"
 #include "ultima/ultima8/gumps/gump_notify_process.h"
-#include "ultima/ultima8/graphics/fonts/font_manager.h"
+#include "ultima/ultima8/gfx/fonts/font_manager.h"
 #include "ultima/ultima8/kernel/mouse.h"
-#include "ultima/ultima8/graphics/render_surface.h"
-#include "ultima/ultima8/graphics/texture.h"
+#include "ultima/ultima8/gfx/render_surface.h"
+#include "ultima/ultima8/gfx/texture.h"
 
 namespace Ultima {
 namespace Ultima8 {
@@ -140,7 +140,7 @@ void MessageBoxGump::PaintThis(RenderSurface *surf, int32 lerp_factor, bool /*sc
 
 void MessageBoxGump::ChildNotify(Gump *child, uint32 msg) {
 	ButtonWidget *buttonWidget = dynamic_cast<ButtonWidget *>(child);
-	if (buttonWidget && msg == ButtonWidget::BUTTON_CLICK) {
+	if (buttonWidget && (msg == ButtonWidget::BUTTON_CLICK || msg == ButtonWidget::BUTTON_DOUBLE)) {
 		_processResult = child->GetIndex();
 		Close();
 	}

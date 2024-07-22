@@ -54,9 +54,9 @@ const char *EventQXObj::xlibNames[] = {
 	nullptr
 };
 
-const char *EventQXObj::fileNames[] = {
-	"EventQ",
-	nullptr
+const XlibFileDesc EventQXObj::fileNames[] = {
+	{ "EventQ",	nullptr },
+	{ nullptr,	nullptr },
 };
 
 static MethodProto xlibMethods[] = {
@@ -70,7 +70,7 @@ static MethodProto xlibMethods[] = {
 	{ nullptr, nullptr, 0, 0, 0 }
 };
 
-void EventQXObj::open(int type) {
+void EventQXObj::open(ObjectType type, const Common::Path &path) {
 	if (type == kXObj) {
 		EventQXObject::initMethods(xlibMethods);
 		EventQXObject *xobj = new EventQXObject(kXObj);
@@ -80,7 +80,7 @@ void EventQXObj::open(int type) {
 	}
 }
 
-void EventQXObj::close(int type) {
+void EventQXObj::close(ObjectType type) {
 	if (type == kXObj) {
 		EventQXObject::cleanupMethods();
 		for (uint i = 0; xlibNames[i]; i++) {

@@ -19,6 +19,9 @@
  *
  */
 
+#include "backends/modular-backend.h"
+#include "backends/graphics/graphics.h"
+
 #include "common/config-manager.h"
 #include "common/debug-channels.h"
 #include "common/tokenizer.h"
@@ -35,6 +38,7 @@
 #include "director/score.h"
 #include "director/sound.h"
 #include "director/window.h"
+#include "director/debugger/debugtools.h"
 
 /**
  * When detection is compiled dynamically, directory globs end up in detection plugin and
@@ -101,12 +105,14 @@ DirectorEngine::DirectorEngine(OSystem *syst, const DirectorGameDescription *gam
 	_forceDate.tm_mon = -1;
 	_forceDate.tm_year = -1;
 	_forceDate.tm_wday = -1;
+	_loadSlowdownFactor = 0;
+	_loadSlowdownCooldownTime = 0;
 
 	_wm = nullptr;
 
-	_gameDataDir = Common::FSNode(ConfMan.get("path"));
+	_gameDataDir = Common::FSNode(ConfMan.getPath("path"));
 
-	SearchMan.addDirectory(_gameDataDir.getPath(), _gameDataDir, 0, 5);
+	SearchMan.addDirectory(_gameDataDir, 0, 5);
 
 	for (uint i = 0; Director::directoryGlobs[i]; i++) {
 		Common::String directoryGlob = directoryGlobs[i];
@@ -169,15 +175,20 @@ Common::String DirectorEngine::getCurrentPath() const { return _currentWindow->g
 Common::String DirectorEngine::getCurrentAbsolutePath() {
 	Common::String currentPath = getCurrentPath();
 	Common::String result;
-	result += (getPlatform() == Common::kPlatformWindows) ? "C:\\" : "";
+	result += (getPlatform() == Common::kPlatformWindows && _version >= 400) ? "C:\\" : "";
 	result += convertPath(currentPath);
 	return result;
 }
 
 static bool buildbotErrorHandler(const char *msg) { return true; }
 
-void DirectorEngine::setCurrentMovie(Movie *movie) {
-	_currentWindow = movie->getWindow();
+void DirectorEngine::setCurrentWindow(Window *window) {
+	if (_currentWindow == window)
+		return;
+	if (_currentWindow)
+		_currentWindow->decRefCount();
+	_currentWindow = window;
+	_currentWindow->incRefCount();
 }
 
 void DirectorEngine::setVersion(uint16 version) {
@@ -249,7 +260,7 @@ Common::Error DirectorEngine::run() {
 	_wm->setActiveWindow(_stage->getId());
 	setPalette(CastMemberID(kClutSystemMac, -1));
 
-	_currentWindow = _stage;
+	setCurrentWindow(_stage);
 
 	_lingo = new Lingo(this);
 	_lingo->switchStateFromWindow();
@@ -278,13 +289,22 @@ Common::Error DirectorEngine::run() {
 		g_system->updateScreen();
 	}
 
+#ifdef USE_IMGUI
+	ImGuiCallbacks callbacks;
+	bool drawImGui = debugChannelSet(-1, kDebugImGui);
+	callbacks.init = DT::onImGuiInit;
+	callbacks.render = drawImGui ? DT::onImGuiRender : nullptr;
+	callbacks.cleanup = DT::onImGuiCleanup;
+	_system->setImGuiCallbacks(callbacks);
+#endif
+
 	bool loop = true;
 
 	while (loop) {
 		if (_stage->getCurrentMovie())
 			processEvents();
 
-		_currentWindow = _stage;
+		setCurrentWindow(_stage);
 		g_lingo->switchStateFromWindow();
 		loop = _currentWindow->step();
 
@@ -294,7 +314,7 @@ Common::Error DirectorEngine::run() {
 				if (windowList->arr[i].type != OBJECT || windowList->arr[i].u.obj->getObjType() != kWindowObj)
 					continue;
 
-				_currentWindow = static_cast<Window *>(windowList->arr[i].u.obj);
+				setCurrentWindow(static_cast<Window *>(windowList->arr[i].u.obj));
 				g_lingo->switchStateFromWindow();
 				_currentWindow->step();
 			}
@@ -302,6 +322,14 @@ Common::Error DirectorEngine::run() {
 
 		draw();
 		g_director->delayMillis(10);
+#ifdef USE_IMGUI
+		// For performance reasons, disable the renderer callback if the ImGui debug flag isn't set
+		if (debugChannelSet(-1, kDebugImGui) != drawImGui) {
+			drawImGui = !drawImGui;
+			callbacks.render = drawImGui ? DT::onImGuiRender : nullptr;
+			_system->setImGuiCallbacks(callbacks);
+		}
+#endif
 	}
 
 	return Common::kNoError;
@@ -385,8 +413,8 @@ StartMovie DirectorEngine::getStartMovie() const {
 	return _options.startMovie;
 }
 
-Common::String DirectorEngine::getStartupPath() const {
-	return _options.startupPath;
+Common::Path DirectorEngine::getStartupPath() const {
+	return Common::Path(_options.startupPath, g_director->_dirSeparator);
 }
 
 bool DirectorEngine::desktopEnabled() {

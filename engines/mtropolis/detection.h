@@ -24,6 +24,9 @@
 
 #include "engines/advancedDetector.h"
 
+#define MTROPOLIS_WIN_BOOT_SCRIPT_NAME "mtropolis_boot_win.txt"
+#define MTROPOLIS_MAC_BOOT_SCRIPT_NAME "mtropolis_boot_mac.txt"
+
 namespace MTropolis {
 
 enum MTropolisGameID {
@@ -35,12 +38,17 @@ enum MTropolisGameID {
 	GID_ALBERT3				= 5,
 	GID_SPQR				= 6,
 	GID_STTGS				= 7,
+	GID_UNIT				= 8,
+
+	GID_GENERIC				= 9,
 };
 
 // Boot IDs - These can be shared across different variants if the file list and other properties are identical.
 // Cross-reference with the game table in mTropolis engine's boot.cpp
 enum MTropolisGameBootID {
 	MTBOOT_INVALID = 0,
+
+	MTBOOT_USE_BOOT_SCRIPT,
 
 	MTBOOT_OBSIDIAN_RETAIL_MAC_EN,
 	MTBOOT_OBSIDIAN_RETAIL_MAC_JP,
@@ -59,15 +67,30 @@ enum MTropolisGameBootID {
 
 	MTBOOT_MTI_RETAIL_MAC,
 	MTBOOT_MTI_RETAIL_WIN,
+	MTBOOT_MTI_RETAIL_WIN_RU_INSTALLED,
+	MTBOOT_MTI_RETAIL_WIN_RU_DISC,
 	MTBOOT_MTI_DEMO_WIN,
 
 	MTBOOT_ALBERT1_WIN_DE,
 	MTBOOT_ALBERT2_WIN_DE,
 	MTBOOT_ALBERT3_WIN_DE,
+	MTBOOT_ALBERT1_WIN_EN,
+	MTBOOT_ALBERT2_WIN_EN,
+	MTBOOT_ALBERT3_WIN_EN,
+	MTBOOT_ALBERT1_WIN_FR,
+	MTBOOT_ALBERT2_WIN_FR,
+	MTBOOT_ALBERT3_WIN_FR,
+	MTBOOT_ALBERT1_WIN_NL,
+	MTBOOT_ALBERT2_WIN_NL,
+	MTBOOT_ALBERT3_WIN_NL,
+	MTBOOT_ALBERT3_WIN_CA,
+
 	MTBOOT_SPQR_RETAIL_WIN,
 	MTBOOT_SPQR_RETAIL_MAC,
 
 	MTBOOT_STTGS_DEMO_WIN,
+
+	MTBOOT_UNIT_REBOOTED_WIN,
 };
 
 enum MTGameFlag {
@@ -76,6 +99,8 @@ enum MTGameFlag {
 };
 
 struct MTropolisGameDescription {
+	AD_GAME_DESCRIPTION_HELPERS(desc);
+
 	ADGameDescription desc;
 
 	int gameID;

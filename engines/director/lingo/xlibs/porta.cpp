@@ -21,6 +21,7 @@
 
 #include "director/director.h"
 #include "director/lingo/lingo.h"
+#include "director/lingo/lingo-object.h"
 #include "director/lingo/xlibs/porta.h"
 
 /*************************************
@@ -37,10 +38,10 @@
 namespace Director {
 
 const char *Porta::xlibName = "Porta";
-const char *Porta::fileNames[] = {
-	"Porta",
-	"PortaXCMD.rsrc",
-	nullptr
+const XlibFileDesc Porta::fileNames[] = {
+	{ "Porta",			nullptr },
+	{ "PortaXCMD.rsrc",	nullptr },
+	{ nullptr,			nullptr },
 };
 
 static BuiltinProto builtins[] = {
@@ -48,11 +49,11 @@ static BuiltinProto builtins[] = {
 	{ nullptr, nullptr, 0, 0, 0, VOIDSYM }
 };
 
-void Porta::open(int type) {
+void Porta::open(ObjectType type, const Common::Path &path) {
 	g_lingo->initBuiltIns(builtins);
 }
 
-void Porta::close(int type) {
+void Porta::close(ObjectType type) {
 	g_lingo->cleanupBuiltIns(builtins);
 }
 

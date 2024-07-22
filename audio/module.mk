@@ -7,6 +7,7 @@ MODULE_OBJS := \
 	casio.o \
 	cms.o \
 	fmopl.o \
+	mac_plugin.o \
 	mididrv.o \
 	mididrv_ms.o \
 	midiparser_qt.o \
@@ -43,7 +44,7 @@ MODULE_OBJS := \
 	decoders/wma.o \
 	decoders/xa.o \
 	decoders/xan_dpcm.o \
-	mods/impulsetracker.o \
+	mods/universaltracker.o \
 	mods/infogrames.o \
 	mods/maxtrax.o \
 	mods/mod_xm_s3m.o \

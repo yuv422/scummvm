@@ -20,6 +20,7 @@
  */
 
 #include "file.h"
+#include "cif.h"
 #include "tvd_data.h"
 #include "nancy1_data.h"
 #include "nancy2_data.h"
@@ -27,11 +28,13 @@
 #include "nancy4_data.h"
 #include "nancy5_data.h"
 #include "nancy6_data.h"
+#include "nancy7_data.h"
+#include "nancy8_data.h"
 
 #define NANCYDAT_MAJOR_VERSION 1
-#define NANCYDAT_MINOR_VERSION 0
+#define NANCYDAT_MINOR_VERSION 1
 
-#define NANCYDAT_NUM_GAMES 7
+#define NANCYDAT_NUM_GAMES 9
 
 /**
  * Format specifications for nancy.dat:
@@ -66,6 +69,8 @@
  * 		Nancy Drew: Treasure in the Royal Tower
  * 		Nancy Drew: The Final Scene
  * 		Nancy Drew: Secret of the Scarlet Hand
+ * 		Nancy Drew: Ghost Dogs of Moon Lake
+ * 		Nancy Drew: The Haunted Carousel
 */
 
 // Add the offset to the next tagged section before the section itself for easier navigation
@@ -82,15 +87,16 @@ void NORETURN_PRE error(const char *s, ...) {
 	exit(1);
 }
 
+const uint32 _mapAccessTag = MKTAG('M', 'A', 'P', 'A');
+
 void writeConstants(File &output, const GameConstants &gameConstants) {
 	output.writeUint32(MKTAG('C', 'O', 'N', 'S'));
 	output.writeUint16(gameConstants.numItems);
 	output.writeUint16(gameConstants.numEventFlags);
-	writeToFile(output, gameConstants.mapAccessSceneIDs);
 	writeToFile(output, gameConstants.genericEventFlags);
-	output.writeUint16(gameConstants.numNonItemCursors);
-	output.writeUint16(gameConstants.numCurtainAnimationFrames);
+	output.writeUint16(gameConstants.numCursorTypes);
 	output.writeUint32(gameConstants.logoEndAfter);
+	output.writeUint16(gameConstants.wonGameFlagID);
 }
 
 void writeSoundChannels(File &output, const SoundChannelInfo &soundChannelInfo) {
@@ -153,6 +159,24 @@ void writeEventFlagNames(File &output, const Common::Array<const char *> &eventF
 	writeToFile(output, eventFlagNames);
 }
 
+void writePatchFile(File &output, uint gameVersion, Common::Array<const char *> filenames, const char *folderName) {
+	uint32 size;
+	byte *b = createCifTree(gameVersion, filenames, folderName, size);
+	if (!b) {
+		return;
+	}
+
+	output.writeUint32(MKTAG('P', 'A', 'T', 'C'));
+	output.write(b, size);
+
+	delete[] b;
+}
+
+void writePatchAssociations(File &output, const Common::Array<PatchAssociation> &patchAssociations) {
+	output.writeUint32(MKTAG('P', 'A', 'S', 'S'));
+	writeToFile(output, patchAssociations);
+}
+
 int main(int argc, char *argv[]) {
 	File output;
 	if (!output.open("nancy.dat", kFileWriteMode)) {
@@ -178,6 +202,7 @@ int main(int argc, char *argv[]) {
 	// The Vampire Diaries data
 	gameOffsets.push_back(output.pos());
 	WRAPWITHOFFSET(writeConstants(output, _tvdConstants))
+	WRAPWITHOFFSET(output.writeUint32(_mapAccessTag); writeToFile(output, _tvdMapAccessSceneIDs));
 	WRAPWITHOFFSET(writeSoundChannels(output, _tvdToNancy2SoundChannelInfo))
 	WRAPWITHOFFSET(writeLanguages(output, _tvdLanguagesOrder))
 	WRAPWITHOFFSET(writeConditionalDialogue(output, _tvdConditionalDialogue, _tvdConditionalDialogueTexts))
@@ -188,6 +213,7 @@ int main(int argc, char *argv[]) {
 	// Nancy Drew: Secrets Can Kill data
 	gameOffsets.push_back(output.pos());
 	WRAPWITHOFFSET(writeConstants(output, _nancy1Constants))
+	WRAPWITHOFFSET(output.writeUint32(_mapAccessTag); writeToFile(output, _nancy1MapAccessSceneIDs));
 	WRAPWITHOFFSET(writeSoundChannels(output, _tvdToNancy2SoundChannelInfo))
 	WRAPWITHOFFSET(writeLanguages(output, _nancy1LanguagesOrder))
 	WRAPWITHOFFSET(writeConditionalDialogue(output, _nancy1ConditionalDialogue, _nancy1ConditionalDialogueTexts))
@@ -207,22 +233,26 @@ int main(int argc, char *argv[]) {
 	WRAPWITHOFFSET(writeRingingTexts(output, _nancy2TelephoneRinging))
 	WRAPWITHOFFSET(writeEmptySaveTexts(output, _nancy2EmptySaveStrings))
 	WRAPWITHOFFSET(writeEventFlagNames(output, _nancy2EventFlagNames))
+	WRAPWITHOFFSET(writePatchFile(output, 3, nancy2PatchSrcFiles, "files/nancy2"))
+	WRAPWITHOFFSET(writePatchAssociations(output, nancy2PatchAssociations))
 	
 	// Nancy Drew: Message in a Haunted Mansion data
 	gameOffsets.push_back(output.pos());
 	WRAPWITHOFFSET(writeConstants(output, _nancy3Constants))
-	WRAPWITHOFFSET(writeSoundChannels(output, _nancy3to6SoundChannelInfo))
+	WRAPWITHOFFSET(writeSoundChannels(output, _nancy3andUpSoundChannelInfo))
 	WRAPWITHOFFSET(writeLanguages(output, _nancy3LanguagesOrder))
 	WRAPWITHOFFSET(writeConditionalDialogue(output, _nancy3ConditionalDialogue, _nancy3ConditionalDialogueTexts))
 	WRAPWITHOFFSET(writeGoodbyes(output, _nancy3Goodbyes, _nancy3GoodbyeTexts))
 	WRAPWITHOFFSET(writeRingingTexts(output, _nancy3TelephoneRinging))
 	WRAPWITHOFFSET(writeEmptySaveTexts(output, _nancy3EmptySaveStrings))
 	WRAPWITHOFFSET(writeEventFlagNames(output, _nancy3EventFlagNames))
+	WRAPWITHOFFSET(writePatchFile(output, 4, nancy3PatchSrcFiles, "files/nancy3"))
+	WRAPWITHOFFSET(writePatchAssociations(output, nancy3PatchAssociations))
 	
 	// Nancy Drew: Treasure in the Royal Tower data
 	gameOffsets.push_back(output.pos());
 	WRAPWITHOFFSET(writeConstants(output, _nancy4Constants))
-	WRAPWITHOFFSET(writeSoundChannels(output, _nancy3to6SoundChannelInfo))
+	WRAPWITHOFFSET(writeSoundChannels(output, _nancy3andUpSoundChannelInfo))
 	WRAPWITHOFFSET(writeLanguages(output, _nancy4LanguagesOrder))
 	WRAPWITHOFFSET(writeConditionalDialogue(output, _nancy4ConditionalDialogue, _nancy4ConditionalDialogueTexts))
 	WRAPWITHOFFSET(writeGoodbyes(output, _nancy4Goodbyes, _nancy4GoodbyeTexts))
@@ -233,24 +263,50 @@ int main(int argc, char *argv[]) {
 	// Nancy Drew: The Final Scene data
 	gameOffsets.push_back(output.pos());
 	WRAPWITHOFFSET(writeConstants(output, _nancy5Constants))
-	WRAPWITHOFFSET(writeSoundChannels(output, _nancy3to6SoundChannelInfo))
+	WRAPWITHOFFSET(writeSoundChannels(output, _nancy3andUpSoundChannelInfo))
 	WRAPWITHOFFSET(writeLanguages(output, _nancy5LanguagesOrder))
 	WRAPWITHOFFSET(writeConditionalDialogue(output, _nancy5ConditionalDialogue, _nancy5ConditionalDialogueTexts))
 	WRAPWITHOFFSET(writeGoodbyes(output, _nancy5Goodbyes, _nancy5GoodbyeTexts))
 	WRAPWITHOFFSET(writeRingingTexts(output, _nancy5TelephoneRinging))
 	WRAPWITHOFFSET(writeEmptySaveTexts(output, _nancy5EmptySaveStrings))
 	WRAPWITHOFFSET(writeEventFlagNames(output, _nancy5EventFlagNames))
+	WRAPWITHOFFSET(writePatchFile(output, 6, nancy5PatchSrcFiles, "files/nancy5"))
+	WRAPWITHOFFSET(writePatchAssociations(output, nancy5PatchAssociations))
 
 	// Nancy Drew: Secret of the Scarlet Hand
 	gameOffsets.push_back(output.pos());
 	WRAPWITHOFFSET(writeConstants(output, _nancy6Constants))
-	WRAPWITHOFFSET(writeSoundChannels(output, _nancy3to6SoundChannelInfo))
+	WRAPWITHOFFSET(writeSoundChannels(output, _nancy3andUpSoundChannelInfo))
 	WRAPWITHOFFSET(writeLanguages(output, _nancy6LanguagesOrder))
 	WRAPWITHOFFSET(writeConditionalDialogue(output, _nancy6ConditionalDialogue))
 	WRAPWITHOFFSET(writeGoodbyes(output, _nancy6Goodbyes))
 	WRAPWITHOFFSET(writeRingingTexts(output, _nancy6TelephoneRinging))
 	WRAPWITHOFFSET(writeEmptySaveTexts(output, _nancy6EmptySaveStrings))
 	WRAPWITHOFFSET(writeEventFlagNames(output, _nancy6EventFlagNames))
+	WRAPWITHOFFSET(writePatchFile(output, 7, nancy6PatchSrcFiles, "files/nancy6"))
+	WRAPWITHOFFSET(writePatchAssociations(output, nancy6PatchAssociations))
+
+	// Nancy Drew: Ghost Dogs of Moon Lake
+	gameOffsets.push_back(output.pos());
+	WRAPWITHOFFSET(writeConstants(output, _nancy7Constants))
+	WRAPWITHOFFSET(writeSoundChannels(output, _nancy3andUpSoundChannelInfo))
+	WRAPWITHOFFSET(writeLanguages(output, _nancy7LanguagesOrder))
+	WRAPWITHOFFSET(writeConditionalDialogue(output, _nancy7ConditionalDialogue))
+	WRAPWITHOFFSET(writeGoodbyes(output, _nancy7Goodbyes))
+	WRAPWITHOFFSET(writeRingingTexts(output, _nancy7TelephoneRinging))
+	WRAPWITHOFFSET(writeEventFlagNames(output, _nancy7EventFlagNames))
+	WRAPWITHOFFSET(writePatchFile(output, 8, nancy7PatchSrcFiles, "files/nancy7"))
+	WRAPWITHOFFSET(writePatchAssociations(output, nancy7PatchAssociations))
+
+	// Nancy Drew: The Haunted Carousel
+	gameOffsets.push_back(output.pos());
+	WRAPWITHOFFSET(writeConstants(output, _nancy8Constants))
+	WRAPWITHOFFSET(writeSoundChannels(output, _nancy3andUpSoundChannelInfo))
+	WRAPWITHOFFSET(writeLanguages(output, _nancy8LanguagesOrder))
+	WRAPWITHOFFSET(writeConditionalDialogue(output, _nancy8ConditionalDialogue))
+	WRAPWITHOFFSET(writeGoodbyes(output, _nancy8Goodbyes))
+	WRAPWITHOFFSET(writeRingingTexts(output, _nancy8TelephoneRinging))
+	WRAPWITHOFFSET(writeEventFlagNames(output, _nancy8EventFlagNames))
 
 	// Write the offsets for each game in the header
 	output.seek(offsetsOffset);

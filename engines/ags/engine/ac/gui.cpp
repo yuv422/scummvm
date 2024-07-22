@@ -19,7 +19,7 @@
  *
  */
 
-#include "ags/lib/std/algorithm.h"
+#include "common/std/algorithm.h"
 #include "ags/engine/ac/gui.h"
 #include "ags/shared/ac/common.h"
 #include "ags/engine/ac/draw.h"
@@ -435,14 +435,9 @@ void unexport_gui_controls(int ee) {
 }
 
 void update_gui_disabled_status() {
-	// update GUI display status (perhaps we've gone into
-	// an interface disabled state)
-	int all_buttons_was = _G(all_buttons_disabled);
-	_G(all_buttons_disabled) = -1;
-
-	if (!IsInterfaceEnabled()) {
-		_G(all_buttons_disabled) = GUI::Options.DisabledStyle;
-	}
+	// update GUI display status (perhaps we've gone into an interface disabled state)
+	const GuiDisableStyle all_buttons_was = _G(all_buttons_disabled);
+	_G(all_buttons_disabled) = IsInterfaceEnabled() ? kGuiDis_Undefined : GUI::Options.DisabledStyle;
 
 	if (all_buttons_was != _G(all_buttons_disabled)) {
 		// Mark guis for redraw and reset control-under-mouse detection

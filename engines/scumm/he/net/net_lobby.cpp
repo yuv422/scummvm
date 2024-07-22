@@ -19,11 +19,11 @@
  *
  */
 
-#include "base/version.h"
 #include "common/config-manager.h"
 
 #include "scumm/he/intern_he.h"
 #include "scumm/he/net/net_lobby.h"
+#include "scumm/he/net/net_defines.h"
 
 namespace Scumm {
 
@@ -35,8 +35,16 @@ Lobby::Lobby(ScummEngine_v90he *vm) : _vm(vm) {
 
 	_userId = 0;
 	_userName = "";
+	_playerId = 0;
+
+	_areaIdForPopulation = 0;
+
+	_inArea = false;
+	_gamesPlaying = 0;
 
 	_sessionId = 0;
+
+	_inGame = false;
 }
 
 Lobby::~Lobby() {
@@ -66,7 +74,7 @@ void Lobby::doNetworkOnceAFrame() {
 	}
 }
 
-void Lobby::send(Common::JSONObject data) {
+void Lobby::send(Common::JSONObject &data) {
 	if (!_socket) {
 		warning("LOBBY: Attempted to send data while not connected to server");
 		return;
@@ -118,6 +126,11 @@ void Lobby::processLine(Common::String line) {
 		Common::String command = root["cmd"]->asString();
 		if (command == "heartbeat") {
 			handleHeartbeat();
+		} else if (command == "disconnect") {
+			int type = root["type"]->asIntegerNumber();
+			Common::String message = root["message"]->asString();
+			systemAlert(type, message);
+			disconnect();
 		} else if (command == "login_resp") {
 			int errorCode = root["error_code"]->asIntegerNumber();
 			int userId = root["id"]->asIntegerNumber();
@@ -265,6 +278,9 @@ int32 Lobby::dispatch(int op, int numArgs, int32 *args) {
 		break;
 	case OP_NET_GET_POPULATION:
 		getPopulation(args[0], args[1]);
+		break;
+	case OP_NET_SET_POLL_ANSWER:
+		setPollAnswer(args[0]);
 		break;
 	case OP_NET_UNKNOWN_2229:
 		// TODO
@@ -440,7 +456,7 @@ void Lobby::login(const char *userName, const char *password) {
 	loginRequestParameters.setVal("user", new Common::JSONValue(_userName));
 	loginRequestParameters.setVal("pass", new Common::JSONValue((Common::String)password));
 	loginRequestParameters.setVal("game", new Common::JSONValue((Common::String)_gameName));
-	loginRequestParameters.setVal("version", new Common::JSONValue(gScummVMFullVersion));
+	loginRequestParameters.setVal("version", new Common::JSONValue(NETWORK_VERSION));
 	loginRequestParameters.setVal("competitive_mods", new Common::JSONValue(ConfMan.getBool("enable_competitive_mods")));
 
 	send(loginRequestParameters);
@@ -560,10 +576,26 @@ void Lobby::setIcon(int icon) {
 	send(setIconRequest);
 }
 
-void Lobby::sendGameResults(int userId, int arrayIndex, int unknown) {
+void Lobby::setPollAnswer(int pollAnswer) {
+	if (!_socket)
+		return;
+
+	Common::JSONObject setPollAnswerRequest;
+	setPollAnswerRequest.setVal("cmd", new Common::JSONValue("set_poll_answer"));
+	setPollAnswerRequest.setVal("answer", new Common::JSONValue((long long int)pollAnswer));
+	send(setPollAnswerRequest);
+}
+
+void Lobby::sendGameResults(int userId, int arrayIndex, int lastFlag) {
 	if (!_socket) {
 		return;
 	}
+
+	// Football does not use the lastFlag argument (seems to be implemented in a
+	// later patch?), so let's force set it to true.  This is safe because the game
+	// only calls it once after a game has finished.
+	if (_gameName == "football")
+		lastFlag = 1;
 
 	// Because the new netcode uses userIds 1 and 2 to determine between
 	// host and opponent, we need to replace it to represent the correct user.
@@ -576,9 +608,9 @@ void Lobby::sendGameResults(int userId, int arrayIndex, int unknown) {
 	setProfileRequest.setVal("cmd", new Common::JSONValue("game_results"));
 	setProfileRequest.setVal("user", new Common::JSONValue((long long int)userId));
 
-	ScummEngine_v90he::ArrayHeader *ah = (ScummEngine_v90he::ArrayHeader *)_vm->getResourceAddress(rtString, arrayIndex & ~0x33539000);
-	int32 size = (FROM_LE_32(ah->dim1end) - FROM_LE_32(ah->dim1start) + 1) *
-		(FROM_LE_32(ah->dim2end) - FROM_LE_32(ah->dim2start) + 1);
+	ScummEngine_v90he::ArrayHeader *ah = (ScummEngine_v90he::ArrayHeader *)_vm->getResourceAddress(rtString, arrayIndex & ~MAGIC_ARRAY_NUMBER);
+	int32 size = (FROM_LE_32(ah->acrossMax) - FROM_LE_32(ah->acrossMin) + 1) *
+		(FROM_LE_32(ah->downMax) - FROM_LE_32(ah->downMin) + 1);
 
 	Common::JSONArray arrayData;
 	for (int i = 0; i < size; i++) {
@@ -587,6 +619,7 @@ void Lobby::sendGameResults(int userId, int arrayIndex, int unknown) {
 		arrayData.push_back(new Common::JSONValue((long long int)data));
 	}
 	setProfileRequest.setVal("fields", new Common::JSONValue(arrayData));
+	setProfileRequest.setVal("last", new Common::JSONValue((bool)lastFlag));
 	send(setProfileRequest);
 }
 

@@ -29,6 +29,7 @@
 
 #include "engines/nancy/nancy.h"
 #include "engines/nancy/resource.h"
+#include "engines/nancy/cif.h"
 #include "engines/nancy/iff.h"
 #include "engines/nancy/input.h"
 #include "engines/nancy/sound.h"
@@ -68,10 +69,9 @@ NancyEngine::NancyEngine(OSystem *syst, const NancyGameDescription *gd) :
 
 	_input = new InputManager();
 	_sound = new SoundManager();
-	_graphicsManager = new GraphicsManager();
-	_cursorManager = new CursorManager();
-
-	_resource = nullptr;
+	_graphics = new GraphicsManager();
+	_cursor = new CursorManager();
+	_resource = new ResourceManager();
 
 	_hasJustSaved = false;
 }
@@ -89,10 +89,11 @@ NancyEngine::~NancyEngine() {
 
 	delete _randomSource;
 
-	delete _graphicsManager;
-	delete _cursorManager;
+	delete _graphics;
+	delete _cursor;
 	delete _input;
 	delete _sound;
+	delete _resource;
 
 	for (auto &data : _engineData) {
 		delete data._value;
@@ -100,7 +101,7 @@ NancyEngine::~NancyEngine() {
 }
 
 NancyEngine *NancyEngine::create(GameType type, OSystem *syst, const NancyGameDescription *gd) {
-	if (type >= kGameTypeVampire && type <= kGameTypeNancy6) {
+	if (type >= kGameTypeVampire && type <= kGameTypeNancy11) {
 		return new NancyEngine(syst, gd);
 	}
 
@@ -118,15 +119,16 @@ Common::Error NancyEngine::saveGameStream(Common::WriteStream *stream, bool isAu
 	return synchronize(ser);
 }
 
-bool NancyEngine::canLoadGameStateCurrently() {
+bool NancyEngine::canLoadGameStateCurrently(Common::U32String *msg) {
 	return canSaveGameStateCurrently();
 }
 
-bool NancyEngine::canSaveGameStateCurrently() {
-	// TODO also disable during secondary movie
+bool NancyEngine::canSaveGameStateCurrently(Common::U32String *msg) {
 	return State::Scene::hasInstance() &&
 			NancySceneState._state == State::Scene::kRun &&
-			NancySceneState.getActiveConversation() == nullptr;
+			NancySceneState.getActiveConversation() == nullptr &&
+			NancySceneState.getActiveMovie() == nullptr &&
+			!NancySceneState.isRunningAd();
 }
 
 void NancyEngine::secondChance() {
@@ -134,8 +136,31 @@ void NancyEngine::secondChance() {
 	saveGameState(secondChanceSlot, "SECOND CHANCE", true);
 }
 
+void NancyEngine::errorString(const char *buf_input, char *buf_output, int buf_output_size) {
+	if (State::Scene::hasInstance()) {
+		if (NancySceneState._state == State::Scene::kLoad) {
+			// Error while loading scene
+			snprintf(buf_output, buf_output_size, "While loading scene S%u, frame %u, action record %u:\n%s",
+				NancySceneState._sceneState.currentScene.sceneID,
+				NancySceneState._sceneState.currentScene.frameID,
+				NancySceneState._actionManager.getActionRecords().size(),
+				buf_input);
+		} else {
+			// Error while running
+			snprintf(buf_output, buf_output_size, "In current scene S%u, frame %u:\n%s",
+				NancySceneState._sceneState.currentScene.sceneID,
+				NancySceneState._sceneState.currentScene.frameID,
+				buf_input);
+		}
+	} else {
+		strncpy(buf_output, buf_input, buf_output_size);
+		if (buf_output_size > 0)
+			buf_output[buf_output_size - 1] = '\0';
+	}
+}
+
 bool NancyEngine::hasFeature(EngineFeature f) const {
-	return  (f == kSupportsReturnToLauncher) ||
+	return	(f == kSupportsReturnToLauncher) ||
 			(f == kSupportsLoadingDuringRuntime) ||
 			(f == kSupportsSavingDuringRuntime) ||
 			(f == kSupportsChangingOptionsDuringRuntime) ||
@@ -156,6 +181,10 @@ const char *NancyEngine::getGameId() const {
 
 GameType NancyEngine::getGameType() const {
 	return _gameDescription->gameType;
+}
+
+Common::Language NancyEngine::getGameLanguage() const {
+	return _gameDescription->desc.language;
 }
 
 Common::Platform NancyEngine::getPlatform() const {
@@ -207,7 +236,7 @@ void NancyEngine::setState(NancyState::NancyState state, NancyState::NancyState 
 		_gameFlow.prevState = _gameFlow.curState;
 	}
 
-	_gameFlow.curState = state;
+	_gameFlow.nextState = state;
 	_gameFlow.changingState = true;
 }
 
@@ -216,7 +245,7 @@ void NancyEngine::setToPreviousState() {
 }
 
 void NancyEngine::setMouseEnabled(bool enabled) {
-	_cursorManager->showCursor(enabled); _input->setMouseInputEnabled(enabled);
+	_cursor->showCursor(enabled); _input->setMouseInputEnabled(enabled);
 }
 
 void NancyEngine::addDeferredLoader(Common::SharedPtr<DeferredLoader> &loaderPtr) {
@@ -225,6 +254,13 @@ void NancyEngine::addDeferredLoader(Common::SharedPtr<DeferredLoader> &loaderPtr
 
 Common::Error NancyEngine::run() {
 	setDebugger(new NancyConsole());
+
+	// Set the default number of saves for earlier games
+	if (!ConfMan.hasKey("nancy_max_saves", ConfMan.getActiveDomainName())) {
+		if (getGameType() <= kGameTypeNancy7) {
+			ConfMan.setInt("nancy_max_saves", 8, ConfMan.getActiveDomainName());
+		}
+	}
 
 	// Boot the engine
 	setState(NancyState::kBoot);
@@ -238,20 +274,27 @@ Common::Error NancyEngine::run() {
 		}
 	}
 
-	// Main loop
-	while (!shouldQuit()) {
-		uint32 frameEndTime = _system->getMillis() + 16;
+	bool graphicsWereSuppressed = false;
 
-		bool graphicsWereSuppressed = _graphicsManager->_isSuppressed;
-		if (!graphicsWereSuppressed) {
-			_cursorManager->setCursorType(CursorManager::kNormalArrow);
+	// Main loop
+	while (true) {
+		_input->processEvents();
+		if (shouldQuit()) {
+			break;
 		}
 
-		_input->processEvents();
+		uint32 frameEndTime = _system->getMillis() + 16;
+
+		if (!graphicsWereSuppressed) {
+			_cursor->setCursorType(CursorManager::kNormalArrow);
+		}
 
 		State::State *s;
 
 		if (_gameFlow.changingState) {
+			_gameFlow.curState = _gameFlow.nextState;
+			_gameFlow.nextState = NancyState::kNone;
+
 			s = getStateObject(_gameFlow.curState);
 			if (s) {
 				s->onStateEnter(_gameFlow.curState);
@@ -265,15 +308,17 @@ Common::Error NancyEngine::run() {
 			s->process();
 		}
 
-		_graphicsManager->draw();
+		graphicsWereSuppressed = _graphics->_isSuppressed;
+
+		_graphics->draw();
 
 		if (_gameFlow.changingState) {
-			_graphicsManager->clearObjects();
+			_graphics->clearObjects();
 
-			s = getStateObject(_gameFlow.prevState);
+			s = getStateObject(_gameFlow.curState);
 			if (s) {
-				if(s->onStateExit(_gameFlow.prevState)) {
-					destroyState(_gameFlow.prevState);
+				if (s->onStateExit(_gameFlow.nextState)) {
+					destroyState(_gameFlow.curState);
 				}
 			}
 		}
@@ -340,7 +385,7 @@ void NancyEngine::pauseEngineIntern(bool pause) {
 
 void NancyEngine::bootGameEngine() {
 	// Load paths
-	const Common::FSNode gameDataDir(ConfMan.get("path"));
+	const Common::FSNode gameDataDir(ConfMan.getPath("path"));
 	SearchMan.addSubDirectoryMatching(gameDataDir, "game");
 	SearchMan.addSubDirectoryMatching(gameDataDir, "datafiles");
 	SearchMan.addSubDirectoryMatching(gameDataDir, "ciftree");
@@ -360,8 +405,8 @@ void NancyEngine::bootGameEngine() {
 		}
 	}
 
-	_resource = new ResourceManager();
-	_resource->initialize();
+	_resource->readCifTree("ciftree", "dat", 1);
+	_resource->readCifTree("promotree", "dat", 1);
 
 	// Read nancy.dat
 	readDatFile();
@@ -369,8 +414,12 @@ void NancyEngine::bootGameEngine() {
 	// Setup mixer
 	syncSoundSettings();
 
-	IFF *iff = new IFF("boot");
-	if (!iff->load())
+	if (getGameType() >= kGameTypeNancy10) {
+		error("Game not supported; Use console to inspect game data");
+	}
+
+	IFF *iff = _resource->loadIFF("boot");
+	if (!iff)
 		error("Failed to load boot script");
 
 	// Load BOOT chunks data
@@ -381,7 +430,19 @@ void NancyEngine::bootGameEngine() {
 							}
 	#define LOAD_BOOT(t) LOAD_BOOT_L(t, #t)
 
-	LOAD_BOOT(BSUM)
+	LOAD_BOOT_L(ImageChunk, "OB0")
+	LOAD_BOOT_L(ImageChunk, "FR0")
+	LOAD_BOOT_L(ImageChunk, "LG0")
+
+	// One weird version of nancy3 has a partner logo implemented the same way as the other image chunks
+	LOAD_BOOT_L(ImageChunk, "PLG0")
+
+	// For all other games (starting with nancy4) the partner logo is a larger struct,
+	// containing video and sound data as well. Those go unused, however, so we still
+	// treat is as a simple image. Note the O instead of the 0 above.
+	LOAD_BOOT_L(ImageChunk, "PLGO")
+
+	LOAD_BOOT(BSUM) // This checks for PLG0, do NOT reorder
 	LOAD_BOOT(VIEW)
 	LOAD_BOOT(PCAL)
 	LOAD_BOOT(INV)
@@ -389,8 +450,8 @@ void NancyEngine::bootGameEngine() {
 	LOAD_BOOT(HELP)
 	LOAD_BOOT(CRED)
 	LOAD_BOOT(MENU)
-	LOAD_BOOT(SET)
 	LOAD_BOOT(LOAD)
+	LOAD_BOOT(SET)
 	LOAD_BOOT(SDLG)
 	LOAD_BOOT(MAP)
 	LOAD_BOOT(HINT)
@@ -399,24 +460,13 @@ void NancyEngine::bootGameEngine() {
 	LOAD_BOOT(SPEC)
 	LOAD_BOOT(RCPR)
 	LOAD_BOOT(RCLB)
+	LOAD_BOOT(TABL)
+	LOAD_BOOT(MARK)
 
-	LOAD_BOOT_L(ImageChunk, "OB0")
-	LOAD_BOOT_L(ImageChunk, "FR0")
-	LOAD_BOOT_L(ImageChunk, "LG0")
+	_cursor->init(iff->getChunkStream("CURS"));
 
-	chunkStream = iff->getChunkStream("PLG0");
-	if (!chunkStream) {
-		chunkStream = iff->getChunkStream("PLGO"); // nancy4 and above use an O instead of a zero
-	}	
-
-	if (chunkStream) {
-		_engineData.setVal("PLG0", new ImageChunk(chunkStream));
-	}
-
-	_cursorManager->init(iff->getChunkStream("CURS"));
-
-	_graphicsManager->init();
-	_graphicsManager->loadFonts(iff->getChunkStream("FONT"));
+	_graphics->init();
+	_graphics->loadFonts(iff->getChunkStream("FONT"));
 
 	preloadCals();
 
@@ -426,10 +476,10 @@ void NancyEngine::bootGameEngine() {
 	delete iff;
 
 	// Load convo texts and autotext
-	const BSUM *bsum = (const BSUM *)getEngineData("BSUM");
-	if (bsum && bsum->conversationTextsFilename.size() && bsum->autotextFilename.size())  {
-		iff = new IFF(bsum->conversationTextsFilename);
-		if (!iff->load()) {
+	auto *bsum = GetEngineData(BSUM);
+	if (bsum && !bsum->conversationTextsFilename.empty() && !bsum->autotextFilename.empty()) {
+		iff = _resource->loadIFF(bsum->conversationTextsFilename);
+		if (!iff) {
 			error("Could not load CONVO IFF");
 		}
 
@@ -440,8 +490,8 @@ void NancyEngine::bootGameEngine() {
 
 		delete iff;
 
-		iff = new IFF(bsum->autotextFilename);
-		if (!iff->load()) {
+		iff = _resource->loadIFF(bsum->autotextFilename);
+		if (!iff) {
 			error("Could not load AUTOTEXT IFF");
 		}
 
@@ -535,14 +585,14 @@ void NancyEngine::destroyState(NancyState::NancyState state) const {
 }
 
 void NancyEngine::preloadCals() {
-	const PCAL *pcal = (const PCAL *)getEngineData("PCAL");
+	auto *pcal = GetEngineData(PCAL);
 	if (!pcal) {
 		// CALs only appeared in nancy2 so a PCAL chunk may not exist
 		return;
 	}
 
 	for (const Common::String &name : pcal->calNames) {
-		if (!_resource->loadCifTree(name, "cal")) {
+		if (!_resource->readCifTree(name, "cal", 2)) {
 			error("Failed to preload CAL '%s'", name.c_str());
 		}
 	}
@@ -558,14 +608,14 @@ void NancyEngine::readDatFile() {
 		error("nancy.dat is invalid");
 	}
 
-	byte major = datFile->readByte();
-	byte minor = datFile->readByte();
+	int8 major = datFile->readSByte();
+	int8 minor = datFile->readSByte();
 	if (major != _datFileMajorVersion) {
 		error("Incorrect nancy.dat version. Expected '%d.%d', found %d.%d",
 			_datFileMajorVersion, _datFileMinorVersion, major, minor);
 	} else {
-		if (minor != _datFileMinorVersion) {
-			warning("Incorrect nancy.dat version. Expected '%d.%d', found %d.%d. Game may still work, but expect bugs",
+		if (minor < _datFileMinorVersion) {
+			warning("Incorrect nancy.dat version. Expected at least '%d.%d', found %d.%d. Game may still work, but expect bugs",
 			_datFileMajorVersion, _datFileMinorVersion, major, minor);
 		}
 	}
@@ -585,11 +635,13 @@ void NancyEngine::readDatFile() {
 	uint32 nextGameOffset = gameType == numGames ? datFile->size() : datFile->readUint32LE();
 	datFile->seek(thisGameOffset);
 
-	_staticData.readData(*datFile, _gameDescription->desc.language, nextGameOffset);
+	_staticData.readData(*datFile, _gameDescription->desc.language, nextGameOffset, major, minor);
+
+	delete datFile;
 }
 
 Common::Error NancyEngine::synchronize(Common::Serializer &ser) {
-	const BSUM *bootSummary = (const BSUM *)getEngineData("BSUM");
+	auto *bootSummary = GetEngineData(BSUM);
 	assert(bootSummary);
 
 	// Sync boot summary header, which includes full game title

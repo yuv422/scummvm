@@ -25,7 +25,7 @@
 #include "common/util.h"
 
 #include "graphics/macega.h"
-#include "graphics/palette.h"
+#include "graphics/paletteman.h"
 
 #include "scumm/resource.h"
 #include "scumm/scumm.h"
@@ -33,6 +33,7 @@
 #include "scumm/scumm_v8.h"
 #include "scumm/util.h"
 #include "scumm/charset.h"
+#include "scumm/macgui/macgui.h"
 
 namespace Scumm {
 
@@ -242,7 +243,7 @@ void ScummEngine::resetPalette() {
 			else
 				setPaletteFromTable(tableEGAPalette, sizeof(tableEGAPalette) / 3);
 		}
-
+		setDirtyColors(0, 255);
 	} else {
 		if ((_game.platform == Common::kPlatformAmiga) && _game.version == 4) {
 			// if rendermode is set to EGA we use the full palette from the resources
@@ -274,6 +275,9 @@ void ScummEngine::resetPalette() {
 		}
 		setDirtyColors(0, 255);
 	}
+
+	if (_macGui)
+		_macGui->setPalette(_currentPalette, 16);
 }
 
 void ScummEngine::setPaletteFromTable(const byte *ptr, int numcolor, int index) {
@@ -581,6 +585,8 @@ void ScummEngine::setDirtyColors(int min, int max) {
 		_palDirtyMin = min;
 	if (_palDirtyMax < max)
 		_palDirtyMax = max;
+
+	_paletteChangedCounter++; // HE99+
 }
 
 void ScummEngine::initCycl(const byte *ptr) {
@@ -1626,11 +1632,7 @@ void ScummEngine::updatePalette() {
 		for (i = _palDirtyMin; i <= _palDirtyMax; i++) {
 			byte *data;
 
-			// In b/w Mac rendering mode, the shadow palette is
-			// handled by the renderer itself. See comment in
-			// mac_drawStripToScreen().
-
-			if (_game.features & GF_SMALL_HEADER && _game.version > 2 && _renderMode != Common::kRenderMacintoshBW)
+			if (_shadowPalRemap)
 				data = _currentPalette + _shadowPalette[i] * 3;
 			else
 				data = _currentPalette + i * 3;

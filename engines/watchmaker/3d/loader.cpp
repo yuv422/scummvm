@@ -110,14 +110,14 @@ void decodeLoaderFlags(uint32 flags) {
 }
 
 Common::String constructPath(const Common::String &prefix, const Common::String &filename, const char *suffix) {
-	Common::String Name = prefix + filename;
-	uint16 len = Name.size();
+	Common::String name = prefix + filename;
+	uint16 len = name.size();
 	if (suffix != nullptr) {
 		uint16 suffixLen = strlen(suffix);
-		Name = Name.substr(0, len - suffixLen) + suffix;
+		name = name.substr(0, len - suffixLen) + suffix;
 		assert(suffixLen == 3);
 	}
-	return Common::String(Name);
+	return Common::String(Common::move(name));
 }
 
 class RoomManagerImplementation : public RoomManager {
@@ -155,7 +155,7 @@ public:
 		}
 	}
 
-	_t3dLOADLIST* getFromLoadList(void) {
+	_t3dLOADLIST* getFromLoadList() {
 		for (int a = 0; a < MAX_T3D_LOADLIST_ITEMS; a++) {
 			if (!t3dLoadList[a].pname.empty())
 				return &t3dLoadList[a];
@@ -560,11 +560,11 @@ void t3dOptimizeMaterialList(t3dBODY *b) {
 	// TODO: The optimization leaves a bunch of materials as nullptr, we need to update all the
 	// references to them. Currently we do this by subtracting 1 from all references that were above
 	// a removed material. This works, but isn't really optimal.
-	int subtract = 0;
+	//int subtract = 0;
 	for (uint32 i = 0; i < b->NumMaterials(); i++) {
 		if (!b->MatTable[i]) {
 			b->MatTable.remove_at(i);
-			subtract++;
+			//subtract++;
 			for (uint32 k = 0; k < b->NumMeshes(); k++) {
 				auto &m = b->MeshTable[k];
 				for (int q = 0; q < m.NumFaces(); q++) {

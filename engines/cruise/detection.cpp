@@ -108,6 +108,28 @@ static const CRUISEGameDescription gameDescriptions[] = {
 	{
 		{
 			"cruise",
+			"256 colors",
+			AD_ENTRY1("D1", "e19a4ab2e24a69087e4ea994a5506231"),
+			Common::IT_ITA,
+			Common::kPlatformDOS,
+			ADGF_NO_FLAGS,
+			GUIO0()
+		},
+	},
+	{
+		{
+			"cruise",
+			"256 colors",
+			AD_ENTRY1("D1", "9a302ada55600d96061fda1d63a6ccda"),
+			Common::ES_ESP,
+			Common::kPlatformDOS,
+			ADGF_NO_FLAGS,
+			GUIO0()
+		},
+	},
+	{
+		{
+			"cruise",
 			nullptr,
 			AD_ENTRY1("D1", "70f42a21cc257b01d58667853335f4f1"),
 			Common::DE_DEU,
@@ -160,6 +182,17 @@ static const CRUISEGameDescription gameDescriptions[] = {
 			GUIO0()
 		},
 	},
+	{ // Amiga Italian (Fanmade translation 1.0).
+		{
+			"cruise",
+			"Fanmade",
+			AD_ENTRY1s("D1", "198ebe2f03d7ea7696b28fb31f1ed9ba", 700660),
+			Common::IT_ITA,
+			Common::kPlatformAmiga,
+			ADGF_NO_FLAGS,
+			GUIO0()
+		},
+	},
 	{ // AtariST English KixxXL edition.
 		{
 			"cruise",
@@ -182,36 +215,14 @@ static const CRUISEGameDescription gameDescriptions[] = {
 			GUIO0()
 		},
 	},
-	{
-		{
-			"cruise",
-			"256 colors",
-			AD_ENTRY1("D1", "e19a4ab2e24a69087e4ea994a5506231"),
-			Common::IT_ITA,
-			Common::kPlatformDOS,
-			ADGF_NO_FLAGS,
-			GUIO0()
-		},
-	},
-	{
-		{
-			"cruise",
-			"256 colors",
-			AD_ENTRY1("D1", "9a302ada55600d96061fda1d63a6ccda"),
-			Common::ES_ESP,
-			Common::kPlatformDOS,
-			ADGF_NO_FLAGS,
-			GUIO0()
-		},
-	},
 	{AD_TABLE_END_MARKER}
 };
 
 }
 
-class CruiseMetaEngineDetection : public AdvancedMetaEngineDetection {
+class CruiseMetaEngineDetection : public AdvancedMetaEngineDetection<Cruise::CRUISEGameDescription> {
 public:
-	CruiseMetaEngineDetection() : AdvancedMetaEngineDetection(Cruise::gameDescriptions, sizeof(Cruise::CRUISEGameDescription), cruiseGames) {
+	CruiseMetaEngineDetection() : AdvancedMetaEngineDetection(Cruise::gameDescriptions, cruiseGames) {
 		_guiOptions = GUIO2(GUIO_NOSPEECH, GUIO_NOMIDI);
 	}
 

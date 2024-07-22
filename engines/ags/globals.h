@@ -25,7 +25,7 @@
 #include "ags/shared/core/platform.h"
 #define AGS_PLATFORM_DEFINES_PSP_VARS (AGS_PLATFORM_OS_IOS || AGS_PLATFORM_OS_ANDROID)
 
-#include "ags/lib/std/queue.h"
+#include "common/std/queue.h"
 #include "ags/shared/ac/game_version.h"
 #include "ags/shared/ac/keycode.h"
 #include "ags/shared/util/stdio_compat.h"
@@ -43,10 +43,10 @@
 #include "ags/engine/media/audio/audio_defines.h"
 #include "ags/engine/script/script.h"
 #include "ags/engine/script/script_runtime.h"
-#include "ags/lib/std/array.h"
-#include "ags/lib/std/chrono.h"
-#include "ags/lib/std/memory.h"
-#include "ags/lib/std/set.h"
+#include "common/std/array.h"
+#include "common/std/chrono.h"
+#include "common/std/memory.h"
+#include "common/std/set.h"
 #include "ags/lib/allegro/color.h"
 #include "ags/lib/allegro/fixed.h"
 #include "ags/lib/allegro/aintern.h"
@@ -758,7 +758,7 @@ public:
 	// TODO: IMPORTANT!!
 	// we cannot simply replace these arrays with vectors, or other C++ containers,
 	// until we implement safe management of such containers in script exports
-	// system. Noteably we would need an alternate to StaticArray class to track
+	// system. Notably we would need an alternate to StaticArray class to track
 	// access to their elements.
 	ScriptObject *_scrObj;
 	ScriptGUI *_scrGui = nullptr;
@@ -839,7 +839,7 @@ public:
 	 */
 
 	 // Following struct instructs the engine to run game loops until
-	 // certain condition is not fullfilled.
+	 // certain condition is not fulfilled.
 	struct RestrictUntil {
 		int type = 0; // type of condition, UNTIL_* constant
 		int disabled_for = 0; // FOR_* constant
@@ -906,6 +906,16 @@ public:
 	 */
 
 	ScriptPosition *_last_in_dialog_request_script_pos;
+
+	/**@}*/
+
+	/**
+	 * @defgroup agsglobal_gameglobals global_game globals
+	 * @ingroup agsglobals
+	 * @{
+	 */
+
+	ScriptPosition *_last_cutscene_script_pos;
 
 	/**@}*/
 
@@ -1023,7 +1033,8 @@ public:
 	 */
 
 	int _guis_need_update = 1;
-	int _all_buttons_disabled = -1, _gui_inv_pic = -1;
+	AGS::Shared::GuiDisableStyle _all_buttons_disabled = AGS::Shared::kGuiDis_Undefined;
+	int _gui_inv_pic = -1;
 
 	/**@}*/
 
@@ -1100,9 +1111,11 @@ public:
 	std::set<String> _tellInfoKeys;
 	int _loadSaveGameOnStartup = -1;
 
-	// ScummVM GUIO-controlled flag to save a screenshot
-	// when saving (used for saves thumbnails)
-	bool _saveThumbnail = true;
+	// ScummVM GUIO-controlled flags
+	bool _saveThumbnail = true;     // capture a screenshot when saving (used for saves thumbnails)
+	bool _noScummAutosave = false;  // disable ScummVM autosaves
+	bool _noScummSaveLoad = false;  // disable ScummVM GMM save/load
+
 #if 0
 	//! AGS_PLATFORM_DEFINES_PSP_VARS
 	int _psp_rotation = 0;
@@ -1223,7 +1236,6 @@ public:
 	int32_t *_navpoints;
 	Navigation *_nav;
 	int _num_navpoints = 0;
-	fixed _move_speed_x = 0, _move_speed_y = 0;
 	AGS::Shared::Bitmap *_wallscreen = nullptr;
 	int _lastcx = 0, _lastcy = 0;
 	std::unique_ptr<IRouteFinder> *_route_finder_impl;

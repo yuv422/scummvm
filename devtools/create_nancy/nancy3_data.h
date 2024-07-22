@@ -25,18 +25,17 @@
 #include "types.h"
 
 const GameConstants _nancy3Constants = {
-	18,
-	336,
-	{ }, // No Map state
-	{	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+	18,												// numItems
+	336,											// numEventFlags
+	{	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,			// genericEventFlags
 		11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
 		21, 22, 23, 24, 25, 26, 27, 28, 29, 30 },
-	24,
-	7,
-	4000
+	8,												// numCursorTypes
+	4000,											// logoEndAfter
+	32												// wonGameFlagID
 };
 
-const SoundChannelInfo _nancy3to6SoundChannelInfo = {
+const SoundChannelInfo _nancy3andUpSoundChannelInfo = {
 	32, 14,
 	{ 12, 13, 30 },
 	{ 0, 1, 2, 3, 19, 26, 27, 29 },
@@ -64,7 +63,7 @@ const Common::Array<Common::Array<ConditionalDialogue>> _nancy3ConditionalDialog
 		{ { kEv, 211, true }, { kEv, 45, false }, { kEv, 109, false } } },
 	{	6, 1059, "NAS59",
 		{ { kEv, 146, true }, { kEv, 39, false }, { kEv, 218, false } } },
-	{	7, 1062, "NCL60",
+	{	7, 1062, "NLC60",
 		{ { kEv, 109, true }, { kEv, 43, false } } },
 	{	8, 1064, "NAS64",
 		{ { kEv, 218, true }, { kEv, 225, true }, { kEv, 209, true }, { kEv, 38, false } } },
@@ -207,7 +206,7 @@ const Common::Array<Common::Array<ConditionalDialogue>> _nancy3ConditionalDialog
 	{	72, 1566, "NAS54",
 		{ { kEv, 213, true }, { kEv, 160, false } } },
 	{	73, 1567, "NLC67",
-		{ { kEv, 169, true }, { kEv, 37, true }, { kEv, 160, false } } },
+		{ { kEv, 169, true }, { kEv, 37, true }, { kEv, 150, false } } },
 	{	74, 1568, "NLC68",
 		{ { kEv, 288, true }, { kEv, 153, false }, { kEv, 123, false }, { kEv, 157, true } } },
 },
@@ -679,11 +678,11 @@ const Common::Array<const char *> _nancy3EventFlagNames = {
 	"L said scraper",
 	"L said screen",
 	"L said sellout",
-	"L said thump"
+	"L said thump",
 	"L said Valdez",
 	"Louis available",
 	"met Abby",
-	"met BG"
+	"met BG",
 	"met Charlie",
 	"met Emily",
 	"met Louis",
@@ -850,7 +849,17 @@ const Common::Array<const char *> _nancy3EventFlagNames = {
 	"empty",
 	"empty",
 	"empty",
-	"empty",
+	"empty"
+};
+
+const Common::Array<const char *> nancy3PatchSrcFiles {
+	"han92b.his"
+};
+
+// Patch notes:
+// - The missing sound file is a patch from the original devs. Should only be enabled in the English version
+const Common::Array<PatchAssociation> nancy3PatchAssociations {
+	{ { "language", "en" }, { "han92b.his" } }
 };
 
 #endif // NANCY3DATA_H

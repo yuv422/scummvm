@@ -19,26 +19,32 @@
  *
  */
 
-	.global	_atari_kbdvec
-	.global	_atari_mousevec
-	.global	_atari_vkbderr
+ #include "symbols.h"
 
-	.extern	_g_atari_ikbd_mouse_buttons_state
-	.extern	_g_atari_ikbd_mouse_delta_x
-	.extern	_g_atari_ikbd_mouse_delta_y
+	.global	SYM(atari_kbdvec)
+	.global	SYM(atari_mousevec)
 
-	.extern	_g_atari_ikbd_scancodes
-	.extern	_g_atari_ikbd_scancodes_mask
-	.extern	_g_atari_ikbb_scancodes_head
+	.global	SYM(atari_old_kbdvec)
+	.global	SYM(atari_old_mousevec)
 
-	.extern	_g_atari_old_kbdvec
+	.extern	SYM(g_atari_ikbd_mousebuttons)
+	.extern	SYM(g_atari_ikbd_mousebuttons_mask)
+	.extern	SYM(g_atari_ikbd_mousebuttons_head)
+
+	.extern	SYM(g_atari_ikbd_mouse_delta_x)
+	.extern	SYM(g_atari_ikbd_mouse_delta_y)
+
+	.extern	SYM(g_atari_ikbd_scancodes)
+	.extern	SYM(g_atari_ikbd_scancodes_mask)
+	.extern	SYM(g_atari_ikbd_scancodes_head)
 
 	.text
 
-_atari_kbdvec:
-	tst.w	(vkbderr_count,pc)
-	bne.b	kbdvec_end
-
+	.ascii	"XBRA"
+	.ascii	"SCUM"
+SYM(atari_old_kbdvec):
+	dc.l	0
+SYM(atari_kbdvec):
 	lea	pressed_keys,a0
 	clr.l	d1
 	move.b	d0,d1
@@ -51,9 +57,7 @@ key_released:
 
 	| if we get a sudden release key event,
 	| let the original handler process it
-	move.l	_g_atari_old_kbdvec,a0
-	tst.l	a0
-	beq.b	kbdvec_end
+	move.l	(atari_old_kbdvec,pc),a0
 	jmp	(a0)
 
 key_released_ok:
@@ -64,46 +68,54 @@ key_pressed:
 	addq.b	#1,(a0,d1.l)				| mark as pressed
 
 kbdvec_process:
-	lea	_g_atari_ikbd_scancodes,a0
-	move.w	_g_atari_ikbb_scancodes_head,d1
+	lea	SYM(g_atari_ikbd_scancodes),a0
+	move.w	SYM(g_atari_ikbd_scancodes_head),d1
 
-	| g_atari_ikbd_scancodes[g_atari_ikbb_scancodes_head] = scancode
+	| g_atari_ikbd_scancodes[g_atari_ikbd_scancodes_head] = scancode
 
 	move.b	d0,(0.b,a0,d1.w)
 
 	addq.l	#1,d1
-	and.w	_g_atari_ikbd_scancodes_mask,d1
-	move.w	d1,_g_atari_ikbb_scancodes_head
-
-kbdvec_end:
+	and.w	SYM(g_atari_ikbd_scancodes_mask),d1
+	move.w	d1,SYM(g_atari_ikbd_scancodes_head)
 	rts
 
 
-_atari_vkbderr:
-	addq.w	#1,vkbderr_count
-	rts
+	.ascii	"XBRA"
+	.ascii	"SCUM"
+SYM(atari_old_mousevec):
+	dc.l	0
+SYM(atari_mousevec):
+	move.b	(a0)+,d0
+	cmp.b	old_buttons,d0
+	beq.b	no_buttons
 
+	move.b	d0,old_buttons
 
-_atari_mousevec:
-	clr.w	vkbderr_count
+	lea	SYM(g_atari_ikbd_mousebuttons),a1
+	move.w	SYM(g_atari_ikbd_mousebuttons_head),d1
 
-	move.b	(a0)+,_g_atari_ikbd_mouse_buttons_state
+	| g_atari_ikbd_mousebuttons[g_atari_ikbd_mousebuttons_head] = buttons
+
+	move.b	d0,(0.b,a1,d1.w)
+
+	addq.w	#1,d1
+	and.w	SYM(g_atari_ikbd_mousebuttons_mask),d1
+	move.w	d1,SYM(g_atari_ikbd_mousebuttons_head)
+
+no_buttons:
+	move.b	(a0)+,d0
+	ext.w	d0
+	add.w	d0,SYM(g_atari_ikbd_mouse_delta_x)
 
 	move.b	(a0)+,d0
 	ext.w	d0
-	add.w	d0,_g_atari_ikbd_mouse_delta_x
-
-	move.b	(a0)+,d0
-	ext.w	d0
-	add.w	d0,_g_atari_ikbd_mouse_delta_y
+	add.w	d0,SYM(g_atari_ikbd_mouse_delta_y)
 	rts
-
-// place it within reach of 32K (PC relative)
-vkbderr_count:
-	dc.w	0
-
 
 	.bss
 
 pressed_keys:
 	ds.b	128
+old_buttons:
+	ds.b	1

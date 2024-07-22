@@ -230,10 +230,8 @@ ThemeEngine::ThemeEngine(Common::String id, GraphicsMode mode) :
 	_cursorHotspotX = _cursorHotspotY = 0;
 	_cursorWidth = _cursorHeight = 0;
 	_cursorTransparent = 255;
-#ifndef USE_RGB_COLOR
 	_cursorFormat = Graphics::PixelFormat::createFormatCLUT8();
 	_cursorPalSize = 0;
-#endif
 
 	// We prefer files in archive bundles over the common search paths.
 	_themeFiles.add("default", &SearchMan, 0, false);
@@ -307,6 +305,10 @@ const char *ThemeEngine::findModeConfigName(GraphicsMode mode) {
 void ThemeEngine::setBaseResolution(int w, int h, float s) {
 	_baseWidth = w;
 	_baseHeight = h;
+
+	if (s != _scaleFactor)
+		_needScaleRefresh = true;
+
 	_scaleFactor = s;
 
 	_parser->setBaseResolution(w, h, s);
@@ -339,7 +341,7 @@ bool ThemeEngine::init() {
 		Common::FSNode node(_themeFile);
 		if (node.isDirectory()) {
 			_themeArchive = new Common::FSDirectory(node);
-		} else if (_themeFile.matchString("*.zip", true)) {
+		} else if (_themeFile.baseName().matchString("*.zip", true)) {
 			// TODO: Also use "node" directly?
 			// Look for the zip file via SearchMan
 			Common::ArchiveMemberPtr member = SearchMan.getMember(_themeFile);
@@ -351,7 +353,7 @@ bool ThemeEngine::init() {
 			} else {
 				_themeArchive = Common::makeZipArchive(node);
 				if (!_themeArchive) {
-					warning("Failed to open Zip archive '%s'.", node.getPath().c_str());
+					warning("Failed to open Zip archive '%s'.", node.getPath().toString(Common::Path::kNativeSeparator).c_str());
 				}
 			}
 		}
@@ -364,7 +366,7 @@ bool ThemeEngine::init() {
 	// We pass the theme file here by default, so the user will
 	// have a descriptive error message. The only exception will
 	// be the builtin theme which has no filename.
-	loadTheme(_themeFile.empty() ? _themeId : _themeFile);
+	loadTheme(_themeFile.empty() ? _themeId : _themeFile.toString(Common::Path::kNativeSeparator));
 
 	return ready();
 }
@@ -379,7 +381,7 @@ void ThemeEngine::clearAll() {
 void ThemeEngine::refresh() {
 
 	// Flush all bitmaps if the overlay pixel format changed.
-	if (_overlayFormat != _system->getOverlayFormat()) {
+	if (_overlayFormat != _system->getOverlayFormat() || _needScaleRefresh) {
 		for (ImagesMap::iterator i = _bitmaps.begin(); i != _bitmaps.end(); ++i) {
 			Graphics::ManagedSurface *surf = i->_value;
 			if (surf) {
@@ -388,6 +390,8 @@ void ThemeEngine::refresh() {
 			}
 		}
 		_bitmaps.clear();
+
+		_needScaleRefresh = false;
 	}
 
 	init();
@@ -396,9 +400,8 @@ void ThemeEngine::refresh() {
 		_system->showOverlay();
 
 		if (_useCursor) {
-#ifndef USE_RGB_COLOR
-			CursorMan.replaceCursorPalette(_cursorPal, 0, _cursorPalSize);
-#endif
+			if (_cursorPalSize)
+				CursorMan.replaceCursorPalette(_cursorPal, 0, _cursorPalSize);
 			CursorMan.replaceCursor(_cursor, _cursorWidth, _cursorHeight, _cursorHotspotX, _cursorHotspotY, _cursorTransparent, true, &_cursorFormat);
 		}
 	}
@@ -651,7 +654,7 @@ bool ThemeEngine::addBitmap(const Common::String &filename, const Common::String
 
 	if (!scalablefile.empty()) {
 		Common::ArchiveMemberList members;
-		_themeFiles.listMatchingMembers(members, scalablefile);
+		_themeFiles.listMatchingMembers(members, Common::Path(scalablefile, '/'));
 		for (Common::ArchiveMemberList::const_iterator i = members.begin(), end = members.end(); i != end; ++i) {
 			Common::SeekableReadStream *stream = (*i)->createReadStream();
 			if (stream) {
@@ -671,7 +674,7 @@ bool ThemeEngine::addBitmap(const Common::String &filename, const Common::String
 #ifdef USE_PNG
 		Image::PNGDecoder decoder;
 		Common::ArchiveMemberList members;
-		_themeFiles.listMatchingMembers(members, filename);
+		_themeFiles.listMatchingMembers(members, Common::Path(filename, '/'));
 		for (Common::ArchiveMemberList::const_iterator i = members.begin(), end = members.end(); i != end; ++i) {
 			Common::SeekableReadStream *stream = (*i)->createReadStream();
 			if (stream) {
@@ -685,8 +688,10 @@ bool ThemeEngine::addBitmap(const Common::String &filename, const Common::String
 			}
 		}
 
-		if (srcSurface && srcSurface->format.bytesPerPixel != 1)
-			surf = new Graphics::ManagedSurface(srcSurface->convertTo(_overlayFormat));
+		if (srcSurface && srcSurface->format.bytesPerPixel != 1) {
+			surf = new Graphics::ManagedSurface();
+			surf->convertFrom(*srcSurface, _overlayFormat);
+		}
 #else
 		error("No PNG support compiled in");
 #endif
@@ -694,7 +699,7 @@ bool ThemeEngine::addBitmap(const Common::String &filename, const Common::String
 		// If not, try to load the bitmap via the BitmapDecoder class.
 		Image::BitmapDecoder bitmapDecoder;
 		Common::ArchiveMemberList members;
-		_themeFiles.listMatchingMembers(members, filename);
+		_themeFiles.listMatchingMembers(members, Common::Path(filename, '/'));
 		for (Common::ArchiveMemberList::const_iterator i = members.begin(), end = members.end(); i != end; ++i) {
 			Common::SeekableReadStream *stream = (*i)->createReadStream();
 			if (stream) {
@@ -706,17 +711,17 @@ bool ThemeEngine::addBitmap(const Common::String &filename, const Common::String
 			}
 		}
 
-		if (srcSurface && srcSurface->format.bytesPerPixel != 1)
-			surf = new Graphics::ManagedSurface(srcSurface->convertTo(_overlayFormat));
+		if (srcSurface && srcSurface->format.bytesPerPixel != 1) {
+			surf = new Graphics::ManagedSurface();
+			surf->convertFrom(*srcSurface, _overlayFormat);
+		}
 
 		if (surf)
 			surf->setTransparentColor(surf->format.RGBToColor(0xFF, 0x00, 0xFF));
 	}
 
 	if (_scaleFactor != 1.0 && surf) {
-		Graphics::Surface *tmp2 = surf->rawSurface().scale(surf->w * _scaleFactor, surf->h * _scaleFactor, false);
-
-		Graphics::ManagedSurface *surf2 = new Graphics::ManagedSurface(tmp2);
+		Graphics::ManagedSurface *surf2 = surf->scale(surf->w * _scaleFactor, surf->h * _scaleFactor, false);
 
 		if (surf->hasTransparentColor())
 			surf2->setTransparentColor(surf->getTransparentColor());
@@ -1237,7 +1242,7 @@ void ThemeEngine::drawPopUpWidget(const Common::Rect &r, const Common::U32String
 	}
 }
 
-void ThemeEngine::drawManagedSurface(const Common::Point &p, const Graphics::ManagedSurface &surface) {
+void ThemeEngine::drawManagedSurface(const Common::Point &p, const Graphics::ManagedSurface &surface, Graphics::AlphaType alphaType) {
 	if (!ready())
 		return;
 
@@ -1245,7 +1250,7 @@ void ThemeEngine::drawManagedSurface(const Common::Point &p, const Graphics::Man
 		return;
 
 	_vectorRenderer->setClippingRect(_clip);
-	_vectorRenderer->blitManagedSurface(&surface, p);
+	_vectorRenderer->blitManagedSurface(&surface, p, alphaType);
 
 	Common::Rect dirtyRect = Common::Rect(p.x, p.y, p.x + surface.w, p.y + surface.h);
 	dirtyRect.clip(_clip);
@@ -1458,7 +1463,7 @@ void ThemeEngine::drawText(const Common::Rect &r, const Common::U32String &str, 
 	drawDDText(textId, colorId, r, str, restore, useEllipsis, align, kTextAlignVCenter, deltax, drawableTextArea);
 }
 
-void ThemeEngine::drawChar(const Common::Rect &r, byte ch, const Graphics::Font *font, FontColor color) {
+void ThemeEngine::drawChar(const Common::Rect &r, byte ch, const Graphics::Font *font, FontColor color, TextInversionState inverted) {
 	if (!ready())
 		return;
 
@@ -1470,6 +1475,18 @@ void ThemeEngine::drawChar(const Common::Rect &r, byte ch, const Graphics::Font 
 	// TODO: Handle clipping when drawing chars
 
 	restoreBackground(charArea);
+	switch (inverted) {
+	case kTextInversion:
+		drawDD(kDDTextSelectionBackground, r);
+		break;
+
+	case kTextInversionFocus:
+		drawDD(kDDTextSelectionFocusBackground, r);
+		break;
+
+	default:
+		break;
+	}
 	font->drawChar(&_screen, ch, charArea.left, charArea.top, rgbColor);
 	addDirtyRect(charArea);
 }
@@ -1575,20 +1592,26 @@ bool ThemeEngine::createCursor(const Common::String &filename, int hotspotX, int
 	_cursorWidth = cursor->w;
 	_cursorHeight = cursor->h;
 
-#ifdef USE_RGB_COLOR
-	_cursorFormat = cursor->format;
-	_cursorTransparent = _cursorFormat.RGBToColor(0xFF, 0, 0xFF);
+	_cursorTransparent = 255;
+	_cursorFormat = Graphics::PixelFormat::createFormatCLUT8();
+	_cursorPalSize = 0;
 
-	// Allocate a new buffer for the cursor
-	delete[] _cursor;
-	_cursor = new byte[_cursorWidth * _cursorHeight * _cursorFormat.bytesPerPixel];
-	assert(_cursor);
-	Graphics::copyBlit(_cursor, (const byte *)cursor->getPixels(),
-	                   _cursorWidth * _cursorFormat.bytesPerPixel, cursor->pitch,
-	                   _cursorWidth, _cursorHeight, _cursorFormat.bytesPerPixel);
+	if (_system->hasFeature(OSystem::kFeatureCursorAlpha)) {
+		_cursorFormat = cursor->format;
+		_cursorTransparent = _cursorFormat.RGBToColor(0xFF, 0, 0xFF);
 
-	_useCursor = true;
-#else
+		// Allocate a new buffer for the cursor
+		delete[] _cursor;
+		_cursor = new byte[_cursorWidth * _cursorHeight * _cursorFormat.bytesPerPixel];
+		assert(_cursor);
+		Graphics::copyBlit(_cursor, (const byte *)cursor->getPixels(),
+		                   _cursorWidth * _cursorFormat.bytesPerPixel, cursor->pitch,
+		                   _cursorWidth, _cursorHeight, _cursorFormat.bytesPerPixel);
+
+		_useCursor = true;
+		return true;
+	}
+
 	if (!_system->hasFeature(OSystem::kFeatureCursorPalette))
 		return true;
 
@@ -1654,7 +1677,6 @@ bool ThemeEngine::createCursor(const Common::String &filename, int hotspotX, int
 
 	_useCursor = true;
 	_cursorPalSize = colorsFound;
-#endif
 
 	return true;
 }
@@ -1694,7 +1716,7 @@ TextColor ThemeEngine::getTextColor(DrawData ddId) const {
 
 TextColorData *ThemeEngine::getTextColorData(TextColor color) const {
 	if (color >= kTextColorMAX)
-		color = kTextColorMAX;
+		color = kTextColorNormal;
 
 	return _textColors[color];
 }
@@ -1721,12 +1743,12 @@ const Graphics::Font *ThemeEngine::loadScalableFont(const Common::String &filena
 		return font;
 
 	Common::ArchiveMemberList members;
-	_themeFiles.listMatchingMembers(members, filename);
+	_themeFiles.listMatchingMembers(members, Common::Path(filename, '/'));
 
 	for (Common::ArchiveMemberList::const_iterator i = members.begin(), end = members.end(); i != end; ++i) {
 		Common::SeekableReadStream *stream = (*i)->createReadStream();
 		if (stream) {
-			font = Graphics::loadTTFFont(*stream, pointsize, Graphics::kTTFSizeModeCharacter, 0, Graphics::kTTFRenderModeLight);
+			font = Graphics::loadTTFFont(*stream, pointsize, Graphics::kTTFSizeModeCharacter, 0, 0, Graphics::kTTFRenderModeLight);
 			delete stream;
 
 			if (font)
@@ -1735,7 +1757,7 @@ const Graphics::Font *ThemeEngine::loadScalableFont(const Common::String &filena
 	}
 
 	// Try loading the font from the common fonts archive.
-	font = Graphics::loadTTFFontFromArchive(filename, pointsize, Graphics::kTTFSizeModeCharacter, 0, Graphics::kTTFRenderModeLight);
+	font = Graphics::loadTTFFontFromArchive(filename, pointsize, Graphics::kTTFSizeModeCharacter, 0, 0, Graphics::kTTFRenderModeLight);
 	if (font)
 		return font;
 #endif
@@ -1751,14 +1773,15 @@ const Graphics::Font *ThemeEngine::loadFont(const Common::String &filename, Comm
 		return font;
 
 	Common::ArchiveMemberList members;
-	const Common::String cacheFilename(genCacheFilename(filename));
+	const Common::Path pathName(filename);
+	const Common::Path cacheFilename(genCacheFilename(filename));
 	_themeFiles.listMatchingMembers(members, cacheFilename);
-	_themeFiles.listMatchingMembers(members, filename);
+	_themeFiles.listMatchingMembers(members, pathName);
 
 	for (Common::ArchiveMemberList::const_iterator i = members.begin(), end = members.end(); i != end; ++i) {
 		Common::SeekableReadStream *stream = (*i)->createReadStream();
 		if (stream) {
-			if ((*i)->getName().equalsIgnoreCase(cacheFilename)) {
+			if ((*i)->getPathInArchive().equalsIgnoreCase(cacheFilename)) {
 				font = Graphics::BdfFont::loadFromCache(*stream);
 			} else {
 				font = Graphics::BdfFont::loadFont(*stream);
@@ -1840,19 +1863,27 @@ bool ThemeEngine::themeConfigParseHeader(Common::String header, Common::String &
 
 	header.trim();
 
-	if (header.empty())
+	if (header.empty()) {
+		warning("Theme format is bad: empty header");
 		return false;
+	}
 
-	if (header[0] != '[' || header.lastChar() != ']')
+	if (header[0] != '[' || header.lastChar() != ']') {
+		warning("Theme format is bad: missing square brackets");
 		return false;
+	}
 
 	header.deleteChar(0);
 	header.deleteLastChar();
 
 	Common::StringTokenizer tok(header, ":");
 
-	if (tok.nextToken() != SCUMMVM_THEME_VERSION_STR)
+	Common::String version = tok.nextToken();
+
+	if (version != SCUMMVM_THEME_VERSION_STR) {
+		warning("Theme version mismatch. Expecting '%s' but got '%s'", SCUMMVM_THEME_VERSION_STR, version.c_str());
 		return false;
+	}
 
 	themeName = tok.nextToken();
 	Common::String author = tok.nextToken();
@@ -1939,7 +1970,7 @@ void ThemeEngine::listUsableThemes(Common::List<ThemeDescriptor> &list) {
 #endif
 
 	if (ConfMan.hasKey("themepath"))
-		listUsableThemes(Common::FSNode(ConfMan.get("themepath")), list);
+		listUsableThemes(Common::FSNode(ConfMan.getPath("themepath")), list);
 
 	listUsableThemes(SearchMan, list);
 
@@ -2011,7 +2042,7 @@ void ThemeEngine::listUsableThemes(const Common::FSNode &node, Common::List<Them
 
 	for (Common::FSList::iterator i = fileList.begin(); i != fileList.end(); ++i) {
 		// We will only process zip files for now
-		if (!i->getPath().matchString("*.zip", true))
+		if (!i->getPath().baseName().matchString("*.zip", true))
 			continue;
 
 		td.name.clear();
@@ -2044,22 +2075,23 @@ void ThemeEngine::listUsableThemes(const Common::FSNode &node, Common::List<Them
 		listUsableThemes(*i, list, depth == -1 ? - 1 : depth - 1);
 }
 
-Common::String ThemeEngine::getThemeFile(const Common::String &id) {
+Common::Path ThemeEngine::getThemeFile(const Common::String &id) {
 	// FIXME: Actually "default" rather sounds like it should use
 	// our default theme which would mean "scummremastered" instead
 	// of the builtin one.
 	if (id.equalsIgnoreCase("default"))
-		return Common::String();
+		return Common::Path();
 
 	// For our builtin theme we don't have to do anything for now too
 	if (id.equalsIgnoreCase("builtin"))
-		return Common::String();
+		return Common::Path();
 
-	Common::FSNode node(id);
+	Common::Path path(id, Common::Path::kNativeSeparator);
+	Common::FSNode node(path);
 
 	// If the given id is a full path we'll just use it
 	if (node.exists() && (node.isDirectory() || node.getName().matchString("*.zip", true)))
-		return id;
+		return path;
 
 	// FIXME:
 	// A very ugly hack to map a id to a filename, this will generate
@@ -2077,10 +2109,10 @@ Common::String ThemeEngine::getThemeFile(const Common::String &id) {
 
 	// If no matching id has been found we will
 	// just fall back to the builtin theme
-	return Common::String();
+	return Common::Path();
 }
 
-Common::String ThemeEngine::getThemeId(const Common::String &filename) {
+Common::String ThemeEngine::getThemeId(const Common::Path &filename) {
 	// If no filename has been given we will initialize the builtin theme
 	if (filename.empty())
 		return "builtin";
@@ -2116,9 +2148,8 @@ Common::String ThemeEngine::getThemeId(const Common::String &filename) {
 
 void ThemeEngine::showCursor() {
 	if (_useCursor) {
-#ifndef USE_RGB_COLOR
-		CursorMan.pushCursorPalette(_cursorPal, 0, _cursorPalSize);
-#endif
+		if (_cursorPalSize)
+			CursorMan.pushCursorPalette(_cursorPal, 0, _cursorPalSize);
 		CursorMan.pushCursor(_cursor, _cursorWidth, _cursorHeight, _cursorHotspotX, _cursorHotspotY, _cursorTransparent, true, &_cursorFormat);
 		CursorMan.showMouse(true);
 	}
@@ -2126,9 +2157,8 @@ void ThemeEngine::showCursor() {
 
 void ThemeEngine::hideCursor() {
 	if (_useCursor) {
-#ifndef USE_RGB_COLOR
-		CursorMan.popCursorPalette();
-#endif
+		if (_cursorPalSize)
+			CursorMan.popCursorPalette();
 		CursorMan.popCursor();
 	}
 }

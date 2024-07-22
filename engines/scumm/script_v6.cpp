@@ -25,6 +25,7 @@
 #include "scumm/actor.h"
 #include "scumm/charset.h"
 #include "scumm/file.h"
+#include "scumm/he/intern_he.h"
 #include "scumm/imuse/imuse.h"
 #include "scumm/imuse_digi/dimuse_engine.h"
 #include "scumm/insane/insane.h"
@@ -345,7 +346,7 @@ void ScummEngine_v6::nukeArray(int a) {
 	data = readVar(a);
 
 	if (_game.heversion >= 80)
-		data &= ~0x33539000;
+		data &= ~MAGIC_ARRAY_NUMBER;
 
 	if (data)
 		_res->nukeResource(rtString, data);
@@ -495,6 +496,81 @@ void ScummEngine_v6::o6_pushByteVar() {
 }
 
 void ScummEngine_v6::o6_pushWordVar() {
+// BACKYARD BASEBALL 2001 ONLINE CHANGES
+#if defined(USE_ENET) && defined(USE_LIBCURL)
+	if (ConfMan.getBool("enable_competitive_mods")) {
+		// Sprinting in competitive Backyard Baseball is considered too weak in its current state. This will increase how effective
+		// it is, limiting the highest speed characters enough to where they cannot go TOO fast.
+		if (_game.id == GID_BASEBALL2001 && _currentRoom == 3 && vm.slot[_currentScript].number == 2095 && readVar(399) == 1) {
+			int offset = _scriptPointer - _scriptOrgPointer;
+			int sprintCounter = readArray(344, vm.localvar[_currentScript][0], 1);
+			int sprintGain = vm.localvar[_currentScript][4];
+			int playerSpeed = vm.localvar[_currentScript][5];
+			if (offset == 42273) {
+				if (sprintCounter >= 21) {
+					if (playerSpeed >= 8) {
+						sprintGain = 2;
+					} else if (playerSpeed == 6 || playerSpeed == 7) {
+						sprintGain = 3;
+					} else {
+						sprintGain = 4;
+					}
+				} else if (sprintCounter >= 15) {
+					if (playerSpeed >= 6) {
+						sprintGain = 2;
+					} else {
+						sprintGain = 3;
+					}
+				} else if (sprintCounter >= 9) {
+						sprintGain = 2;
+				} else {
+					sprintGain = 1;
+				}
+				writeVar(0x4000 + 4, sprintGain);
+			}
+		}
+
+		// This code will change the velocity of the hit based on the pitch thrown, and the location of the pitch itself.
+		if (_game.id == GID_BASEBALL2001 && _currentRoom == 4 && vm.slot[_currentScript].number == 2090 && readVar(399) == 1) {
+			int offset = _scriptPointer - _scriptOrgPointer;
+			int powerAdjustment = vm.localvar[_currentScript][4];
+			int pitchSelected = readVar(0x8000 + 10);
+
+			// Checks if the swing is either Power or Line Drive
+			if (offset == 102789 && (readVar(387) == 1||readVar(387) == 2)) {
+				// Checks if the current pitch type is the same as that of the "remembered" pitch type
+				if (readArray(346, 0, 0) == readArray(346, 1, 0)) {
+					// Checks if the current pitch is either a Heat or a Fireball. The reason it adds 0 instead of 5 is because
+					// in the actual calculation it adds 5 to these two anyway, so this should help balance them out.
+					if (pitchSelected == 14 || pitchSelected == 21) {
+						powerAdjustment = powerAdjustment + 0;
+					} else {
+						powerAdjustment = powerAdjustment + 5;
+					}
+				}
+				// Checks if the zone location is the same as that of the previous one. This should slightly reduce the amount of pitching to the exact same location.
+				// Can also be adjusted later if necessary.
+				if (readArray(346, 0, 1) == readArray(346, 1, 1)) {
+					powerAdjustment = powerAdjustment + 15;
+				}
+				// write the power adjustment to the result
+				writeVar(0x4000 + 4, powerAdjustment);
+			}
+		}
+
+		// Remember the previous pitch thrown and the previous pitch "zone location", then set those two values to the "remembered" values for later use.
+		if (_game.id == GID_BASEBALL2001 && _currentRoom == 4 && vm.slot[_currentScript].number == 2201 && readVar(399) == 1) {
+			writeArray(346, 1, 0, readArray(346, 0, 0));
+			writeArray(346, 1, 1, readArray(346, 0, 1));
+		}
+		// This sets the base cost of a slow ball to 2. Previously it costed the least of every pitch to throw, which resulted in people only using that pitch.
+		if (_game.id == GID_BASEBALL2001 && _currentRoom == 4 && vm.slot[_currentScript].number == 2057 && readVar(399) == 1) {
+			if (readVar(0x4000 + 1) == 15) {
+				writeVar(0x4000 + 2, 2);
+			}
+		}
+	}
+#endif
 	push(readVar(fetchScriptWord()));
 }
 
@@ -554,6 +630,111 @@ void ScummEngine_v6::o6_not() {
 void ScummEngine_v6::o6_eq() {
 	int a = pop();
 	int b = pop();
+
+// BACKYARD BASEBALL 2001 ONLINE CHANGES
+#if defined(USE_ENET) && defined(USE_LIBCURL)
+	if (ConfMan.getBool("enable_competitive_mods")) {
+		int pitchXValue = readVar(0x8000 + 11);
+		int pitchYValue = readVar(0x8000 + 12);
+		int strikeZoneTop = readVar(0x8000 + 29);
+		int strikeZoneBottom = readVar(0x8000 + 30);
+
+		// People have been complaining about strikes being visually unclear during online games. This is because the strike zone's visual is not
+		// equal length compared to the actual range in which a strike can be called. These changes should fix that, with some extra leniency in
+		// the corners in particular since they are especially difficult to see visually, due to having four large corner pieces blocking the view.
+
+		// This checks if the pitch's y location is either:
+		// a. at least 2 pixels lower than the top of the zone/at least 3 pixels above the bottom of the zone
+		// b. at least 2 pixels lower than the top of the zone/at least 3 pixels above the bottom of the zone
+		// If either of these are true AND the x value is less than or equal to 279 OR greater than or equal to 354, make the game read as a ball.
+		// The strike zone should be much more lenient in the corners, as well as removing the small advantage of throwing to the farthest right side of the zone.
+		if (_game.id == GID_BASEBALL2001 && _currentRoom == 4 && (vm.slot[_currentScript].number == 2202 || vm.slot[_currentScript].number == 2192) && readVar(399) == 1) {
+			if (((pitchYValue <= strikeZoneTop + 2 || pitchYValue >= strikeZoneBottom - 3) && pitchXValue <= 279) ||
+				((pitchYValue <= strikeZoneTop + 2 || pitchYValue >= strikeZoneBottom - 3) && pitchXValue >= 354)) {
+				writeVar(0x8000 + 16, 2);
+			}
+			// if the ball's y location is 1 pixel higher than the bottom of the zone, then it will be a ball.
+			// This removes the small advantage of throwing at the very bottom of the zone.
+			if (pitchYValue > strikeZoneBottom - 1) {
+				writeVar(0x8000 + 16, 2);
+			}
+		}
+
+		// This change affects the angle adjustment for each batting stance when timing your swing. There are complaints that
+		// the game does not give you enough control when batting, resulting in a lot of hits going to the same area. This should
+		// give players more agency on where they want to hit the ball, which will also increase the skill ceiling.
+		if (_game.id == GID_BASEBALL2001 && _currentRoom == 4 && vm.slot[_currentScript].number == 2087 && readVar(399) == 1) {
+			int offset = _scriptPointer - _scriptOrgPointer;
+			// OPEN STANCE ADJUSTMENTS (1 being earliest, 5 being latest)
+			if (offset == 101898 && readVar(447) == 1) {
+				switch (readVar(0x8000 + 1)) {
+				case 1:
+					writeVar(0x4000 + 0, -13);
+					break;
+				case 2:
+					writeVar(0x4000 + 0, -2);
+					break;
+				case 3:
+					writeVar(0x4000 + 0, 10);
+					break;
+				case 4:
+					writeVar(0x4000 + 0, 40);
+					break;
+				case 5:
+					writeVar(0x4000 + 0, 63);
+					break;
+				}
+			}
+			// SQUARED STANCE ADJUSTMENTS (1 being earliest, 5 being latest)
+			if (offset == 101898 && readVar(447) == 2) {
+				switch (readVar(0x8000 + 1)) {
+				case 1:
+					writeVar(0x4000 + 0, -30);
+					break;
+				case 2:
+					writeVar(0x4000 + 0, -7);
+					break;
+				case 3:
+					writeVar(0x4000 + 0, 10);
+					break;
+				case 4:
+					writeVar(0x4000 + 0, 27);
+					break;
+				case 5:
+					writeVar(0x4000 + 0, 45);
+					break;
+				}
+			}
+			// CLOSED STANCE ADJUSTMENTS (1 being earliest, 5 being latest)
+			if (offset == 101898 && readVar(447) == 3) {
+				switch (readVar(0x8000 + 1)) {
+				case 1:
+					writeVar(0x4000 + 0, -47);
+					break;
+				case 2:
+					writeVar(0x4000 + 0, -32);
+					break;
+				case 3:
+					writeVar(0x4000 + 0, 0);
+					break;
+				case 4:
+					writeVar(0x4000 + 0, 15);
+					break;
+				case 5:
+					writeVar(0x4000 + 0, 28);
+					break;
+				}
+			}
+		}
+
+		// This code makes it so that generic players (and Mr. Clanky) play pro player music when hitting home runs.
+		// This is a purely aesthetic change, as they have no home run music by default.
+		if (_game.id == GID_BASEBALL2001 && _currentRoom == 3 && vm.slot[_currentScript].number == 11 && vm.localvar[_currentScript][0] > 61 && readVar(399) == 1) {
+			// this local variable checks for player ID
+			writeVar(0x4000 + 0, 60);
+		}
+	}
+#endif
 
 #if defined(USE_ENET) && defined(USE_LIBCURL)
 	int offset = _scriptPointer - _scriptOrgPointer;
@@ -658,7 +839,16 @@ void ScummEngine_v6::o6_le() {
 
 void ScummEngine_v6::o6_ge() {
 	int a = pop();
-	push(pop() >= a);
+	int b = pop();
+#if defined(USE_ENET) && defined(USE_LIBCURL)
+	// Mod for Backyard Baseball 2001 online competitive play: Reduce sprints
+	// required to reach top speed
+	if (ConfMan.getBool("enable_competitive_mods") && _game.id == GID_BASEBALL2001 &&
+		_currentRoom == 3 && vm.slot[_currentScript].number == 2095 && readVar(399) == 1) {
+		a -= 1;  // If sprint counter (b) is higher than a, runner gets 1 extra speed
+	}
+#endif
+	push(b >= a);
 }
 
 void ScummEngine_v6::o6_add() {
@@ -680,7 +870,23 @@ void ScummEngine_v6::o6_div() {
 	int a = pop();
 	if (a == 0)
 		error("division by zero");
-	push(pop() / a);
+	int b = pop();
+#if defined(USE_ENET) && defined(USE_LIBCURL)
+	// Mod for Backyard Baseball 2001 online competitive play: Allow full sprinting while
+	// running half-speed on a popup
+	if (ConfMan.getBool("enable_competitive_mods") && _game.id == GID_BASEBALL2001 && _currentRoom == 3 &&
+		vm.slot[_currentScript].number == 2095 && readVar(399) == 1 && a == 2) {
+		// Normally divides speed by two here
+		int runnerIdx = readVar(0x4000);
+		int runnerReSprint = readArray(344, runnerIdx, 1);
+		// But if the runner is sprinting, don't divide by two
+		if (runnerReSprint > 1) {
+			push(b);
+			return;
+		}
+	}
+#endif
+	push(b / a);
 }
 
 void ScummEngine_v6::o6_land() {
@@ -862,7 +1068,7 @@ void ScummEngine_v6::o6_startScript() {
 	// This also happens with the original interpreters and with the remaster.
 	if (_game.id == GID_TENTACLE && _roomResource == 13 &&
 		vm.slot[_currentScript].number == 21 && script == 106 &&
-		args[0] == 91 && _enableEnhancements) {
+		args[0] == 91 && enhancementEnabled(kEnhRestoredContent)) {
 		return;
 	}
 
@@ -880,7 +1086,7 @@ void ScummEngine_v6::o6_startScript() {
 	// This fix checks for this situation happening (and only this one), and makes a call
 	// to a soundKludge operation like script 29 would have done.
 	if (_game.id == GID_CMI && _currentRoom == 19 &&
-		vm.slot[_currentScript].number == 168 && script == 118 && _enableEnhancements) {
+		vm.slot[_currentScript].number == 168 && script == 118 && enhancementEnabled(kEnhAudioChanges)) {
 		int list[16] = { 4096, 1278, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 		_sound->soundKludge(list, 2);
 	}
@@ -890,7 +1096,7 @@ void ScummEngine_v6::o6_startScript() {
 	// stopping and starting their speech. This was a script bug in the original
 	// game, which would also block the "That was informative" reaction from Sam.
 	if (_game.id == GID_SAMNMAX && _roomResource == 59 &&
-		vm.slot[_currentScript].number == 201 && script == 48 && _enableEnhancements) {
+		vm.slot[_currentScript].number == 201 && script == 48 && enhancementEnabled(kEnhRestoredContent)) {
 		o6_breakHere();
 	}
 
@@ -921,6 +1127,66 @@ void ScummEngine_v6::o6_startScriptQuick2() {
 	int script;
 	getStackList(args, ARRAYSIZE(args));
 	script = pop();
+#if defined(USE_ENET) && defined(USE_LIBCURL)
+	// Mod for Backyard Baseball 2001 online competitive play: change effect of
+	// pitch location on hit quality
+	if (ConfMan.getBool("enable_competitive_mods") && _game.id == GID_BASEBALL2001 && _currentRoom == 4 && script == 2085 && readVar(399) == 1) {
+		int zone = _roomVars[2];
+		int stance = readVar(447);
+		int handedness = _roomVars[0];
+		int hitQuality = -2;
+		if (stance == 2) {  // Batter is in a squared stance
+			switch (zone) {
+			case 25:
+				hitQuality = 3;
+				break;
+			case 18: case 24: case 26: case 32:
+				hitQuality = 2;
+				break;
+			case 10: case 11: case 12: case 17: case 19: case 23: case 27: case 31: case 33: case 38: case 39: case 40:
+				hitQuality = 1;
+				break;
+			case 4: case 16: case 20: case 30: case 34: case 46:
+				hitQuality = 0;
+				break;
+			case 3: case 5: case 9: case 13: case 15: case 21: case 22: case 28: case 29: case 35: case 37: case 41: case 45: case 47:
+				hitQuality = -1;
+				break;
+			default:
+				break;
+			}
+			push(hitQuality);
+			return;
+		}
+		if (
+			(handedness == 2 && stance == 1)  // Left-handed batter in open stance
+			|| (handedness == 1 && stance == 3)  // Right-handed batter in closed stance
+		) {
+			zone  = ((zone - 1) / 7) * 7 + (6 - ((zone - 1) % 7)) + 1;  // "Flip" zone horizontally across center
+		}
+		switch (zone) {
+		case 24:
+			hitQuality = 3;
+			break;
+		case 17: case 23: case 25: case 31:
+			hitQuality = 2;
+			break;
+		case 9: case 10: case 16: case 18: case 22: case 26: case 30: case 32: case 37: case 38:
+			hitQuality = 1;
+			break;
+		case 3: case 11: case 15: case 19: case 29: case 33: case 39: case 45:
+			hitQuality = 0;
+			break;
+		case 2: case 4: case 8: case 12: case 20: case 27: case 34: case 36: case 40: case 44: case 46:
+			hitQuality = -1;
+			break;
+		default:
+			break;
+		}
+		push(hitQuality);
+		return;
+	}
+#endif
 	runScript(script, 0, 1, args);
 }
 
@@ -1215,7 +1481,7 @@ void ScummEngine_v6::o6_loadRoom() {
 	// WORKAROUND bug #13378: During Sam's reactions to Max beating up the
 	// scientist in the intro, we sometimes have to slow down animations
 	// artificially. This is where we speed them back up again.
-	if (_game.id == GID_SAMNMAX && vm.slot[_currentScript].number == 65 && room == 6 && _enableEnhancements) {
+	if (_game.id == GID_SAMNMAX && vm.slot[_currentScript].number == 65 && room == 6 && enhancementEnabled(kEnhTimingChanges)) {
 		int actors[] = { 2, 3, 10 };
 
 		for (int i = 0; i < ARRAYSIZE(actors); i++) {
@@ -1341,7 +1607,7 @@ void ScummEngine_v6::o6_animateActor() {
 	int act = pop();
 
 	if (_game.id == GID_SAMNMAX && _roomResource == 35 && vm.slot[_currentScript].number == 202 &&
-		act == 4 && anim == 14 && _enableEnhancements) {
+		act == 4 && anim == 14 && enhancementEnabled(kEnhMinorBugFixes)) {
 		// WORKAROUND bug #2068 (Animation glitch at World of Fish).
 		// Before starting animation 14 of the fisherman, make sure he isn't
 		// talking anymore, otherwise the fishing line may appear twice when Max
@@ -1353,7 +1619,7 @@ void ScummEngine_v6::o6_animateActor() {
 	}
 
 	if (_game.id == GID_SAMNMAX && _roomResource == 47 && vm.slot[_currentScript].number == 202 &&
-		act == 2 && anim == 249 && _enableEnhancements) {
+		act == 2 && anim == 249 && enhancementEnabled(kEnhMinorBugFixes)) {
 		// WORKAROUND for bug #3832: parts of Bruno are left on the screen when he
 		// escapes Bumpusville with Trixie. Bruno (act. 11) and Trixie (act. 12) are
 		// properly removed from the scene by the script, but not the combined actor
@@ -1640,7 +1906,7 @@ void ScummEngine_v6::o6_beginOverride() {
 	//
 	// To amend this, we intercept this exact script override and we force the playback of sound 2277,
 	// which is the iMUSE sequence which would have been played after the dialogue.
-	if (_enableEnhancements && _game.id == GID_CMI && _currentRoom == 37 && vm.slot[_currentScript].number == 251 &&
+	if (enhancementEnabled(kEnhAudioChanges) && _game.id == GID_CMI && _currentRoom == 37 && vm.slot[_currentScript].number == 251 &&
 		_sound->isSoundRunning(2275) != 0 && (_scriptPointer - _scriptOrgPointer) == 0x1A) {
 		int list[16] = {0x1001, 2277, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 		_sound->soundKludge(list, 2);
@@ -1916,7 +2182,7 @@ void ScummEngine_v6::o6_roomOps() {
 		// this way, we avoid some graphics glitches that the original
 		// interpreter had.
 
-		if (_game.id == GID_SAMNMAX && vm.slot[_currentScript].number == 64)
+		if (_game.id == GID_SAMNMAX && _currentScript != 0xFF && vm.slot[_currentScript].number == 64)
 			setDirtyColors(0, 255);
 		else
 			setCurrentPalette(a);
@@ -1949,7 +2215,7 @@ void ScummEngine_v6::o6_actorOps() {
 		// chattering teeth, but yet when he comes back he's not wearing them
 		// during this cutscene.
 		if (_game.id == GID_TENTACLE && _currentRoom == 13 && vm.slot[_currentScript].number == 211 &&
-			a->_number == 8 && i == 53 && _enableEnhancements) {
+			a->_number == 8 && i == 53 && enhancementEnabled(kEnhVisualChanges)) {
 			i = 69;
 		}
 		a->setActorCostume(i);
@@ -2468,6 +2734,7 @@ void ScummEngine_v6::o6_systemOps() {
 		pauseGame();
 		break;
 	case SO_QUIT:
+		_quitFromScriptCmd = true;
 		quitGame();
 		break;
 	default:
@@ -2569,7 +2836,7 @@ void ScummEngine_v6::o6_talkActor() {
 	// will feel off -- so we can't use the _forcedWaitForMessage trick.
 	if (_game.id == GID_SAMNMAX && _roomResource == 11 && vm.slot[_currentScript].number == 67
 		&& getOwner(70) != 2 && !readVar(0x8000 + 67) && !readVar(0x8000 + 39) && readVar(0x8000 + 12) == 1
-		&& !getClass(126, 6) && _enableEnhancements) {
+		&& !getClass(126, 6) && enhancementEnabled(kEnhRestoredContent)) {
 		if (VAR(VAR_HAVE_MSG)) {
 			_scriptPointer--;
 			o6_breakHere();
@@ -2584,7 +2851,7 @@ void ScummEngine_v6::o6_talkActor() {
 	// a talkActor opcode.
 	if (_game.id == GID_TENTACLE && vm.slot[_currentScript].number == 307
 			&& VAR(VAR_EGO) != 2 && _actorToPrintStrFor == 2
-			&& _enableEnhancements) {
+			&& enhancementEnabled(kEnhMinorBugFixes)) {
 		_scriptPointer += resStrLen(_scriptPointer) + 1;
 		return;
 	}
@@ -2595,7 +2862,7 @@ void ScummEngine_v6::o6_talkActor() {
 	// hasn't been properly replaced... Fixed in the 2017 remaster, though.
 	if (_game.id == GID_FT && _language == Common::FR_FRA
 		&& _roomResource == 7 && vm.slot[_currentScript].number == 77
-		&& _actorToPrintStrFor == 1 && _enableEnhancements) {
+		&& _actorToPrintStrFor == 1 && enhancementEnabled(kEnhTextLocFixes)) {
 		const int len = resStrLen(_scriptPointer) + 1;
 		if (len == 93 && memcmp(_scriptPointer + 16 + 18, "piano-low-kick", 14) == 0) {
 			byte *tmpBuf = new byte[len - 14 + 3];
@@ -2621,7 +2888,7 @@ void ScummEngine_v6::o6_talkActor() {
 	// no stable offset for all the floppy, CD and translated versions, and
 	// no easy way to only target the impacted lines.
 	if (_game.id == GID_TENTACLE && vm.slot[_currentScript].number == 9
-		&& vm.localvar[_currentScript][0] == 216 && _actorToPrintStrFor == 4 && _enableEnhancements) {
+		&& vm.localvar[_currentScript][0] == 216 && _actorToPrintStrFor == 4 && enhancementEnabled(kEnhRestoredContent)) {
 		_forcedWaitForMessage = true;
 		_scriptPointer--;
 
@@ -2639,7 +2906,7 @@ void ScummEngine_v6::o6_talkActor() {
 	// [0166] (73)   } else {
 	//
 	// Here we simulate that opcode.
-	if (_game.id == GID_DIG && vm.slot[_currentScript].number == 88 && _enableEnhancements) {
+	if (_game.id == GID_DIG && vm.slot[_currentScript].number == 88 && enhancementEnabled(kEnhRestoredContent)) {
 		if (offset == 0x158 || offset == 0x214 || offset == 0x231 || offset == 0x278) {
 			_forcedWaitForMessage = true;
 			_scriptPointer--;
@@ -2658,7 +2925,7 @@ void ScummEngine_v6::o6_talkActor() {
 	if (_game.id == GID_DIG && _roomResource == 58 && vm.slot[_currentScript].number == 402
 		&& _actorToPrintStrFor == 3 && vm.localvar[_currentScript][0] == 0
 		&& readVar(0x8000 + 94) && readVar(0x8000 + 78) && !readVar(0x8000 + 97)
-		&& _scummVars[269] == 3 && getState(388) == 2 && _enableEnhancements) {
+		&& _scummVars[269] == 3 && getState(388) == 2 && enhancementEnabled(kEnhRestoredContent)) {
 		_forcedWaitForMessage = true;
 		_scriptPointer--;
 
@@ -3239,15 +3506,21 @@ void ScummEngine_v6::o6_findAllObjects() {
 	push(readVar(0));
 }
 
-void ScummEngine_v6::shuffleArray(int num, int minIdx, int maxIdx) {
+void ScummEngine_v6::shuffleArray(int num, int minIdx, int maxIdx) {	
+	int rand1, rand2;
 	int range = maxIdx - minIdx;
 	int count = range * 2;
 
 	// Shuffle the array 'num'
 	while (count--) {
 		// Determine two random elements...
-		int rand1 = _rnd.getRandomNumber(range) + minIdx;
-		int rand2 = _rnd.getRandomNumber(range) + minIdx;
+		if (_game.heversion >= 72) {
+			rand1 = VAR(VAR_RANDOM_NR) = _rnd.getRandomNumberRng(minIdx, maxIdx);
+			rand2 = VAR(VAR_RANDOM_NR) = _rnd.getRandomNumberRng(minIdx, maxIdx);
+		} else {
+			rand1 = _rnd.getRandomNumber(range) + minIdx;
+			rand2 = _rnd.getRandomNumber(range) + minIdx;
+		}
 
 		// ...and swap them
 		int val1 = readArray(num, 0, rand1);

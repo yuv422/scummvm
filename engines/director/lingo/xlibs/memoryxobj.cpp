@@ -22,7 +22,8 @@
 /*************************************
  *
  * USED IN:
- * Chop Suey (win)
+ * Chop Suey (Win)
+ * Comedians (Mac)
  *
  *************************************/
 
@@ -65,10 +66,10 @@
 namespace Director {
 
 const char *MemoryXObj::xlibName = "Memory";
-const char *MemoryXObj::fileNames[] = {
-	"Memory XObj",
-	"Memory",
-	nullptr
+const XlibFileDesc MemoryXObj::fileNames[] = {
+	{ "Memory XObj",	nullptr },
+	{ "Memory",			nullptr },
+	{ nullptr,			nullptr },
 };
 
 static MethodProto xlibMethods[] = {
@@ -79,7 +80,7 @@ static MethodProto xlibMethods[] = {
 	{ nullptr, nullptr, 0, 0, 0 }
 };
 
-void MemoryXObj::open(int type) {
+void MemoryXObj::open(ObjectType type, const Common::Path &path) {
 	if (type == kXObj) {
 		MemoryXObject::initMethods(xlibMethods);
 		MemoryXObject *xobj = new MemoryXObject(kXObj);
@@ -87,7 +88,7 @@ void MemoryXObj::open(int type) {
 	}
 }
 
-void MemoryXObj::close(int type) {
+void MemoryXObj::close(ObjectType type) {
 	if (type == kXObj) {
 		MemoryXObject::cleanupMethods();
 		g_lingo->_globalvars[xlibName] = Datum();
@@ -95,7 +96,7 @@ void MemoryXObj::close(int type) {
 }
 
 
-MemoryXObject::MemoryXObject(ObjectType ObjectType) :Object<MemoryXObject>("MemoryXObj") {
+MemoryXObject::MemoryXObject(ObjectType ObjectType) :Object<MemoryXObject>("Memory") {
 	_objType = ObjectType;
 }
 
@@ -110,7 +111,7 @@ void MemoryXObj::m_purge(int nargs) {
 }
 
 void MemoryXObj::m_getVM(int nargs) {
-	g_lingo->push(Datum(0)); // At least Chop Suey Win requires 0 bytes Virtual Memory for running
+	g_lingo->push(Datum(0)); // Chop Suey (Win) and Comedians (Mac) require Virtual Memory to be disabled
 }
 
 } // End of namespace Director

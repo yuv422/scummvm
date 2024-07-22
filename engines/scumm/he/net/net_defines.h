@@ -24,6 +24,13 @@
 
 namespace Scumm {
 
+// The version number of the network protocol.  Users
+// will be matched with the defined when hosting and joining
+// games.  Meaning it will not find users that are using
+// a different version.  This is done to ensure that
+// people are playing with the same netcode as the hosts.
+#define NETWORK_VERSION								"1.1"
+
 // pnetwin.h
 
 #define PN_PRIORITY_HIGH							0x00000001
@@ -47,9 +54,6 @@ namespace Scumm {
 #define PACKETTYPE_REMOTESTARTSCRIPTRETURN			2
 #define PACKETTYPE_REMOTESTARTSCRIPTRESULT			3
 #define PACKETTYPE_REMOTESENDSCUMMARRAY				4
-// ScummVM specific type, used for determine
-// net lag
-#define PACKETTYPE_RELIABLETIMEDRESP				5
 
 const int MAX_PACKET_SIZE = 4096;	// bytes
 const int MAX_HOSTNAME_SIZE = 256;

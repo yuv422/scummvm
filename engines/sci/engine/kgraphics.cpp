@@ -43,6 +43,7 @@
 #include "sci/graphics/compare.h"
 #include "sci/graphics/controls16.h"
 #include "sci/graphics/cursor.h"
+#include "sci/graphics/gfxdrivers.h"
 #include "sci/graphics/palette.h"
 #include "sci/graphics/paint16.h"
 #include "sci/graphics/picture.h"
@@ -257,7 +258,7 @@ reg_t kGraph(EngineState *s, int argc, reg_t *argv) {
 }
 
 reg_t kGraphGetColorCount(EngineState *s, int argc, reg_t *argv) {
-	return make_reg(0, g_sci->_gfxPalette16->getTotalColorCount());
+	return make_reg(0, g_sci->_gfxScreen->gfxDriver()->numColors());
 }
 
 reg_t kGraphDrawLine(EngineState *s, int argc, reg_t *argv) {
@@ -554,7 +555,6 @@ reg_t kOnControl(EngineState *s, int argc, reg_t *argv) {
 
 reg_t kDrawPic(EngineState *s, int argc, reg_t *argv) {
 	GuiResourceId pictureId = argv[0].toUint16();
-	uint16 flags = 0;
 	int16 animationNr = -1;
 	bool animationBlackoutFlag = false;
 	bool mirroredFlag = false;
@@ -562,7 +562,7 @@ reg_t kDrawPic(EngineState *s, int argc, reg_t *argv) {
 	int16 EGApaletteNo = 0; // default needs to be 0
 
 	if (argc >= 2) {
-		flags = argv[1].toUint16();
+		uint16 flags = argv[1].toUint16();
 		if (flags & K_DRAWPIC_FLAGS_ANIMATIONBLACKOUT)
 			animationBlackoutFlag = true;
 		animationNr = flags & 0xFF;
@@ -615,7 +615,7 @@ reg_t kPaletteSetFromResource(EngineState *s, int argc, reg_t *argv) {
 	// Non-VGA games don't use palette resources.
 	// This has been changed to 64 colors because Longbow Amiga does have
 	// one palette (palette 999).
-	if (g_sci->_gfxPalette16->getTotalColorCount() < 64)
+	if (g_sci->_gfxScreen->gfxDriver()->numColors() < 64)
 		return s->r_acc;
 
 	g_sci->_gfxPalette16->kernelSetFromResource(resourceId, force);
@@ -645,7 +645,7 @@ reg_t kPaletteSetIntensity(EngineState *s, int argc, reg_t *argv) {
 	bool setPalette = (argc < 4) ? true : (argv[3].isNull()) ? true : false;
 
 	// Palette intensity in non-VGA SCI1 games has been removed
-	if (g_sci->_gfxPalette16->getTotalColorCount() < 256)
+	if (g_sci->_gfxScreen->gfxDriver()->numColors() < 256)
 		return s->r_acc;
 
 	if (setPalette) {
@@ -676,12 +676,11 @@ reg_t kPaletteFindColor(EngineState *s, int argc, reg_t *argv) {
 }
 
 reg_t kPaletteAnimate(EngineState *s, int argc, reg_t *argv) {
-	int16 argNr;
 	bool paletteChanged = false;
 
 	// Palette animation in non-VGA SCI1 games has been removed
-	if (g_sci->_gfxPalette16->getTotalColorCount() == 256) {
-		for (argNr = 0; argNr < argc; argNr += 3) {
+	if (g_sci->_gfxScreen->gfxDriver()->numColors() == 256) {
+		for (int argNr = 0; argNr < argc; argNr += 3) {
 			uint16 fromColor = argv[argNr].toUint16();
 			uint16 toColor = argv[argNr + 1].toUint16();
 			int16 speed = argv[argNr + 2].toSint16();
@@ -883,7 +882,7 @@ void _k_GenericDrawControl(EngineState *s, reg_t controlObject, bool hilite) {
 	Common::String text;
 	Common::Rect rect;
 	TextAlignment alignment;
-	int16 mode, maxChars, cursorPos, upperPos, listCount, i;
+	int16 mode, maxChars, cursorPos, upperPos, listCount;
 	uint16 upperOffset, cursorOffset;
 	GuiResourceId viewId;
 	int16 loopNo;
@@ -990,7 +989,7 @@ void _k_GenericDrawControl(EngineState *s, reg_t controlObject, bool hilite) {
 			// We create a pointer-list to the different strings, we also find out whats upper and cursor position
 			listSeeker = textReference;
 			listStrings = new Common::String[listCount];
-			for (i = 0; i < listCount; i++) {
+			for (int16 i = 0; i < listCount; i++) {
 				listStrings[i] = s->_segMan->getString(listSeeker);
 				if (listSeeker.getOffset() == upperOffset)
 					upperPos = i;

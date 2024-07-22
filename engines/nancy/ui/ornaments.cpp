@@ -29,15 +29,15 @@ namespace Nancy {
 namespace UI {
 
 void ViewportOrnaments::init() {
-	const VIEW *viewportData = (const VIEW *)g_nancy->getEngineData("VIEW");
+	auto *viewportData = GetEngineData(VIEW);
 	assert(viewportData);
 
 	Common::Rect viewportBounds = viewportData->bounds;
 	moveTo(viewportData->screenPosition);
 
-	Graphics::ManagedSurface &object0 = g_nancy->_graphicsManager->_object0;
+	Graphics::ManagedSurface &object0 = g_nancy->_graphics->_object0;
 
-	_drawSurface.create(viewportBounds.width(), viewportBounds.height(), g_nancy->_graphicsManager->getInputPixelFormat());
+	_drawSurface.create(viewportBounds.width(), viewportBounds.height(), g_nancy->_graphics->getInputPixelFormat());
 
 	uint8 palette[256 * 3];
 	object0.grabPalette(palette, 0, 256);
@@ -53,7 +53,7 @@ void ViewportOrnaments::init() {
 		{ 33, 39, 40, 59 }
 	};
 
-	_drawSurface.clear(g_nancy->_graphicsManager->getTransColor());
+	_drawSurface.clear(g_nancy->_graphics->getTransColor());
 	setTransparent(true);
 
 	// Top left
@@ -69,30 +69,29 @@ void ViewportOrnaments::init() {
 	// Middle right
 	_drawSurface.blitFrom(object0, src[5], Common::Point(viewportBounds.right - src[5].width(), 205));
 
-
 	RenderObject::init();
 }
 
 void TextboxOrnaments::init() {
-	const BSUM *bootSummary = (const BSUM *)g_nancy->getEngineData("BSUM");
+	auto *bootSummary = GetEngineData(BSUM);
 	assert(bootSummary);
 
-	const TBOX *textboxData = (const TBOX *)g_nancy->getEngineData("TBOX");
+	auto *textboxData = GetEngineData(TBOX);
 	assert(textboxData);
 
 	moveTo(bootSummary->textboxScreenPosition);
 	Common::Rect textboxBounds = _screenPosition;
 	textboxBounds.moveTo(0, 0);
 
-	Graphics::ManagedSurface &object0 = g_nancy->_graphicsManager->_object0;
+	Graphics::ManagedSurface &object0 = g_nancy->_graphics->_object0;
 
-	_drawSurface.create(textboxBounds.width(), textboxBounds.height(), g_nancy->_graphicsManager->getInputPixelFormat());
+	_drawSurface.create(textboxBounds.width(), textboxBounds.height(), g_nancy->_graphics->getInputPixelFormat());
 
 	uint8 palette[256 * 3];
 	object0.grabPalette(palette, 0, 256);
 	_drawSurface.setPalette(palette, 0, 256);
 
-	_drawSurface.clear(g_nancy->_graphicsManager->getTransColor());
+	_drawSurface.clear(g_nancy->_graphics->getTransColor());
 	setTransparent(true);
 
 	for (uint i = 0; i < 14; ++i) {
@@ -105,25 +104,25 @@ void TextboxOrnaments::init() {
 }
 
 void InventoryBoxOrnaments::init() {
-	const BSUM *bootSummary = (const BSUM *)g_nancy->getEngineData("BSUM");
+	auto *bootSummary = GetEngineData(BSUM);
 	assert(bootSummary);
 
-	const INV *inventoryData = (const INV *)g_nancy->getEngineData("INV");
+	auto *inventoryData = GetEngineData(INV);
 	assert(inventoryData);
 
 	moveTo(bootSummary->inventoryBoxScreenPosition);
 	Common::Rect invBoxBounds = _screenPosition;
 	invBoxBounds.moveTo(0, 0);
 
-	Graphics::ManagedSurface &object0 = g_nancy->_graphicsManager->_object0;
+	Graphics::ManagedSurface &object0 = g_nancy->_graphics->_object0;
 
-	_drawSurface.create(invBoxBounds.width(), invBoxBounds.height(), g_nancy->_graphicsManager->getInputPixelFormat());
+	_drawSurface.create(invBoxBounds.width(), invBoxBounds.height(), g_nancy->_graphics->getInputPixelFormat());
 
 	uint8 palette[256 * 3];
 	object0.grabPalette(palette, 0, 256);
 	_drawSurface.setPalette(palette, 0, 256);
 
-	_drawSurface.clear(g_nancy->_graphicsManager->getTransColor());
+	_drawSurface.clear(g_nancy->_graphics->getTransColor());
 	setTransparent(true);
 
 	for (uint i = 0; i < 6; ++i) {

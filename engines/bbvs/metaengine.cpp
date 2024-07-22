@@ -44,7 +44,7 @@ bool BbvsEngine::isLoogieAltDemo() const {
 
 } // End of namespace Bbvs
 
-class BbvsMetaEngine : public AdvancedMetaEngine {
+class BbvsMetaEngine : public AdvancedMetaEngine<ADGameDescription> {
 public:
 	const char *getName() const override {
 		return "bbvs";
@@ -57,6 +57,9 @@ public:
 	SaveStateList listSaves(const char *target) const override;
 	SaveStateDescriptor querySaveMetaInfos(const char *target, int slot) const override;
 	void removeSaveState(const char *target, int slot) const override;
+
+	// Disable autosave (see mirrored method in bbvs.h for detailed explanation)
+	int getAutosaveSlot() const override { return -1; }
 };
 
 bool BbvsMetaEngine::hasFeature(MetaEngineFeature f) const {

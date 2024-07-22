@@ -20,9 +20,11 @@
  */
 
 #include "common/translation.h"
+#include "common/system.h"
 
 #include "backends/keymapper/action.h"
 #include "backends/keymapper/keymap.h"
+#include "backends/keymapper/keymapper.h"
 #include "backends/keymapper/standard-actions.h"
 
 #include "engines/nancy/nancy.h"
@@ -30,11 +32,13 @@
 
 namespace Nancy {
 
+const char *InputManager::_mazeKeymapID = "nancy-maze";
+
 void InputManager::processEvents() {
 	using namespace Common;
 	Common::Event event;
 
-	_inputs &= ~(NancyInput::kLeftMouseButtonDown | NancyInput::kLeftMouseButtonUp | NancyInput::kRightMouseButtonDown | NancyInput::kRightMouseButtonUp);
+	_inputs &= ~(NancyInput::kLeftMouseButtonDown | NancyInput::kLeftMouseButtonUp | NancyInput::kRightMouseButtonDown | NancyInput::kRightMouseButtonUp | NancyInput::kRaycastMap);
 	_otherKbdInput.clear();
 
 	while (g_nancy->getEventManager()->pollEvent(event)) {
@@ -74,6 +78,9 @@ void InputManager::processEvents() {
 			case kNancyActionOpenMainMenu:
 				_inputs |= NancyInput::kOpenMainMenu;
 				break;
+			case kNancyActionShowRaycastMap:
+				_inputs |= NancyInput::kRaycastMap;
+				break;
 			default:
 				break;
 			}
@@ -106,6 +113,9 @@ void InputManager::processEvents() {
 				break;
 			case kNancyActionOpenMainMenu:
 				_inputs &= ~NancyInput::kOpenMainMenu;
+				break;
+			case kNancyActionShowRaycastMap:
+				_inputs &= ~NancyInput::kRaycastMap;
 				break;
 			default:
 				break;
@@ -149,11 +159,23 @@ void InputManager::forceCleanInput() {
 	_otherKbdInput.clear();
 }
 
-void InputManager::initKeymaps(Common::KeymapArray &keymaps) {
+void InputManager::setKeymapEnabled(Common::String keymapName, bool enabled) {
+	Common::Keymapper *keymapper = g_nancy->getEventManager()->getKeymapper();
+	Common::Keymap *keymap = keymapper->getKeymap(keymapName);
+	if (keymap)
+		keymap->setEnabled(enabled);
+}
+
+void InputManager::setVKEnabled(bool enabled) {
+	g_system->setFeatureState(OSystem::kFeatureVirtualKeyboard, enabled);
+}
+
+void InputManager::initKeymaps(Common::KeymapArray &keymaps, const char *target) {
 	using namespace Common;
 	using namespace Nancy;
 
-	Keymap *mainKeymap = new Keymap(Keymap::kKeymapTypeGame, "nancy-main", "Nancy Drew");
+	Common::String gameId = ConfMan.get("gameid", target);
+	Keymap *mainKeymap = new Keymap(Keymap::kKeymapTypeGame, "nancy-main", _("Nancy Drew"));
 	Action *act;
 
 	act = new Action(kStandardActionLeftClick, _("Left Click Interact"));
@@ -207,6 +229,19 @@ void InputManager::initKeymaps(Common::KeymapArray &keymaps) {
 	mainKeymap->addAction(act);
 
 	keymaps.push_back(mainKeymap);
+
+	if (gameId == "nancy3" || gameId == "nancy6") {
+		Keymap *mazeKeymap = new Keymap(Keymap::kKeymapTypeGame, _mazeKeymapID, _("Nancy Drew - Maze"));
+
+		act = new Action("RAYCM", _("Show/hide maze map"));
+		act->setCustomEngineActionEvent(kNancyActionShowRaycastMap);
+		act->addDefaultInputMapping("m");
+		act->addDefaultInputMapping("JOY_RIGHT_SHOULDER");
+		mazeKeymap->addAction(act);
+		mazeKeymap->setEnabled(false);
+
+		keymaps.push_back(mazeKeymap);
+	}
 }
 
 } // End of namespace Nancy

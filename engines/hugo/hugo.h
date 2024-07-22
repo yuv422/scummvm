@@ -90,6 +90,27 @@ typedef byte Icondib[kXPix * kInvDy];               // Icon bar dib
 typedef byte Viewdib[(long)kXPix * kYPix];          // Viewport dib
 typedef byte Overlay[kOvlSize];                     // Overlay file
 
+enum HUGOAction {
+	kActionNone,
+	kActionEscape,
+	kActionMoveTop,
+	kActionMoveBottom,
+	kActionMoveLeft,
+	kActionMoveRight,
+	kActionMoveTopRight,
+	kActionMoveTopLeft,
+	kActionMoveBottomRight,
+	kActionMoveBottomLeft,
+	kActionUserHelp,
+	kActionToggleSound,
+	kActionRepeatLine,
+	kActionSaveGame,
+	kActionRestoreGame,
+	kActionNewGame,
+	kActionInventory,
+	kActionToggleTurbo
+};
+
 enum HugoDebugChannels {
 	kDebugSchedule  = 1 <<  0,
 	kDebugEngine    = 1 <<  1,
@@ -219,7 +240,7 @@ public:
 	Common::RandomSource *_rnd;
 
 	const char *_episode;
-	Common::String _picDir;
+	Common::Path _picDir;
 
 	Command _statusLine;
 	Command _scoreLine;
@@ -238,8 +259,8 @@ public:
 		return *s_Engine;
 	}
 
-	bool canLoadGameStateCurrently() override;
-	bool canSaveGameStateCurrently() override;
+	bool canLoadGameStateCurrently(Common::U32String *msg = nullptr) override;
+	bool canSaveGameStateCurrently(Common::U32String *msg = nullptr) override;
 	bool loadHugoDat();
 
 	int8 getTPS() const;

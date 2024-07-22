@@ -43,7 +43,7 @@ private:
 	 * @param animData Animation data
 	 * @param animTimerDataPtr Animation time data
 	 */
-	bool verifyAnimAtKeyframe(int32 keyframeIdx, const AnimData &animData, AnimTimerDataStruct *animTimerDataPtr);
+	bool setInterDepObjet(int32 keyframeIdx, const AnimData &animData, AnimTimerDataStruct *animTimerDataPtr);
 
 	void copyKeyFrameToState(const KeyFrame *keyframe, BodyData &bodyData, int32 numBones) const;
 	void copyStateToKeyFrame(KeyFrame *keyframe, const BodyData &bodyData) const;
@@ -104,7 +104,7 @@ public:
 	 * @param animExtra animation actions extra data
 	 * @param actorIdx actor index
 	 */
-	bool initAnim(AnimationTypes newAnim, AnimType animType, AnimationTypes animExtra, int32 actorIdx);
+	bool initAnim(AnimationTypes newAnim, AnimType animType, AnimationTypes animExtra, int32 actorIdx); // InitAnim
 
 	/**
 	 * Process acotr animation actions

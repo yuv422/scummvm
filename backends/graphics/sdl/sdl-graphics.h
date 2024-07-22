@@ -94,7 +94,7 @@ public:
 	virtual bool showMouse(bool visible) override;
 	bool lockMouse(bool lock) override;
 
-	virtual bool saveScreenshot(const Common::String &filename) const { return false; }
+	virtual bool saveScreenshot(const Common::Path &filename) const { return false; }
 	void saveScreenshot() override;
 
 	// Override from Common::EventObserver
@@ -205,6 +205,21 @@ protected:
 
 private:
 	void toggleFullScreen();
+
+#if defined(USE_IMGUI) && SDL_VERSION_ATLEAST(2, 0, 0)
+public:
+	void setImGuiCallbacks(const ImGuiCallbacks &callbacks) override { _imGuiCallbacks = callbacks; }
+
+protected:
+	ImGuiCallbacks _imGuiCallbacks;
+	bool _imGuiReady = false;
+	bool _imGuiInited = false;
+
+	void initImGui(void *glContext);
+	void renderImGui();
+	void destroyImGui();
+#endif
+
 };
 
 #endif

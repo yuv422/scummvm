@@ -138,6 +138,7 @@ EoBCoreEngine::EoBCoreEngine(OSystem *system, const GameFlags &flags) : KyraRpgE
 	_charExchangeSwap = 0;
 	_configHpBarGraphs = true;
 	_configMouseBtSwap = false;
+	_configADDRuleEnhancements = false;
 
 	_npcSequenceSub = 0;
 	_moveCounter = 0;
@@ -684,12 +685,14 @@ void EoBCoreEngine::registerDefaultSettings() {
 	KyraEngine_v1::registerDefaultSettings();
 	ConfMan.registerDefault("hpbargraphs", true);
 	ConfMan.registerDefault("mousebtswap", false);
+	ConfMan.registerDefault("addrules", false);
 	ConfMan.registerDefault("importOrigSaves", true);
 }
 
 void EoBCoreEngine::readSettings() {
 	_configHpBarGraphs = ConfMan.getBool("hpbargraphs");
 	_configMouseBtSwap = ConfMan.getBool("mousebtswap");
+	_configADDRuleEnhancements = ConfMan.getBool("addrules");
 	_configSounds = ConfMan.getBool("sfx_mute") ? 0 : 1;
 	_configMusic = (_flags.platform == Common::kPlatformPC98 || _flags.platform == Common::kPlatformSegaCD) ? (ConfMan.getBool("music_mute") ? 0 : 1) : (_configSounds ? 1 : 0);
 
@@ -702,6 +705,7 @@ void EoBCoreEngine::readSettings() {
 void EoBCoreEngine::writeSettings() {
 	ConfMan.setBool("hpbargraphs", _configHpBarGraphs);
 	ConfMan.setBool("mousebtswap", _configMouseBtSwap);
+	ConfMan.setBool("addrules", _configADDRuleEnhancements);
 	ConfMan.setBool("sfx_mute", _configSounds == 0);
 	if (_flags.platform == Common::kPlatformPC98 || _flags.platform == Common::kPlatformSegaCD)
 		ConfMan.setBool("music_mute", _configMusic == 0);
@@ -967,9 +971,6 @@ void EoBCoreEngine::releaseItemsAndDecorationsShapes() {
 		releaseShpArr(_largeItemShapesScl[i], _numLargeItemShapes);
 		releaseShpArr(_smallItemShapesScl[i], _numSmallItemShapes);
 		releaseShpArr(_thrownItemShapesScl[i], _numThrownItemShapes);
-		delete[] _largeItemShapesScl[i];
-		delete[] _smallItemShapesScl[i];
-		delete[] _thrownItemShapesScl[i];
 	}
 }
 
@@ -1043,12 +1044,19 @@ int EoBCoreEngine::generateCharacterHitpointsByLevel(int charIndex, int levelInd
 
 		int d = getCharacterClassType(c->cClass, i);
 
-		if (c->level[i] <= _hpIncrPerLevel[6 + i])
-			h += rollDice(1, (d >= 0) ? _hpIncrPerLevel[d] : 0);
-		else
-			h += _hpIncrPerLevel[12 + i];
-
-		h += m;
+		if (c->level[i] <= (d >= 0 ? _hpIncrPerLevel[6 + d] : 0)) {
+			int hpAdjustment = m;
+			hpAdjustment += rollDice(1, (d >= 0) ? _hpIncrPerLevel[d] : 0);
+			// According to the AD&D handbook the const bonus shouldn't be added here
+			// when the dice roll is 0, but it is like that in the original interpreter.
+			h += (hpAdjustment < 1 && _configADDRuleEnhancements) ? 1 : hpAdjustment;
+		} else {
+			h += (d >= 0 ? _hpIncrPerLevel[12 + d] : 0);
+			// The const bonus shouldn't be added here according to
+			// the AD&D handbook, but the game does it anyway.
+			if (!_configADDRuleEnhancements)
+				h += m;
+		}
 	}
 
 	h /= _numLevelsPerClass[c->cClass];

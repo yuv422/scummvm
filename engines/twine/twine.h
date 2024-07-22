@@ -149,6 +149,12 @@ struct Keyboard;
 class Debug;
 class DebugScene;
 
+// lba2
+class Buggy;
+class Dart;
+class Rain;
+class Wagon;
+
 enum class EngineState {
 	Menu,
 	GameLoop,
@@ -238,8 +244,8 @@ public:
 	Common::Error run() override;
 	bool hasFeature(EngineFeature f) const override;
 
-	bool canLoadGameStateCurrently() override { return true; }
-	bool canSaveGameStateCurrently() override;
+	bool canLoadGameStateCurrently(Common::U32String *msg = nullptr) override { return true; }
+	bool canSaveGameStateCurrently(Common::U32String *msg = nullptr) override;
 
 	Common::Error loadGameStream(Common::SeekableReadStream *stream) override;
 	Common::Error saveGameStream(Common::WriteStream *stream, bool isAutosave = false) override;
@@ -294,6 +300,10 @@ public:
 	DebugGrid *_debugGrid;
 	Input *_input;
 	Debug *_debug;
+	Buggy *_buggy; // lba2
+	Dart *_dart; // lba2
+	Rain *_rain; // lba2
+	Wagon *_wagon; // lba2
 	DebugScene *_debugScene;
 
 	/** Configuration file structure
@@ -301,13 +311,14 @@ public:
 	ConfigFile _cfgfile;
 
 	int32 _frameCounter = 0;
-	SceneLoopState _sceneLoopState = SceneLoopState::ReturnToMenu;
+	SceneLoopState _sceneLoopState = SceneLoopState::ReturnToMenu; // FlagTheEnd
 	int32 timerRef = 0;
 
 	int32 _loopInventoryItem = 0;
 	int32 _stepFalling = 0;
 	uint32 _gameFlags;
 	Common::Platform _platform;
+	bool _flagRain;
 
 	/** Disable screen recenter */
 	bool _disableScreenRecenter = false;
@@ -329,8 +340,9 @@ public:
 	Common::Rect centerOnScreen(int32 w, int32 h) const;
 	Common::Rect centerOnScreenX(int32 w, int32 y, int32 h) const;
 
-	void initSceneryView();
-	void exitSceneryView();
+	void extInitMcga();
+	void extInitSvga();
+	void testRestoreModeSVGA(bool redraw);
 
 	void queueMovie(const char *filename);
 

@@ -23,6 +23,7 @@
 #define COMMON_EVENTS_H
 
 #include "common/keyboard.h"
+#include "common/path.h"
 #include "common/queue.h"
 #include "common/rect.h"
 #include "common/noncopyable.h"
@@ -225,7 +226,7 @@ struct Event {
 	CustomEventType customType;
 
 	/** The path of the file or directory dragged to the ScummVM window. */
-	Common::String path;
+	Common::Path path;
 
 	/**
 	 * Mouse movement since the last mouse movement event.

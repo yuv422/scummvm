@@ -20,7 +20,7 @@
  */
 
 #include "ags/shared/core/platform.h"
-#include "ags/lib/std/set.h"
+#include "common/std/set.h"
 #include "ags/lib/allegro.h" // allegro_exit
 #include "ags/shared/ac/common.h"
 #include "ags/engine/ac/game_setup.h"
@@ -97,7 +97,7 @@ void main_print_help() {
 #endif
 	                          "  --gfxfilter FILTER [SCALING]\n"
 	                          "                               Request graphics filter. Available options:\n"
-							  "                                 none, linear, stdscale\n"
+							  "                                 stdscale, linear\n"
 							  "                               (support may differ between graphic drivers);\n"
 							  "                               Scaling is specified as:\n"
 							  "                                 proportional, round, stretch,\n"
@@ -213,8 +213,7 @@ int main_process_cmdline(ConfigTree &cfg, int argc, const char *argv[]) {
 			if (argc < ee + 2)
 				break;
 			_GP(play).takeover_data = atoi(argv[ee + 1]);
-			strncpy(_GP(play).takeover_from, argv[ee + 2], 49);
-			_GP(play).takeover_from[49] = 0;
+			snprintf(_GP(play).takeover_from, sizeof(_GP(play).takeover_from), "%s", argv[ee + 2]);
 			ee += 2;
 		} else if (ags_stricmp(arg, "--clear-cache-on-room-change") == 0) {
 			cfg["misc"]["clear_cache_on_room_change"] = "1";

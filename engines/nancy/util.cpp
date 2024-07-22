@@ -65,7 +65,7 @@ void readRectArray(Common::SeekableReadStream &stream, Common::Array<Common::Rec
 		totalNum = num;
 	}
 
-	stream.skip((totalNum - num) * 16);
+	stream.skip(totalNum > num ? (totalNum - num) * 16 : 0);
 }
 
 void readRectArray(Common::Serializer &stream, Common::Array<Common::Rect> &inArray, uint num, uint totalNum, Common::Serializer::Version minVersion, Common::Serializer::Version maxVersion) {
@@ -91,7 +91,7 @@ void readRectArray(Common::Serializer &stream, Common::Array<Common::Rect> &inAr
 			totalNum = num;
 		}
 
-		stream.skip((totalNum - num) * 16);
+		stream.skip(totalNum > num ? (totalNum - num) * 16 : 0);
 	}
 }
 
@@ -136,7 +136,7 @@ void readRectArray16(Common::SeekableReadStream &stream, Common::Array<Common::R
 		totalNum = num;
 	}
 
-	stream.skip((totalNum - num) * 8);
+	stream.skip(totalNum > num ? (totalNum - num) * 8 : 0);
 }
 
 void readRectArray16(Common::Serializer &stream, Common::Array<Common::Rect> &inArray, uint num, uint totalNum, Common::Serializer::Version minVersion, Common::Serializer::Version maxVersion) {
@@ -162,12 +162,12 @@ void readRectArray16(Common::Serializer &stream, Common::Array<Common::Rect> &in
 			totalNum = num;
 		}
 
-		stream.skip((totalNum - num) * 8);
+		stream.skip(totalNum > num ? (totalNum - num) * 8 : 0);
 	}
 }
 
 void readFilename(Common::SeekableReadStream &stream, Common::String &inString) {
-	char buf[33];
+	char buf[33] = "";
 
 	if (g_nancy->getGameType() <= kGameTypeNancy2) {
 		// Older games only support 8-character filenames, and stored them in a 10 char buffer
@@ -185,7 +185,7 @@ void readFilename(Common::SeekableReadStream &stream, Common::String &inString) 
 void readFilename(Common::Serializer &stream, Common::String &inString, Common::Serializer::Version minVersion, Common::Serializer::Version maxVersion) {
 	Common::Serializer::Version version = stream.getVersion();
 	if (version >= minVersion && version <= maxVersion) {
-		char buf[33];
+		char buf[33] = "";
 
 		if (version <= kGameTypeNancy2) {
 			// Older games only support 8-character filenames, and stored them in a 10 char buffer
@@ -212,7 +212,7 @@ void readFilenameArray(Common::Serializer &stream, Common::Array<Common::String>
 	Common::Serializer::Version version = stream.getVersion();
 	if (version >= minVersion && version <= maxVersion) {
 		inArray.resize(num);
-		char buf[33];
+		char buf[33] = "";
 
 		for (Common::String &str : inArray) {
 			if (version <= kGameTypeNancy2) {
@@ -230,11 +230,51 @@ void readFilenameArray(Common::Serializer &stream, Common::Array<Common::String>
 	}
 }
 
+void readFilenameArray(Common::SeekableReadStream &stream, Common::Array<Common::Path> &inArray, uint num) {
+	inArray.resize(num);
+	for (Common::Path &str : inArray) {
+		readFilename(stream, str);
+	}
+}
+
+void readFilenameArray(Common::Serializer &stream, Common::Array<Common::Path> &inArray, uint num, Common::Serializer::Version minVersion, Common::Serializer::Version maxVersion) {
+	Common::Serializer::Version version = stream.getVersion();
+	if (version >= minVersion && version <= maxVersion) {
+		inArray.resize(num);
+		for (Common::Path &str : inArray) {
+			readFilename(stream, str, minVersion, maxVersion);
+		}
+	}
+}
+
+// A text line will often be broken up into chunks separated by nulls, use
+// this function to put it back together as a Common::String
+void assembleTextLine(char *rawCaption, Common::String &output, uint size) {
+	for (uint i = 0; i < size; ++i) {
+		// A single line can be broken up into bits, look for them and
+		// concatenate them when we're done
+		if (rawCaption[i] != 0) {
+			Common::String newBit(rawCaption + i);
+			output += newBit;
+			i += newBit.size();
+		}
+	}
+
+	// Fix spaces at the end of the string in nancy1
+	output.trim();
+
+	// Scan the text line for doubly-closed tokens; happens in some strings in The Vampire Diaries
+	uint pos = Common::String::npos;
+	while (pos = output.find(">>"), pos != Common::String::npos) {
+		output.replace(pos, 2, ">");
+	}
+}
+
 bool DeferredLoader::load(uint32 endTime) {
 	uint32 loopStartTime = g_system->getMillis();
 	uint32 loopTime = 0; // Stores the loop that took the longest time to complete
 
-	while (loopTime + loopStartTime < endTime) {
+	do {
 		if (loadInner()) {
 			return true;
 		}
@@ -249,7 +289,7 @@ bool DeferredLoader::load(uint32 endTime) {
 		if (g_system->getMillis() < endTime) {
 			break;
 		}
-	}
+	} while (loopTime + loopStartTime < endTime);
 
 	return false;
 }

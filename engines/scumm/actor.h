@@ -29,6 +29,12 @@
 
 namespace Scumm {
 
+#define CHORE_REDIRECT_INIT        56
+#define CHORE_REDIRECT_WALK        57
+#define CHORE_REDIRECT_STAND       58
+#define CHORE_REDIRECT_START_TALK  59
+#define CHORE_REDIRECT_STOP_TALK   60
+
 enum {
 	V12_X_MULTIPLIER = 8,
 	V12_Y_MULTIPLIER = 2,
@@ -46,6 +52,10 @@ enum MoveFlags {
 };
 
 struct CostumeData {
+	CostumeData() {
+		reset();
+	}
+
 	byte animType[16];
 	uint16 animCounter;
 	byte soundCounter;
@@ -62,11 +72,15 @@ struct CostumeData {
 	uint32 heCondMaskTable[16];
 
 	void reset() {
+		animCounter = 0;
+		soundCounter = 0;
+		soundPos = 0;
 		stopped = 0;
-		for (int i = 0; i < 16; i++) {
-			animType[i] = 0; // AKAT_Empty
-			curpos[i] = start[i] = end[i] = frame[i] = 0xFFFF;
-		}
+		memset(animType, 0, sizeof(animType)); // AKAT_Empty
+		memset(curpos, 0xFF, sizeof(curpos));
+		memset(start, 0xFF, sizeof(start));
+		memset(end, 0xFF, sizeof(end));
+		memset(frame, 0xFF, sizeof(frame));
 	}
 };
 
@@ -134,7 +148,7 @@ public:
 	bool _heSkipLimbs;
 	uint32 _heCondMask;
 	uint32 _hePaletteNum;
-	uint32 _heXmapNum;
+	uint32 _heShadow;
 
 protected:
 	struct ActorWalkData {
@@ -151,6 +165,7 @@ protected:
 		int32 deltaXFactor, deltaYFactor;
 		uint16 xfrac, yfrac;
 		uint16 xAdd, yAdd;
+		int16 facing;
 
 		void reset() {
 			dest.x = dest.y = 0;
@@ -166,6 +181,7 @@ protected:
 			yfrac = 0;
 			xAdd = 0;
 			yAdd = 0;
+			facing = 0;
 		}
 	};
 
@@ -207,8 +223,8 @@ public:
 	void setActorWalkSpeed(uint newSpeedX, uint newSpeedY);
 protected:
 	virtual int calcMovementFactor(const Common::Point& next);
-	int actorWalkStep();
-	int remapDirection(int dir, bool is_walking);
+	virtual int actorWalkStep();
+	virtual int remapDirection(int dir, bool is_walking);
 	virtual void setupActorScale();
 
 	void setBox(int box);
@@ -299,6 +315,11 @@ public:
 			_elevation = newElevation;
 			_needRedraw = true;
 		}
+
+		if (_vm->_game.heversion >= 70) {
+			_needRedraw = true;
+			_needBgReset = true;
+		}
 	}
 
 	void setPalette(int idx, int val) {
@@ -312,6 +333,10 @@ public:
 		if (sy != -1)
 			_scaley = sy;
 		_needRedraw = true;
+
+		if (_vm->_game.heversion >= 70) {
+			_needBgReset = true;
+		}
 	}
 
 	void classChanged(int cls, bool value);
@@ -337,13 +362,12 @@ public:
 
 protected:
 	int calcMovementFactor(const Common::Point& next) override;
-	int actorWalkStep();
-
 	void setupActorScale() override;
 	void findPathTowardsOld(byte box, byte box2, byte box3, Common::Point &p2, Common::Point &p3);
-
+	uint _stepThreshold;
 private:
-	uint _stepX, _stepThreshold;
+	virtual int actorWalkStep() override;
+	uint _stepX;
 	const int _facingXYratio;
 };
 
@@ -358,6 +382,9 @@ public:
 protected:
 	bool isPlayer() override;
 	void prepareDrawActorCostume(BaseCostumeRenderer *bcr) override;
+private:
+	int actorWalkStep() override;
+	int remapDirection(int dir, bool is_walking) override;
 };
 
 class Actor_v7 final : public Actor {

@@ -110,6 +110,7 @@ enum TheEntityType {
 	kTheResult,
 	kTheRightMouseDown,
 	kTheRightMouseUp,
+	kTheRollOver,
 	kTheRomanLingo,
 	kTheScummvmVersion,			// set the Director version via lingo in tests
 	kTheSearchCurrentFolder,
@@ -144,6 +145,7 @@ enum TheEntityType {
 	kTheTraceLoad,
 	kTheTraceLogFile,
 	kTheUpdateMovieEnabled,
+	kTheVideoForWindowsPresent,
 	kTheWindow,
 	kTheWindowList,
 	kTheWords,

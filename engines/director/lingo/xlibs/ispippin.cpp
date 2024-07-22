@@ -35,9 +35,9 @@
 namespace Director {
 
 const char *IsPippin::xlibName = "IsPippin";
-const char *IsPippin::fileNames[] = {
-	"IsPippin",
-	0
+const XlibFileDesc IsPippin::fileNames[] = {
+	{ "IsPippin",	nullptr },
+	{ nullptr,		nullptr },
 };
 
 static BuiltinProto builtins[] = {
@@ -45,11 +45,11 @@ static BuiltinProto builtins[] = {
 	{ nullptr, nullptr, 0, 0, 0, VOIDSYM }
 };
 
-void IsPippin::open(int type) {
+void IsPippin::open(ObjectType type, const Common::Path &path) {
 	g_lingo->initBuiltIns(builtins);
 }
 
-void IsPippin::close(int type) {
+void IsPippin::close(ObjectType type) {
 	g_lingo->cleanupBuiltIns(builtins);
 }
 

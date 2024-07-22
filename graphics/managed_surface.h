@@ -33,6 +33,8 @@
 
 namespace Graphics {
 
+class Palette;
+
 /**
  * @defgroup graphics_managed_surface Managed surface
  * @ingroup graphics
@@ -81,21 +83,28 @@ private:
 	/**
 	 * Local palette for 8-bit images.
 	 */
-	byte _palette[256 * 3];
-	bool _paletteSet;
+	Palette *_palette;
 protected:
 	/**
 	 * Inner method for blitting.
 	 */
+	void simpleBlitFromInner(const Surface &src, const Common::Rect &srcRect,
+		const Common::Point &destPos, const Palette *srcPalette,
+		bool transparentColorSet, uint transparentColor);
+
+	/**
+	 * Inner method for blitting.
+	 */
 	void blitFromInner(const Surface &src, const Common::Rect &srcRect,
-		const Common::Rect &destRect, const byte *srcPalette);
+		const Common::Rect &destRect, const Palette *srcPalette);
 
 	/**
 	 * Inner method for copying another surface into this one at a given destination position.
 	 */
 	void transBlitFromInner(const Surface &src, const Common::Rect &srcRect,
 		const Common::Rect &destRect, uint32 transColor, bool flipped, uint32 overrideColor,
-		uint32 srcAlpha, const byte *srcPalette, const byte *dstPalette, const Surface *mask, bool maskOnly);
+		uint32 srcAlpha, const Palette *srcPalette, const Palette *dstPalette,
+		const Surface *mask, bool maskOnly);
 public:
 	/**
 	 * Clip the given source bounds so the passed destBounds will be entirely on-screen.
@@ -122,7 +131,13 @@ public:
 	 * this surface will create its own surface of the same size and copy
 	 * the contents from the source surface.
 	 */
+	WARN_DEPRECATED("Use copyFrom(), a move constructor or supply bounds")
 	ManagedSurface(const ManagedSurface &surf);
+
+	/**
+	 * Create a managed surface from another one.
+	 */
+	ManagedSurface(ManagedSurface &&surf);
 
 	/**
 	 * Create the managed surface.
@@ -145,11 +160,13 @@ public:
 	 * If disposeAfterUse flag is set (default), the surface will reuse all structures
 	 * from the surface and destroy it, otherwise it will make a copy.
 	 */
+	WARN_DEPRECATED("Use copyFrom() instead")
 	ManagedSurface(Surface *surf, DisposeAfterUse::Flag disposeAfterUse = DisposeAfterUse::YES);
 
 	/**
 	 * Create a managed surface from plain Surface.
 	 */
+	WARN_DEPRECATED("Use copyFrom() instead")
 	ManagedSurface(const Surface *surf);
 
 	/**
@@ -181,7 +198,13 @@ public:
 	 *
 	 * @note If the source has a managed surface, it will be duplicated.
 	 */
+	WARN_DEPRECATED("Use copyFrom() or a move constructor instead")
 	ManagedSurface &operator=(const ManagedSurface &surf);
+
+	/**
+	 * Reassign one managed surface to another one.
+	 */
+	ManagedSurface &operator=(ManagedSurface &&surf);
 
 	/**
 	 * Return true if the surface has not yet been allocated.
@@ -307,24 +330,56 @@ public:
 	/**
 	 * Copy another surface into this one.
 	 */
-	void blitFrom(const Surface &src, const byte *srcPalette = nullptr);
+	void simpleBlitFrom(const Surface &src, const Palette *srcPalette = nullptr);
 
 	/**
 	 * Copy another surface into this one at a given destination position.
 	 */
-	void blitFrom(const Surface &src, const Common::Point &destPos, const byte *srcPalette = nullptr);
+	void simpleBlitFrom(const Surface &src, const Common::Point &destPos, const Palette *srcPalette = nullptr);
+
+	/**
+	 * Copy another surface into this one at a given destination position.
+	 */
+	void simpleBlitFrom(const Surface &src, const Common::Rect &srcRect,
+		const Common::Point &destPos, const Palette *srcPalette = nullptr);
+
+	/**
+	 * Copy another surface into this one.
+	 */
+	void simpleBlitFrom(const ManagedSurface &src);
+
+	/**
+	 * Copy another surface into this one at a given destination position.
+	 */
+	void simpleBlitFrom(const ManagedSurface &src, const Common::Point &destPos);
+
+	/**
+	 * Copy another surface into this one at a given destination position.
+	 */
+	void simpleBlitFrom(const ManagedSurface &src, const Common::Rect &srcRect,
+		const Common::Point &destPos);
+
+	/**
+	 * Copy another surface into this one.
+	 */
+	void blitFrom(const Surface &src, const Palette *srcPalette = nullptr);
+
+	/**
+	 * Copy another surface into this one at a given destination position.
+	 */
+	void blitFrom(const Surface &src, const Common::Point &destPos, const Palette *srcPalette = nullptr);
 
 	/**
 	 * Copy another surface into this one at a given destination position.
 	 */
 	void blitFrom(const Surface &src, const Common::Rect &srcRect,
-		const Common::Point &destPos, const byte *srcPalette = nullptr);
+		const Common::Point &destPos, const Palette *srcPalette = nullptr);
 
 	/**
 	 * Copy another surface into this one at a given destination area and perform the potential scaling.
 	 */
 	void blitFrom(const Surface &src, const Common::Rect &srcRect,
-		const Common::Rect &destRect, const byte *srcPalette = nullptr);
+		const Common::Rect &destRect, const Palette *srcPalette = nullptr);
 
 	/**
 	 * Copy another surface into this one at a given destination area and perform the potential scaling.
@@ -360,7 +415,7 @@ public:
 	 * @param srcPalette	Optional palette if the @p src surface uses a CLUT8 pixel format.
 	 */
 	void transBlitFrom(const Surface &src, uint32 transColor = 0, bool flipped = false,
-		uint32 overrideColor = 0, uint32 srcAlpha = 0xff, const byte *srcPalette = nullptr);
+		uint32 overrideColor = 0, uint32 srcAlpha = 0xff, const Palette *srcPalette = nullptr);
 
 	/**
 	 * Copy another surface into this one, ignoring pixels of a designated transparent color.
@@ -375,7 +430,7 @@ public:
 	 * @param srcPalette	Optional palette if the @p src surface uses a CLUT8 pixel format.
 	 */
 	void transBlitFrom(const Surface &src, const Common::Point &destPos,
-		uint32 transColor = 0, bool flipped = false, uint32 overrideColor = 0, uint32 srcAlpha = 0xff, const byte *srcPalette = nullptr);
+		uint32 transColor = 0, bool flipped = false, uint32 overrideColor = 0, uint32 srcAlpha = 0xff, const Palette *srcPalette = nullptr);
 
 	/**
 	 * Copy another surface into this one, ignoring pixels of a designated transparent color.
@@ -386,7 +441,7 @@ public:
 	 * @param srcPalette	Optional palette if the @p src surface uses a CLUT8 pixel format.
 	 */
 	void transBlitFrom(const Surface &src, const Common::Point &destPos,
-		const ManagedSurface &mask, const byte *srcPalette = nullptr);
+		const ManagedSurface &mask, const Palette *srcPalette = nullptr);
 
 	/**
 	 * Copy another surface into this one, ignoring pixels of a designated transparent color.
@@ -397,7 +452,7 @@ public:
 	 * @param srcPalette	Optional palette if the @p src surface uses a CLUT8 pixel format.
 	 */
 	void transBlitFrom(const Surface &src, const Common::Point &destPos,
-		const Surface &mask, const byte *srcPalette = nullptr);
+		const Surface &mask, const Palette *srcPalette = nullptr);
 
 	/**
 	 * Copy another surface into this one, ignoring pixels of a designated transparent color.
@@ -413,7 +468,7 @@ public:
 	 * @param srcPalette	Optional palette if the @p src surface uses a CLUT8 pixel format.
 	 */
 	void transBlitFrom(const Surface &src, const Common::Rect &srcRect, const Common::Point &destPos,
-		uint32 transColor = 0, bool flipped = false, uint32 overrideColor = 0, uint32 srcAlpha = 0xff, const byte *srcPalette = nullptr);
+		uint32 transColor = 0, bool flipped = false, uint32 overrideColor = 0, uint32 srcAlpha = 0xff, const Palette *srcPalette = nullptr);
 
 	/**
 	 * Copy another surface into this one, ignoring pixels of a designated transparent color.
@@ -424,7 +479,7 @@ public:
 	 *						then @p srcRect, allowing for arbitrary scaling of the image.
 	 * @param srcPalette	Palette for the CLUT8  @p src surface.
 	 */
-	void transBlitFrom(const Surface &src, const Common::Rect &srcRect, const Common::Rect &destRect, const byte *srcPalette);
+	void transBlitFrom(const Surface &src, const Common::Rect &srcRect, const Common::Rect &destRect, const Palette *srcPalette);
 
 	/**
 	 * Copy another surface into this one, ignoring pixels of a designated transparent color.
@@ -444,7 +499,7 @@ public:
 	 */
 	void transBlitFrom(const Surface &src, const Common::Rect &srcRect, const Common::Rect &destRect,
 		uint32 transColor = 0, bool flipped = false, uint32 overrideColor = 0, uint32 srcAlpha = 0xff,
-		const Surface *mask = nullptr, bool maskOnly = false, const byte *srcPalette = nullptr);
+		const Surface *mask = nullptr, bool maskOnly = false, const Palette *srcPalette = nullptr);
 
 	/**
 	 * Copy another surface into this one, ignoring pixels of a designated transparent color.
@@ -523,7 +578,7 @@ public:
 	void rawBlitFrom(const ManagedSurface &src, const Common::Rect &srcRect,
 			const Common::Point &destPos) {
 		blitFromInner(src._innerSurface, srcRect, Common::Rect(destPos.x, destPos.y, destPos.x + srcRect.width(),
-			destPos.y + srcRect.height()), src._paletteSet ? src._palette : nullptr);
+			destPos.y + srcRect.height()), src._palette);
 	}
 	
 	/**
@@ -625,6 +680,39 @@ public:
 	void copyFrom(const Surface &surf);
 
 	/**
+	 * Convert the data from another surface to a given pixel
+	 * format, reinitializing the surface to match the dimensions
+	 * of the passed surface.
+	 */
+	void convertFrom(const ManagedSurface &surf, const PixelFormat &fmt);
+
+	/**
+	 * Convert the data from another surface to a given pixel
+	 * format, reinitializing the surface to match the dimensions
+	 * of the passed surface.
+	 */
+	void convertFrom(const Surface &surf, const PixelFormat &fmt);
+
+	/**
+	 * Scale the data to the given size.
+	 *
+	 * @param newWidth   The resulting width.
+	 * @param newHeight  The resulting height.
+	 * @param filtering  Whether or not to use bilinear filtering.
+	 */
+	ManagedSurface *scale(int16 newWidth, int16 newHeight, bool filtering = false) const;
+
+	/**
+	 * @brief Rotoscale function; this returns a transformed version of this surface after rotation and
+	 * scaling. Please do not use this if angle == 0, use plain old scaling function.
+	 *
+	 * @param transform a TransformStruct wrapping the required info. @see TransformStruct
+	 * @param filtering Whether or not to use bilinear filtering.
+	 *
+	 */
+	ManagedSurface *rotoscale(const TransformStruct &transform, bool filtering = false) const;
+
+	/**
 	 * Draw a line.
 	 */
 	void drawLine(int x0, int y0, int x1, int y1, uint32 color) {
@@ -673,6 +761,13 @@ public:
 	}
 
 	/**
+	 * Checks if the given surface contains alpha transparency
+	 */
+	AlphaType detectAlpha() const {
+		return _innerSurface.detectAlpha();
+	}
+
+	/**
 	 * Return a sub-area of the screen, but only add a single initial dirty rect
 	 * for the retrieved area.
 	 */
@@ -689,10 +784,24 @@ public:
 	 * (that means it might realloc the pixel data).
 	 *
 	 * @param dstFormat  The desired format.
-	 * @param palette    The palette (in RGB888), if the source format has a bpp of 1.
 	 */
-	void convertToInPlace(const PixelFormat &dstFormat, const byte *palette = nullptr) {
-		_innerSurface.convertToInPlace(dstFormat, palette);
+	void convertToInPlace(const PixelFormat &dstFormat) {
+		_innerSurface.convertToInPlace(dstFormat);
+	}
+
+	/**
+	 * Convert the data to another pixel format.
+	 *
+	 * This works in-place. This means it does not create an additional buffer
+	 * for the conversion process. The value of 'pixels' might change though
+	 * (that means it might realloc the pixel data).
+	 *
+	 * @param dstFormat  The desired format.
+	 * @param palette    The palette (in RGB888), if the source format has one.
+	 * @param paletteCount  The number of colors in the palette.
+	 */
+	void convertToInPlace(const PixelFormat &dstFormat, const byte *palette, uint16 paletteCount) {
+		_innerSurface.convertToInPlace(dstFormat, palette, paletteCount);
 	}
 
 	/**
@@ -725,16 +834,12 @@ public:
 	/**
 	 * Clear any existing palette.
 	 */
-	void clearPalette() {
-		_paletteSet = false;
-	}
+	void clearPalette();
 
 	/**
 	 * Return true if a palette has been set.
 	 */
-	bool hasPalette() const {
-		return _paletteSet;
-	}
+	bool hasPalette() const;
 
 	/**
 	 * Grab the palette using RGB tuples.

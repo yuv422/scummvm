@@ -53,7 +53,7 @@ OpenGLSdlGraphicsManager::OpenGLSdlGraphicsManager(SdlEventSource *eventSource, 
 
 	// Set up proper SDL OpenGL context creation.
 #if SDL_VERSION_ATLEAST(2, 0, 0)
-	// Context version 1.4 is choosen arbitrarily based on what most shader
+	// Context version 1.4 is chosen arbitrarily based on what most shader
 	// extensions were written against.
 	enum {
 		DEFAULT_GL_MAJOR = 1,
@@ -191,6 +191,11 @@ OpenGLSdlGraphicsManager::OpenGLSdlGraphicsManager(SdlEventSource *eventSource, 
 
 OpenGLSdlGraphicsManager::~OpenGLSdlGraphicsManager() {
 #if SDL_VERSION_ATLEAST(2, 0, 0)
+
+#ifdef USE_IMGUI
+	destroyImGui();
+#endif
+
 	notifyContextDestroy();
 	SDL_GL_DeleteContext(_glContext);
 #else
@@ -279,6 +284,10 @@ void OpenGLSdlGraphicsManager::initSize(uint w, uint h, const Graphics::PixelFor
 		_graphicsScale = 2;
 	}
 
+	if (ConfMan.getBool("force_resize", Common::ConfigManager::kApplicationDomain)) {
+		notifyResize(w, h);
+	}
+
 	return OpenGLGraphicsManager::initSize(w, h, format);
 }
 
@@ -286,6 +295,12 @@ void OpenGLSdlGraphicsManager::updateScreen() {
 	if (_ignoreResizeEvents) {
 		--_ignoreResizeEvents;
 	}
+
+#if defined(USE_IMGUI) && SDL_VERSION_ATLEAST(2, 0, 0)
+	if (_imGuiCallbacks.render) {
+		_forceRedraw = true;
+	}
+#endif
 
 	OpenGLGraphicsManager::updateScreen();
 }
@@ -306,7 +321,17 @@ void OpenGLSdlGraphicsManager::notifyResize(const int width, const int height) {
 	int currentWidth, currentHeight;
 	getWindowSizeFromSdl(&currentWidth, &currentHeight);
 	float dpiScale = _window->getSdlDpiScalingFactor();
+
+	if (ConfMan.getBool("force_resize", Common::ConfigManager::kApplicationDomain)) {
+		currentWidth = width;
+		currentHeight = height;
+	}
+
 	debug(3, "req: %d x %d  cur: %d x %d, scale: %f", width, height, currentWidth, currentHeight, dpiScale);
+
+	if (ConfMan.getBool("force_resize", Common::ConfigManager::kApplicationDomain)) {
+		createOrUpdateWindow(currentWidth, currentHeight, 0);
+	}
 
 	handleResize(currentWidth, currentHeight);
 
@@ -423,6 +448,17 @@ bool OpenGLSdlGraphicsManager::loadVideoMode(uint requestedWidth, uint requested
 
 void OpenGLSdlGraphicsManager::refreshScreen() {
 	// Swap OpenGL buffers
+#ifdef EMSCRIPTEN
+	if (_queuedScreenshot) {
+		SdlGraphicsManager::saveScreenshot();
+		_queuedScreenshot = false;
+	}
+#endif
+
+#if defined(USE_IMGUI) && SDL_VERSION_ATLEAST(2, 0, 0)
+	renderImGui();
+#endif
+
 #if SDL_VERSION_ATLEAST(2, 0, 0)
 	SDL_GL_SwapWindow(_window->getSDLWindow());
 #else
@@ -435,7 +471,13 @@ void OpenGLSdlGraphicsManager::handleResizeImpl(const int width, const int heigh
 	SdlGraphicsManager::handleResizeImpl(width, height);
 }
 
-bool OpenGLSdlGraphicsManager::saveScreenshot(const Common::String &filename) const {
+#ifdef EMSCRIPTEN
+void OpenGLSdlGraphicsManager::saveScreenshot() {
+	_queuedScreenshot = true;
+}
+#endif
+
+bool OpenGLSdlGraphicsManager::saveScreenshot(const Common::Path &filename) const {
 	return OpenGLGraphicsManager::saveScreenshot(filename);
 }
 
@@ -495,6 +537,10 @@ bool OpenGLSdlGraphicsManager::setupMode(uint width, uint height) {
 	if (_glContext) {
 		notifyContextDestroy();
 
+#ifdef USE_IMGUI
+		destroyImGui();
+#endif
+
 		SDL_GL_DeleteContext(_glContext);
 		_glContext = nullptr;
 	}
@@ -542,6 +588,11 @@ bool OpenGLSdlGraphicsManager::setupMode(uint width, uint height) {
 	if (!_glContext) {
 		return false;
 	}
+
+#ifdef USE_IMGUI
+	// Setup Dear ImGui
+	initImGui(_glContext);
+#endif
 
 	if (SDL_GL_SetSwapInterval(_vsync ? 1 : 0)) {
 		warning("Unable to %s VSync: %s", _vsync ? "enable" : "disable", SDL_GetError());

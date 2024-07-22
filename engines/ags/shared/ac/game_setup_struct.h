@@ -22,7 +22,7 @@
 #ifndef AGS_SHARED_AC_GAME_SETUP_STRUCT_H
 #define AGS_SHARED_AC_GAME_SETUP_STRUCT_H
 
-#include "ags/lib/std/vector.h"
+#include "common/std/vector.h"
 #include "ags/shared/ac/audio_clip_type.h"
 #include "ags/shared/ac/character_info.h" // TODO: constants to separate header
 #include "ags/shared/ac/game_setup_struct_base.h"
@@ -55,7 +55,7 @@ struct GameSetupStruct : public GameSetupStructBase {
 	// font parameters are then put and queried in the fonts module
 	// TODO: split into installation params (used only when reading) and runtime params
 	std::vector<FontInfo> fonts;
-	InventoryItemInfo invinfo[MAX_INV];
+	InventoryItemInfo invinfo[MAX_INV]{};
 	std::vector<MouseCursor> mcurs;
 	std::vector<PInteraction> intrChar;
 	PInteraction intrInv[MAX_INV];

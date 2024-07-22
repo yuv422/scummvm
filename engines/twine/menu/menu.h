@@ -43,9 +43,10 @@ private:
 		// is used to calc the height where the first button will appear
 		MenuSettings_NumberOfButtons = 1,
 		MenuSettings_ButtonsBoxHeight = 2,
-		MenuSettings_HeaderEnd = 3, // TODO: unknown
-		MenuSettings_FirstButtonState = 4,
-		MenuSettings_FirstButton = 5
+		MenuSettings_TextBankId = 3,
+
+		MenuSettings_FirstButtonState,
+		MenuSettings_FirstButton
 	};
 
 	int16 _settings[4 + MAX_BUTTONS * 2] {0};
@@ -112,7 +113,7 @@ public:
 	}
 
 	void setTextBankId(TextBankId textBankIndex) {
-		_settings[MenuSettings_HeaderEnd] = (int16)textBankIndex;
+		_settings[MenuSettings_TextBankId] = (int16)textBankIndex;
 	}
 
 	void addButton(TextId textId, int16 state = 0) {
@@ -189,8 +190,8 @@ private:
 	bool isBehaviourHovered(int32 left, int32 top, HeroBehaviourType behaviour) const;
 	void drawBehaviour(int32 left, int32 top, HeroBehaviourType behaviour, int32 angle, bool cantDrawBox);
 	void drawInventoryItems(int32 left, int32 top);
-	void prepareAndDrawBehaviour(int32 left, int32 top, int32 angle, HeroBehaviourType behaviour);
-	void drawBehaviourMenu(int32 left, int32 top, int32 angle);
+	void prepareAndDrawBehaviour(int32 left, int32 top, int32 angle, HeroBehaviourType behaviour); // DrawComportement
+	void drawBehaviourMenu(int32 left, int32 top, int32 angle); // DrawMenuComportement
 	void drawItem(int32 left, int32 top, int32 item);
 
 	void drawSpriteAndString(int32 left, int32 top, const SpriteData &spriteData, const Common::String &str, int32 color = COLOR_GOLD);
@@ -241,7 +242,7 @@ public:
 	int32 optionsMenu();
 
 	/** Process hero behaviour menu */
-	void processBehaviourMenu(bool behaviourMenu);
+	void processBehaviourMenu(bool behaviourMenu); // MenuComportement
 
 	int32 newGameClassicMenu();
 

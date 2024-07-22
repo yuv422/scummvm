@@ -29,8 +29,7 @@
 namespace Freescape {
 
 void DarkEngine::initCPC() {
-	_viewArea = Common::Rect(36, 24, 284, 124);
-
+	_viewArea = Common::Rect(36, 24, 284, 125);
 }
 
 extern byte kCPCPaletteTitleData[4][3];
@@ -63,21 +62,16 @@ void DarkEngine::loadAssetsCPCFullGame() {
 		error("Failed to open DARKCODE.BIN");
 
 	loadMessagesFixedSize(&file, 0x5d9, 16, 27);
-	loadFonts(&file, 0x60f3);
+	loadFonts(&file, 0x60f3, _font);
 	loadGlobalObjects(&file, 0x9a, 23);
 	load8bitBinary(&file, 0x6255, 16);
-	for (auto &it : _areaMap) {
-		addWalls(it._value);
-		addECDs(it._value);
-		addSkanner(it._value);
-	}
 	_indicators.push_back(loadBundledImage("dark_fallen_indicator"));
 	_indicators.push_back(loadBundledImage("dark_crouch_indicator"));
 	_indicators.push_back(loadBundledImage("dark_walk_indicator"));
 	_indicators.push_back(loadBundledImage("dark_jet_indicator"));
 
 	for (auto &it : _indicators)
-		it->convertToInPlace(_gfx->_texturePixelFormat, nullptr);
+		it->convertToInPlace(_gfx->_texturePixelFormat);
 }
 
 void DarkEngine::drawCPCUI(Graphics::Surface *surface) {

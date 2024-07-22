@@ -53,7 +53,7 @@ void OrderingPuzzle::init() {
 	}
 
 	g_nancy->_resource->loadImage(_imageName, _image);
-	_drawSurface.create(_screenPosition.width(), _screenPosition.height(), g_nancy->_graphicsManager->getInputPixelFormat());
+	_drawSurface.create(_screenPosition.width(), _screenPosition.height(), g_nancy->_graphics->getInputPixelFormat());
 
 	if (_image.hasPalette()) {
 		uint8 palette[256 * 3];
@@ -71,6 +71,7 @@ void OrderingPuzzle::init() {
 void OrderingPuzzle::readData(Common::SeekableReadStream &stream) {
 	bool isPiano = _puzzleType == kPiano;
 	bool isOrderItems = _puzzleType == kOrderItems;
+	bool isKeypad = _puzzleType == kKeypad || _puzzleType == kKeypadTerse;
 	readFilename(stream, _imageName);
 	Common::Serializer ser(&stream, nullptr);
 	ser.setVersion(g_nancy->getGameType());
@@ -92,6 +93,8 @@ void OrderingPuzzle::readData(Common::SeekableReadStream &stream) {
 	case kPiano :
 		_itemsStayDown = false;
 		break;
+	case kKeypadTerse:
+		// fall through
 	case kKeypad :
 		ser.syncAsByte(_itemsStayDown);
 		ser.syncAsByte(_needButtonToCheckSuccess);
@@ -103,44 +106,65 @@ void OrderingPuzzle::readData(Common::SeekableReadStream &stream) {
 		break;
 	}
 
-	readRectArray(ser, _down1Rects, numElements, maxNumElements);
+	// nancy7 moved the keypad rects at the end
+	if (g_nancy->getGameType() <= kGameTypeNancy6 || !isKeypad) {
+		readRectArray(ser, _down1Rects, numElements, maxNumElements);
 
-	if (isOrderItems) {
-		readRectArray(stream, _up2Rects, numElements, maxNumElements);
-		readRectArray(stream, _down2Rects, numElements, maxNumElements);
+		if (isOrderItems) {
+			readRectArray(stream, _up2Rects, numElements, maxNumElements);
+			readRectArray(stream, _down2Rects, numElements, maxNumElements);
+		}
+
+		readRectArray(ser, _destRects, numElements, maxNumElements);
+
+		if (isPiano) {
+			readRectArray(stream, _hotspots, numElements, maxNumElements);
+		} else {
+			_hotspots = _destRects;
+		}
 	}
 
-	readRectArray(ser, _destRects, numElements, maxNumElements);
-
-	_hotspots.resize(numElements);
-	if (isPiano) {
-		readRectArray(stream, _hotspots, numElements, maxNumElements);
-	} else {
-		_hotspots = _destRects;
+	if (isPiano && g_nancy->getGameType() >= kGameTypeNancy8) {
+		_specialCursor1Id = stream.readUint16LE();
+		readRect(stream, _specialCursor1Dest);
+		_specialCursor2Id = stream.readUint16LE();
+		readRect(stream, _specialCursor2Dest);
 	}
 
 	uint sequenceLength = 5;
 	ser.syncAsUint16LE(sequenceLength, kGameTypeNancy1);
 
+	if (isKeypad) {
+		ser.syncAsByte(_checkOrder, kGameTypeNancy7);
+	}
+
 	_correctSequence.resize(sequenceLength);
+	uint sizeElem = 1;
 	for (uint i = 0; i < sequenceLength; ++i) {
 		switch (_puzzleType) {
+		case kKeypadTerse:
+			// fall through
 		case kKeypad :
 			// fall through
 		case kOrdering:
 			ser.syncAsByte(_correctSequence[i]);
+			sizeElem = 1;
 			break;
 		case kPiano:
 			ser.syncAsUint16LE(_correctSequence[i]);
+			sizeElem = 2;
 			break;
 		case kOrderItems:
 			// For some reason, OrderItems labels starting from 1
 			ser.syncAsUint16LE(_correctSequence[i]);
 			--_correctSequence[i];
+			sizeElem = 2;
 			break;
+		default:
+			error("OrderingPuzzle::readData(): Unsupported puzzle type %d", _puzzleType);
 		}
 	}
-	ser.skip((maxNumElements - sequenceLength) * ((_puzzleType == kOrdering || _puzzleType == kKeypad) ? 1 : 2), kGameTypeNancy1);
+	ser.skip((maxNumElements - sequenceLength) * sizeElem, kGameTypeNancy1);
 
 	if (isOrderItems) {
 		uint numOverlays = 0;
@@ -149,6 +173,9 @@ void OrderingPuzzle::readData(Common::SeekableReadStream &stream) {
 
 		readRectArray(ser, _overlaySrcs, numOverlays);
 		readRectArray(ser, _overlayDests, numOverlays);
+	} else if (isPiano && g_nancy->getGameType() >= kGameTypeNancy8) {
+		readFilenameArray(stream, _pianoSoundNames, numElements);
+		stream.skip((maxNumElements - numElements) * 33);
 	}
 
 	if (ser.getVersion() > kGameTypeVampire) {
@@ -166,6 +193,53 @@ void OrderingPuzzle::readData(Common::SeekableReadStream &stream) {
 	_exitScene.readData(stream, ser.getVersion() == kGameTypeVampire);
 	readRect(stream, _exitHotspot);
 
+	if (isKeypad && g_nancy->getGameType() >= kGameTypeNancy7) {
+		if (_puzzleType == kKeypad) {
+			readRectArray(ser, _down1Rects, numElements, maxNumElements);
+			readRectArray(ser, _destRects, numElements, maxNumElements);
+		} else if (_puzzleType == kKeypadTerse) {
+			_down1Rects.resize(numElements);
+			_destRects.resize(numElements);
+
+			// Terse elements are the same size & placed on a grid (in the source image AND on screen)
+			uint16 columns = stream.readUint16LE();
+			stream.skip(2); // rows
+
+			uint16 width = stream.readUint16LE();
+			uint16 height = stream.readUint16LE();
+
+			Common::Point srcStartPos, srcDist, destStartPos, destDist;
+
+			srcStartPos.x = stream.readUint16LE();
+			srcStartPos.y = stream.readUint16LE();
+			srcDist.x = stream.readUint16LE();
+			srcDist.y = stream.readUint16LE();
+
+			destStartPos.x = stream.readUint16LE();
+			destStartPos.y = stream.readUint16LE();
+			destDist.x = stream.readUint16LE();
+			destDist.y = stream.readUint16LE();
+
+			for (uint i = 0; i < numElements; ++i) {
+				uint x = i % columns;
+				uint y = i / columns;
+				Common::Rect &src = _down1Rects[i];
+				src.left	= srcStartPos.x + (x * srcDist.x) + (width * x);
+				src.top		= srcStartPos.y + (y * srcDist.y) + (height * y);
+				src.setWidth(width + 1);
+				src.setHeight(height + 1);
+
+				Common::Rect &dest = _destRects[i];
+				dest.left	= destStartPos.x + (x * destDist.x) + (width * x);
+				dest.top	= destStartPos.y + (y * destDist.y) + (height * y);
+				dest.setWidth(width + 1);
+				dest.setHeight(height + 1);
+			}
+		}
+
+		_hotspots = _destRects;
+	}
+
 	_downItems.resize(numElements, false);
 	_secondStateItems.resize(numElements, false);
 }
@@ -182,6 +256,9 @@ void OrderingPuzzle::execute() {
 				g_nancy->_sound->loadSound(_popUpSound);
 			}
 		}
+
+		NancySceneState.setNoHeldItem();
+
 		_state = kRun;
 		// fall through
 	case kRun:
@@ -199,18 +276,39 @@ void OrderingPuzzle::execute() {
 					}
 				}
 			}
-			
+
 			bool solved = true;
 
 			if (_puzzleType != kPiano) {
 				if (_clickedSequence.size() >= _correctSequence.size()) {
+					bool equal = true;
+					if (_checkOrder) {
+						equal = (_clickedSequence == _correctSequence);
+					} else {
+						for (uint i = 0; i < _correctSequence.size(); ++i) {
+							bool found = false;
+							for (uint j = 0; j < _clickedSequence.size(); ++j) {
+								if (_correctSequence[i] == _clickedSequence[j]) {
+									found = true;
+									break;
+								}
+							}
+
+							if (!found) {
+								// Couldn't find one of the items in the correct sequence
+								equal = false;
+								break;
+							}
+						}
+					}
+
 					// Check the pressed sequence. If its length is above a certain number,
 					// clear it and start anew
-					if (_clickedSequence != _correctSequence) {
+					if (!equal) {
 						if (_puzzleType != kOrderItems) {
 							uint maxNumPressed = 4;
 							if (g_nancy->getGameType() > kGameTypeVampire) {
-								if (_puzzleType == kKeypad) {
+								if (_puzzleType == kKeypad || _puzzleType == kKeypadTerse) {
 									maxNumPressed = _correctSequence.size();
 								} else {
 									maxNumPressed = _correctSequence.size() + 1;
@@ -240,7 +338,7 @@ void OrderingPuzzle::execute() {
 					}
 				} else {
 					solved = false;
-				}						
+				}
 			} else {
 				// Piano puzzle checks only the last few elements
 				if (_clickedSequence.size() < _correctSequence.size()) {
@@ -272,7 +370,7 @@ void OrderingPuzzle::execute() {
 					}
 				} else {
 					return;
-				}				
+				}
 			} else {
 				if (solved) {
 					if (_puzzleType == kOrderItems) {
@@ -295,7 +393,7 @@ void OrderingPuzzle::execute() {
 					return;
 				}
 			}
-			
+
 			_solveSoundPlayTime = g_nancy->getTotalPlayTime() + _solveSoundDelay * 1000;
 			_solveState = kPlaySound;
 		}
@@ -324,7 +422,7 @@ void OrderingPuzzle::execute() {
 		} else {
 			g_nancy->_sound->stopSound(_pushDownSound);
 		}
-		
+
 		g_nancy->_sound->stopSound(_solveSound);
 
 		if (_solveState == kNotSolved) {
@@ -344,12 +442,12 @@ void OrderingPuzzle::handleInput(NancyInput &input) {
 	}
 
 	bool canClick = true;
-	if (_itemsStayDown && g_nancy->_sound->isSoundPlaying(_pushDownSound)) {
+	if ((_itemsStayDown || _puzzleType == kPiano) && g_nancy->_sound->isSoundPlaying(_pushDownSound)) {
 		canClick = false;
 	}
 
 	if (NancySceneState.getViewport().convertViewportToScreen(_exitHotspot).contains(input.mousePos)) {
-		g_nancy->_cursorManager->setCursorType(g_nancy->_cursorManager->_puzzleExitCursor);
+		g_nancy->_cursor->setCursorType(g_nancy->_cursor->_puzzleExitCursor);
 
 		if (canClick && input.input & NancyInput::kLeftMouseButtonUp) {
 			_state = kActionTrigger;
@@ -358,7 +456,7 @@ void OrderingPuzzle::handleInput(NancyInput &input) {
 	}
 
 	if (_needButtonToCheckSuccess && NancySceneState.getViewport().convertViewportToScreen(_checkButtonDest).contains(input.mousePos)) {
-		g_nancy->_cursorManager->setCursorType(CursorManager::kHotspot);
+		g_nancy->_cursor->setCursorType(CursorManager::kHotspot);
 
 		if (canClick && input.input & NancyInput::kLeftMouseButtonUp) {
 			_checkButtonPressed = true;
@@ -373,7 +471,14 @@ void OrderingPuzzle::handleInput(NancyInput &input) {
 
 	for (int i = 0; i < (int)_hotspots.size(); ++i) {
 		if (NancySceneState.getViewport().convertViewportToScreen(_hotspots[i]).contains(input.mousePos)) {
-			g_nancy->_cursorManager->setCursorType(CursorManager::kHotspot);
+			// Set the custom cursor for nancy8+ PianoPuzzle
+			if (NancySceneState.getViewport().convertViewportToScreen(_specialCursor1Dest).contains(input.mousePos)) {
+				g_nancy->_cursor->setCursorType((CursorManager::CursorType)_specialCursor1Id);
+			} else if (NancySceneState.getViewport().convertViewportToScreen(_specialCursor2Dest).contains(input.mousePos)) {
+				g_nancy->_cursor->setCursorType((CursorManager::CursorType)_specialCursor2Id);
+			} else {
+				g_nancy->_cursor->setCursorType(CursorManager::kHotspot);
+			}
 
 			if (canClick && input.input & NancyInput::kLeftMouseButtonUp) {
 				if (_puzzleType == kOrderItems) {
@@ -387,19 +492,26 @@ void OrderingPuzzle::handleInput(NancyInput &input) {
 						setToSecondState(i);
 						return;
 					}
-				} 
+				}
 
 				if (_puzzleType == kPiano) {
 					// Set the correct sound name for every piano key
-					if (Common::isDigit(_pushDownSound.name.lastChar())) {
-						_pushDownSound.name.deleteLastChar();
+					if (g_nancy->getGameType() <= kGameTypeNancy7) {
+						// In earlier games, the sound name is the base sound + a number
+						if (Common::isDigit(_pushDownSound.name.lastChar())) {
+							_pushDownSound.name.deleteLastChar();
+						}
+
+						_pushDownSound.name.insertChar('0' + i, _pushDownSound.name.size());
+					} else {
+						// Later games added an array of sound names
+						_pushDownSound.name = _pianoSoundNames[i];
 					}
 
-					_pushDownSound.name.insertChar('0' + i, _pushDownSound.name.size());
 					g_nancy->_sound->loadSound(_pushDownSound);
 				}
-				
-				if (_puzzleType == kOrdering || _puzzleType == kKeypad) {
+
+				if (_puzzleType == kOrdering || _puzzleType == kKeypad || _puzzleType == kKeypadTerse) {
 					// OrderingPuzzle and KeypadPuzzle allow for depressing buttons after they're pressed.
 					// If the button is the last one the player pressed, it is removed from the order.
 					// If not, the sequence is kept wrong and will be reset after enough buttons are pressed
@@ -432,6 +544,8 @@ Common::String OrderingPuzzle::getRecordTypeName() const {
 		return "OrderItemsPuzzle";
 	case kKeypad:
 		return "KeypadPuzzle";
+	case kKeypadTerse:
+		return "KeypadTersePuzzle";
 	default:
 		return "OrderingPuzzle";
 	}
@@ -464,16 +578,18 @@ void OrderingPuzzle::setToSecondState(uint id) {
 }
 
 void OrderingPuzzle::popUp(uint id) {
-	if (g_nancy->getGameType() == kGameTypeVampire) {
-		g_nancy->_sound->playSound("BUOK");
-	} else {
-		if (_popUpSound.name.size()) {
-			g_nancy->_sound->playSound(_popUpSound);
+	if (_itemsStayDown) {
+		// Make sure we only play the sound when the buttons don't auto-depress
+		if (g_nancy->getGameType() == kGameTypeVampire) {
+			g_nancy->_sound->playSound("BUOK");
 		} else {
-			g_nancy->_sound->playSound(_pushDownSound);
+			if (_popUpSound.name.size()) {
+				g_nancy->_sound->playSound(_popUpSound);
+			} else {
+				g_nancy->_sound->playSound(_pushDownSound);
+			}
 		}
 	}
-
 
 	_downItems[id] = false;
 	Common::Rect destRect = _destRects[id];
